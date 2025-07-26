@@ -10,16 +10,12 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Notify Discord: Deployment Started
-        uses: wei/curl@master
-        with:
-          args:
-            - -X
-            - POST
-            - -H
-            - Content-Type: application/json
-            - -d
-            - "{\"content\": \":rocket: Deployment started on branch ${{ github.ref_name }} by ${{ github.actor }}.\"}"
-            - ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          $body = @{
+            content = ":rocket: Deployment started on branch $env:GITHUB_REF_NAME by $env:GITHUB_ACTOR."
+          } | ConvertTo-Json
+          Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
+        shell: powershell
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -46,26 +42,18 @@ jobs:
 
       - name: Notify Discord: Deployment Succeeded
         if: success()
-        uses: wei/curl@master
-        with:
-          args:
-            - -X
-            - POST
-            - -H
-            - Content-Type: application/json
-            - -d
-            - "{\"content\": \":white_check_mark: Deployment succeeded on branch ${{ github.ref_name }} by ${{ github.actor }}.\"}"
-            - ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          $body = @{
+            content = ":white_check_mark: Deployment succeeded on branch $env:GITHUB_REF_NAME by $env:GITHUB_ACTOR."
+          } | ConvertTo-Json
+          Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
+        shell: powershell
 
       - name: Notify Discord: Deployment Failed
         if: failure()
-        uses: wei/curl@master
-        with:
-          args:
-            - -X
-            - POST
-            - -H
-            - Content-Type: application/json
-            - -d
-            - "{\"content\": \":x: Oh dear, Deployment failed on branch ${{ github.ref_name }} by ${{ github.actor }}.\"}"
-            - ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          $body = @{
+            content = ":x: Oh dear, Deployment failed on branch $env:GITHUB_REF_NAME by $env:GITHUB_ACTOR."
+          } | ConvertTo-Json
+          Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
+        shell: powershell
