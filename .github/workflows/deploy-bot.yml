@@ -21,11 +21,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.33'
-
       - name: Publish bot
         run: dotnet publish -c Release -o publish
 
@@ -53,3 +48,4 @@ jobs:
         shell: powershell
         run: |
           $body = @{ content = ":x: Oh dear, Deployment failed on branch $env:GITHUB_REF_NAME by $env:GITHUB_ACTOR." } | ConvertTo-Json
+          Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
