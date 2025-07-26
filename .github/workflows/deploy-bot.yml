@@ -15,9 +15,7 @@ jobs:
       - name: Notify Discord: Deployment Started
         shell: powershell
         run: |
-          $body = @{
-            content = ":rocket: Deployment started on branch $env:GITHUB_REF_NAME by $env:GITHUB_ACTOR."
-          } | ConvertTo-Json
+          $body = @{ content = ":rocket: Deployment started on branch $env:GITHUB_REF_NAME by $env:GITHUB_ACTOR." } | ConvertTo-Json
           Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
 
       - name: Checkout code
@@ -47,16 +45,12 @@ jobs:
         if: success()
         shell: powershell
         run: |
-          $body = @{
-            content = ":white_check_mark: Deployment succeeded on branch $env:GITHUB_REF_NAME by $env:GITHUB_ACTOR."
-          } | ConvertTo-Json
+          $body = @{ content = ":white_check_mark: Deployment succeeded on branch $env:GITHUB_REF_NAME by $env:GITHUB_ACTOR." } | ConvertTo-Json
           Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
 
       - name: Notify Discord: Deployment Failed
         if: failure()
         shell: powershell
         run: |
-          $body = @{
-            content = ":x: Oh dear, Deployment failed on branch $env:GITHUB_REF_NAME by $env:GITHUB_ACTOR."
-          } | ConvertTo-Json
+          $body = @{ content = ":x: Oh dear, Deployment failed on branch $env:GITHUB_REF_NAME by $env:GITHUB_ACTOR." } | ConvertTo-Json
           Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
