@@ -53,4 +53,3 @@ jobs:
         shell: powershell
         run: |
           $body = @{ content = ":x: Oh dear, Deployment failed on branch $env:GITHUB_REF_NAME by $env:GITHUB_ACTOR." } | ConvertTo-Json
-          Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
