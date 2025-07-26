@@ -1,0 +1,29 @@
+name: Build and Deploy on Windows Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted  # targets your Windows server runner
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 9.0.303
+
+    - name: Build and Publish
+      run: dotnet publish -c Release -o publish
+
+    - name: Deploy and restart bot
+      run: |
+        nssm stop TheFirmDiscordBot
+        Copy-Item -Path ./publish/* -Destination "C:\FirmDiscordBot\publish" -Recurse -Force
+        nssm start TheFirmDiscordBot
+      shell: powershell
