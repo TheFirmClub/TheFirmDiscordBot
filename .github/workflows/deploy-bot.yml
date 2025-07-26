@@ -12,7 +12,7 @@ jobs:
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
 
     steps:
-      - name: Notify Discord: Deployment Started
+      - name: Notify Discord Deployment Started
         shell: powershell
         run: |
           $body = @{ content = ":rocket: Deployment started on branch $env:GITHUB_REF_NAME by $env:GITHUB_ACTOR." } | ConvertTo-Json
@@ -41,14 +41,14 @@ jobs:
         shell: powershell
         run: nssm start TheFirmDiscordBot
 
-      - name: Notify Discord: Deployment Succeeded
+      - name: Notify Discord Deployment Succeeded
         if: success()
         shell: powershell
         run: |
           $body = @{ content = ":white_check_mark: Deployment succeeded on branch $env:GITHUB_REF_NAME by $env:GITHUB_ACTOR." } | ConvertTo-Json
           Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
 
-      - name: Notify Discord: Deployment Failed
+      - name: Notify Discord Deployment Failed
         if: failure()
         shell: powershell
         run: |
