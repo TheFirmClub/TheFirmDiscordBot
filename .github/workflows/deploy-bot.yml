@@ -1,29 +1,55 @@
-name: Build and Deploy on Windows Server
-
-on:
-  push:
-    branches:
-      - main
-
 jobs:
   deploy:
-    runs-on: self-hosted  # targets your Windows server runner
-
+    runs-on: self-hosted
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
+      - name: Notify Discord: Deployment Started
+        uses: wei/curl@master
+        with:
+          args: >
+            -X POST
+            -H "Content-Type: application/json"
+            -d "{\"content\":\":rocket: Deployment started on branch ${{ github.ref_name }} by ${{ github.actor }}.\"}"
+            ${{ secrets.DISCORD_WEBHOOK_URL }}
 
-    - name: Setup .NET SDK
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 9.0.303
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Build and Publish
-      run: dotnet publish -c Release -o publish
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.33'
 
-    - name: Deploy and restart bot
-      run: |
-        nssm stop TheFirmDiscordBot
-        Copy-Item -Path ./publish/* -Destination "C:\FirmDiscordBot\publish" -Recurse -Force
-        nssm start TheFirmDiscordBot
-      shell: powershell
+      - name: Publish bot
+        run: dotnet publish -c Release -o publish
+
+      - name: Stop bot service
+        run: nssm stop TheFirmDiscordBot
+        shell: powershell
+
+      - name: Copy files to deployment folder
+        run: Copy-Item -Path ./publish/* -Destination "C:\\FirmDiscordBot\\publish" -Recurse -Force
+        shell: powershell
+
+      - name: Start bot service
+        run: nssm start TheFirmDiscordBot
+        shell: powershell
+
+      - name: Notify Discord: Deployment Succeeded
+        if: success()
+        uses: wei/curl@master
+        with:
+          args: >
+            -X POST
+            -H "Content-Type: application/json"
+            -d "{\"content\":\":white_check_mark: Deployment succeeded on branch ${{ github.ref_name }} by ${{ github.actor }}.\"}"
+            ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+      - name: Notify Discord: Deployment Failed
+        if: failure()
+        uses: wei/curl@master
+        with:
+          args: >
+            -X POST
+            -H "Content-Type: application/json"
+            -d "{\"content\":\":x: Deployment failed on branch ${{ github.ref_name }} by ${{ github.actor }}.\"}"
+            ${{ secrets.DISCORD_WEBHOOK_URL }}
