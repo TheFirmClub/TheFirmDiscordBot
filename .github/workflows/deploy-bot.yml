@@ -26,7 +26,7 @@ jobs:
 
       - name: Stop bot service
         shell: powershell
-        run: nssm stop TheFirmDiscordBot
+        run: 'C:\Tools\nssm\nssm.exe stop TheFirmDiscordBot'
 
       - name: Copy files to deployment folder
         shell: powershell
@@ -34,7 +34,7 @@ jobs:
 
       - name: Start bot service
         shell: powershell
-        run: nssm start TheFirmDiscordBot
+        run: 'C:\Tools\nssm\nssm.exe stop TheFirmDiscordBot'
 
       - name: Notify Discord Deployment Succeeded
         if: success()
