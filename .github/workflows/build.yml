@@ -11,10 +11,10 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3.1
+    - uses: actions/checkout@v4
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3.1
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '9.0.303'  # change if using different version
 
@@ -28,7 +28,7 @@ jobs:
       run: dotnet publish -c Release -o publish --no-build
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3.1
+      uses: actions/upload-artifact@v4
       with:
         name: FirmDiscordBot
         path: publish/
