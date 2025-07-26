@@ -51,5 +51,5 @@ jobs:
           args: >
             -X POST
             -H "Content-Type: application/json"
-            -d "{\"content\":\":x: Deployment failed on branch ${{ github.ref_name }} by ${{ github.actor }}.\"}"
+            -d "{\"content\":\":x: Oh dear, Deployment failed on branch ${{ github.ref_name }} by ${{ github.actor }}.\"}"
             ${{ secrets.DISCORD_WEBHOOK_URL }}
