@@ -13,12 +13,12 @@ jobs:
 
     steps:
       - name: Notify Discord: Deployment Started
+        shell: powershell
         run: |
           $body = @{
             content = ":rocket: Deployment started on branch $env:GITHUB_REF_NAME by $env:GITHUB_ACTOR."
           } | ConvertTo-Json
           Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
-        shell: powershell
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -32,31 +32,31 @@ jobs:
         run: dotnet publish -c Release -o publish
 
       - name: Stop bot service
-        run: nssm stop TheFirmDiscordBot
         shell: powershell
+        run: nssm stop TheFirmDiscordBot
 
       - name: Copy files to deployment folder
-        run: Copy-Item -Path ./publish/* -Destination "C:\\FirmDiscordBot\\publish" -Recurse -Force
         shell: powershell
+        run: Copy-Item -Path ./publish/* -Destination "C:\\FirmDiscordBot\\publish" -Recurse -Force
 
       - name: Start bot service
-        run: nssm start TheFirmDiscordBot
         shell: powershell
+        run: nssm start TheFirmDiscordBot
 
       - name: Notify Discord: Deployment Succeeded
         if: success()
+        shell: powershell
         run: |
           $body = @{
             content = ":white_check_mark: Deployment succeeded on branch $env:GITHUB_REF_NAME by $env:GITHUB_ACTOR."
           } | ConvertTo-Json
           Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
-        shell: powershell
 
       - name: Notify Discord: Deployment Failed
         if: failure()
+        shell: powershell
         run: |
           $body = @{
             content = ":x: Oh dear, Deployment failed on branch $env:GITHUB_REF_NAME by $env:GITHUB_ACTOR."
           } | ConvertTo-Json
           Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
-        shell: powershell
