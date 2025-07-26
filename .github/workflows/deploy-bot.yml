@@ -12,7 +12,14 @@ jobs:
       - name: Notify Discord: Deployment Started
         uses: wei/curl@master
         with:
-          args: '-X POST -H "Content-Type: application/json" -d "{\"content\": \":rocket: Deployment started on branch ${{ github.ref_name }} by ${{ github.actor }}.\"}" ${{ secrets.DISCORD_WEBHOOK_URL }}'
+          args:
+            - -X
+            - POST
+            - -H
+            - Content-Type: application/json
+            - -d
+            - "{\"content\": \":rocket: Deployment started on branch ${{ github.ref_name }} by ${{ github.actor }}.\"}"
+            - ${{ secrets.DISCORD_WEBHOOK_URL }}
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -41,10 +48,24 @@ jobs:
         if: success()
         uses: wei/curl@master
         with:
-          args: '-X POST -H "Content-Type: application/json" -d "{\"content\": \":white_check_mark: Deployment succeeded on branch ${{ github.ref_name }} by ${{ github.actor }}.\"}" ${{ secrets.DISCORD_WEBHOOK_URL }}'
+          args:
+            - -X
+            - POST
+            - -H
+            - Content-Type: application/json
+            - -d
+            - "{\"content\": \":white_check_mark: Deployment succeeded on branch ${{ github.ref_name }} by ${{ github.actor }}.\"}"
+            - ${{ secrets.DISCORD_WEBHOOK_URL }}
 
       - name: Notify Discord: Deployment Failed
         if: failure()
         uses: wei/curl@master
         with:
-          args: '-X POST -H "Content-Type: application/json" -d "{\"content\": \":x: Oh dear, Deployment failed on branch ${{ github.ref_name }} by ${{ github.actor }}.\"}" ${{ secrets.DISCORD_WEBHOOK_URL }}'
+          args:
+            - -X
+            - POST
+            - -H
+            - Content-Type: application/json
+            - -d
+            - "{\"content\": \":x: Oh dear, Deployment failed on branch ${{ github.ref_name }} by ${{ github.actor }}.\"}"
+            - ${{ secrets.DISCORD_WEBHOOK_URL }}
