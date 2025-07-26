@@ -8,6 +8,9 @@ on:
 jobs:
   deploy:
     runs-on: self-hosted
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+
     steps:
       - name: Notify Discord: Deployment Started
         run: |
