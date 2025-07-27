@@ -102,6 +102,7 @@ class Program
                         .WithColor(GetColorForSeverity(msg.Severity))
                         .WithFooter(footer => footer.Text = $"Source: {msg.Source}")
                         .WithTimestamp(DateTimeOffset.UtcNow)
+						.WithThumbnailUrl("https://i.ibb.co/M5Qs7SgK/Logo-Copy.png")
                         .Build();
 
                     await channel.SendMessageAsync(embed: embed);
