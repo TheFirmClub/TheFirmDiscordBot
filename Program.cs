@@ -1,4 +1,4 @@
-﻿﻿using Discord;
+﻿using Discord;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
 using System;
@@ -47,7 +47,9 @@ class Program
         _client.SlashCommandExecuted += SlashCommandExecuted;
 
         _commandHandler = new SlashCommandHandler();
-        _roleLogger = new RoleLogger(_client, _logChannelId); // 🔍 Create role logger
+        // Correct channel for role logs
+        ulong roleLogChannelId = 1393726185804005497;
+        _roleLogger = new RoleLogger(_client, roleLogChannelId);
 
         string? token = _config["Discord:Token"];
         if (string.IsNullOrEmpty(token))
@@ -125,11 +127,11 @@ class Program
         return severity switch
         {
             LogSeverity.Critical => Color.DarkRed,
-            LogSeverity.Error    => Color.Red,
-            LogSeverity.Warning  => Color.Orange,
-            LogSeverity.Info     => Color.Blue,
-            LogSeverity.Verbose  => Color.LightGrey,
-            LogSeverity.Debug    => Color.DarkGrey,
+            LogSeverity.Error => Color.Red,
+            LogSeverity.Warning => Color.Orange,
+            LogSeverity.Info => Color.Blue,
+            LogSeverity.Verbose => Color.LightGrey,
+            LogSeverity.Debug => Color.DarkGrey,
             _ => Color.Default,
         };
     }
