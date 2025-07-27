@@ -26,7 +26,7 @@ public class CleanupCommand : ISlashCommand
         }
 
         var deletedNames = new List<string>();
-        var obsoleteNames = new List<string> { "embed", "oldcommand" }; // Add names here
+        var obsoleteNames = new List<string> { "embed", "oldcommand", "close", "tempticket", "ticketaddrole", "ticketadduser", "ticketclaim", "ticketpanel", "ticketrelease", "ticketresolve", "ticketrestrict" }; // Add names here
 
         var existingCommands = await guild.GetApplicationCommandsAsync();
         foreach (var cmd in existingCommands)
