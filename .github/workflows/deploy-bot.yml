@@ -60,8 +60,18 @@ jobs:
         if: success()
         shell: powershell
         run: |
-          $body = @{ content = ":white_check_mark: Deployment succeeded on branch $env:GITHUB_REF_NAME by $env:GITHUB_ACTOR." } | ConvertTo-Json
-          Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
+          $embed = @{
+            title = ":white_check_mark: Deployment Succeeded"
+            description = "Deployment succeeded on branch **$env:GITHUB_REF_NAME** by **$env:GITHUB_ACTOR**."
+            color = 3066993
+            timestamp = (Get-Date).ToUniversalTime().ToString("o")
+            footer = @{ text = "GitHub Actions • TheFirm Bot" }
+          }
+          $body = @{
+            embeds = @($embed)
+          }
+          $json = $body | ConvertTo-Json -Depth 10 -Compress
+          Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $json -ContentType 'application/json'
 
       - name: Notify Discord Deployment Failed
         if: failure()
