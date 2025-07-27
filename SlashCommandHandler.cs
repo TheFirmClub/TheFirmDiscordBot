@@ -21,6 +21,10 @@ public class SlashCommandHandler
         // Register the close ticket command passing TicketService
         var closeTicketCommand = new CloseTicketCommand(_ticketService);
         _commands.Add(closeTicketCommand.Name, closeTicketCommand);
+
+        var ticketPanelCommand = new TicketPanelCommand(_ticketService);
+        _commands.Add(ticketPanelCommand.Name, ticketPanelCommand);
+
     }
 
     public async Task HandleCommandAsync(SocketSlashCommand command)
