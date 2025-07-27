@@ -15,7 +15,27 @@ jobs:
       - name: Notify Discord Deployment Started
         shell: powershell
         run: |
-          $body = @{ content = ":rocket: Deployment started on branch $env:GITHUB_REF_NAME by $env:GITHUB_ACTOR." } | ConvertTo-Json
+          $mention = "<@&1393590761953558608>"
+          $embed = @{
+            title = ":rocket: Deployment Started"
+            description = "$mention A deployment has been initiated on branch **$env:GITHUB_REF_NAME** by **$env:GITHUB_ACTOR**."
+            color = 5814783
+            timestamp = (Get-Date).ToString("o")
+            footer = @{
+              text = "GitHub Actions · TheFirm Bot"
+            }
+            author = @{
+              name = "$env:GITHUB_ACTOR"
+              url = "https://github.com/$env:GITHUB_ACTOR"
+              icon_url = "https://github.com/$env:GITHUB_ACTOR.png"
+            }
+          }
+
+          $body = @{
+            content = $mention
+            embeds = @($embed)
+          } | ConvertTo-Json -Depth 10
+
           Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
 
       - name: Checkout code
