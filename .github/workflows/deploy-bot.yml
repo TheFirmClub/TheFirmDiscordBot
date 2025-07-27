@@ -34,7 +34,7 @@ jobs:
 
       - name: Start bot service
         shell: powershell
-        run: 'C:\Tools\nssm\nssm.exe stop TheFirmDiscordBot'
+        run: 'C:\Tools\nssm\nssm.exe start TheFirmDiscordBot'
 
       - name: Notify Discord Deployment Succeeded
         if: success()
