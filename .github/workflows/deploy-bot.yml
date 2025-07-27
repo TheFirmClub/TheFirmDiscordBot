@@ -17,24 +17,18 @@ jobs:
         run: |
           $mention = "<@&1393590761953558608>"
           $embed = @{
-            title = ":rocket: Deployment Started"
+            title       = ":rocket: Deployment Started"
             description = "A deployment has started on branch **$env:GITHUB_REF_NAME** by **$env:GITHUB_ACTOR**."
-            color = 3447003  # Blue color
-            timestamp = (Get-Date).ToString("o")
-            footer = @{ text = "GitHub Actions • TheFirm Bot" }
-            author = @{
-              name = "$env:GITHUB_ACTOR"
-              url = "https://github.com/$env:GITHUB_ACTOR"
-              icon_url = "https://github.com/$env:GITHUB_ACTOR.png"
-            }
+            color       = 3447003
+            timestamp   = (Get-Date).ToUniversalTime().ToString("o")
+            footer      = @{ text = "GitHub Actions • TheFirm Bot" }
           }
-
           $body = @{
             content = $mention
-            embeds = @($embed)
-          } | ConvertTo-Json -Depth 10 -Compress
-
-          Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
+            embeds  = @($embed)
+          }
+          $json = $body | ConvertTo-Json -Depth 10
+          Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $json -ContentType 'application/json'
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -59,33 +53,31 @@ jobs:
         shell: powershell
         run: |
           $embed = @{
-            title = ":white_check_mark: Deployment Succeeded"
+            title       = ":white_check_mark: Deployment Succeeded"
             description = "Deployment succeeded on branch **$env:GITHUB_REF_NAME** by **$env:GITHUB_ACTOR**."
-            color = 3066993 # Green
-            timestamp = (Get-Date).ToString("o")
-            footer = @{ text = "GitHub Actions • TheFirm Bot" }
+            color       = 3066993
+            timestamp   = (Get-Date).ToUniversalTime().ToString("o")
+            footer      = @{ text = "GitHub Actions • TheFirm Bot" }
           }
-
           $body = @{
             embeds = @($embed)
-          } | ConvertTo-Json -Depth 10 -Compress
-
-          Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
+          }
+          $json = $body | ConvertTo-Json -Depth 10
+          Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $json -ContentType 'application/json'
 
       - name: Notify Discord Deployment Failed
         if: failure()
         shell: powershell
         run: |
           $embed = @{
-            title = ":x: Deployment Failed"
-            description = "Deployment failed on branch **$env:GITHUB_REF_NAME** by **$env:GITHUB_ACTOR**."
-            color = 15158332 # Red
-            timestamp = (Get-Date).ToString("o")
-            footer = @{ text = "GitHub Actions • TheFirm Bot" }
+            title       = ":x: Deployment Failed"
+            description = "Oh dear, deployment failed on branch **$env:GITHUB_REF_NAME** by **$env:GITHUB_ACTOR**."
+            color       = 15158332
+            timestamp   = (Get-Date).ToUniversalTime().ToString("o")
+            footer      = @{ text = "GitHub Actions • TheFirm Bot" }
           }
-
           $body = @{
             embeds = @($embed)
-          } | ConvertTo-Json -Depth 10 -Compress
-
-          Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
+          }
+          $json = $body | ConvertTo-Json -Depth 10
+          Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $json -ContentType 'application/json'
