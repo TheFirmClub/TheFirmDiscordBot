@@ -166,19 +166,16 @@ public class TicketService
 
     public async Task CloseTicketAsync(SocketSlashCommand command)
     {
-        await command.DeferAsync(ephemeral: true); // 🔁 MUST be at the top, within 3 sec
-        var channel = command.Channel as SocketTextChannel;
+        var user = command.User;
+        var channel = command.Channel;
+        // Handle slash-command-based closing
+    }
 
-        if (channel == null || !channel.Name.StartsWith("ticket-"))
-        {
-            await command.RespondAsync("This command must be used in a ticket channel.", ephemeral: false);
-            return;
-        }
-
-        var builder = new ComponentBuilder()
-            .WithButton("Complete & Delete Ticket", "ticket_button_complete", ButtonStyle.Danger);
-
-        await command.RespondAsync("Ticket marked for closure. Click below to finalize:", components: builder.Build(), ephemeral: false);
+    public async Task CloseTicketAsync(SocketMessageComponent component)
+    {
+        var user = component.User;
+        var channel = component.Channel;
+        // Handle button-based closing
     }
 
     private async Task TicketAddRoleAsync(SocketSlashCommand command)
@@ -359,14 +356,18 @@ public class TicketService
             .WithColor(Color.Green)
             .Build();
 
-        await channel.SendMessageAsync(embed: embed);
+        var builder = new ComponentBuilder()
+            .WithButton("Claim Ticket", "ticketclaim", ButtonStyle.Primary)
+            .WithButton("Close Ticket", "close_ticket", ButtonStyle.Danger);
+
+        await channel.SendMessageAsync(embed: embed, components: builder.Build());
 
         if (supportRole != null)
         {
             await channel.SendMessageAsync($"{supportRole.Mention} New ticket opened for **{user.Mention}**.");
         }
 
-        await command.RespondAsync($"✅ Temporary ticket created: {channel.Mention}", ephemeral: false);
+        await command.RespondAsync($"✅ Temporary ticket created: {channel.Mention}", ephemeral: true);
     }
 
     public async Task HandleCompleteButtonAsync(SocketMessageComponent component)
