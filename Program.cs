@@ -31,10 +31,11 @@ class Program
         }
 
         _client = new DiscordSocketClient(new DiscordSocketConfig
-        {
-            // Only add intents your bot uses to avoid warnings
-            GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.MessageContent
-        });
+		{
+		GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.MessageContent,
+		LogLevel = LogSeverity.Debug  // Add this line
+		});
+
 
         _client.Log += Log;
         _client.Ready += async () => await ReadyAsync(guildId);
