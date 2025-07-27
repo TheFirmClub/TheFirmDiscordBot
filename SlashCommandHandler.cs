@@ -6,18 +6,17 @@ public class SlashCommandHandler
 {
     private readonly Dictionary<string, ISlashCommand> _commands = new();
 
-    public SlashCommandHandler()
+    public SlashCommandHandler(DiscordSocketClient client)
     {
         // Register commands here
-
         var joinCommand = new JoinCommand();
         _commands.Add(joinCommand.Name, joinCommand);
 
         var cleanupCommand = new CleanupCommand();
         _commands.Add(cleanupCommand.Name, cleanupCommand);
 
-        var closeCommand = new CloseTicketCommand(); // ✅ Add the close ticket command
-        _commands.Add(closeCommand.Name, closeCommand);
+        var closeTicketCommand = new CloseTicketCommand(client);  // ✅ Pass client here
+        _commands.Add(closeTicketCommand.Name, closeTicketCommand);
     }
 
     public async Task HandleCommandAsync(SocketSlashCommand command)

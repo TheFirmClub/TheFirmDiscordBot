@@ -41,7 +41,7 @@ class Program
         _client.Ready += async () => await ReadyAsync(guildId);
         _client.SlashCommandExecuted += SlashCommandExecuted;
 
-        _commandHandler = new SlashCommandHandler();
+        _commandHandler = new SlashCommandHandler(_client);
         _ticketService = new TicketService(_client);
 
         string? token = _config["Discord:Token"];
