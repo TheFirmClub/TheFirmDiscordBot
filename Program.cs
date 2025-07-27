@@ -1,4 +1,4 @@
-﻿using Discord;
+﻿﻿using Discord;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
 using System;
@@ -31,10 +31,11 @@ class Program
         }
 
         _client = new DiscordSocketClient(new DiscordSocketConfig
-        {
-            // Only add intents your bot uses to avoid warnings
-            GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.MessageContent
-        });
+		{
+		GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.MessageContent,
+		LogLevel = LogSeverity.Info  // Include Info, Warning, Error, and Critical
+		});
+
 
         _client.Log += Log;
         _client.Ready += async () => await ReadyAsync(guildId);
@@ -88,7 +89,7 @@ class Program
         Console.WriteLine(msg.ToString());
 
         // Only send selected severities to the log channel
-        if (msg.Severity == LogSeverity.Debug || msg.Severity == LogSeverity.Verbose || msg.Severity == LogSeverity.Error || msg.Severity == LogSeverity.Critical)
+        if (msg.Severity == LogSeverity.Info || msg.Severity == LogSeverity.Warning || msg.Severity == LogSeverity.Error || msg.Severity == LogSeverity.Critical)
         {
             var channel = _client?.GetChannel(_logChannelId) as IMessageChannel;
             if (channel != null)
@@ -101,6 +102,7 @@ class Program
                         .WithColor(GetColorForSeverity(msg.Severity))
                         .WithFooter(footer => footer.Text = $"Source: {msg.Source}")
                         .WithTimestamp(DateTimeOffset.UtcNow)
+						.WithThumbnailUrl("https://i.ibb.co/M5Qs7SgK/Logo-Copy.png")
                         .Build();
 
                     await channel.SendMessageAsync(embed: embed);
