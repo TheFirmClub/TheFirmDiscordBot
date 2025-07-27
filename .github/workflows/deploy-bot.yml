@@ -10,36 +10,16 @@ jobs:
     runs-on: self-hosted
     env:
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-      GITHUB_SERVER_URL: ${{ github.server_url }}
-      GITHUB_REPOSITORY: ${{ github.repository }}
-      GITHUB_SHA: ${{ github.sha }}
-      GITHUB_EVENT_PATH: ${{ github.event_path }}
 
     steps:
-      - name: Get commit message
-        id: get_commit_msg
-        run: |
-          $json = Get-Content $env:GITHUB_EVENT_PATH -Raw | ConvertFrom-Json
-          $commitMsg = ""
-          if ($json.commits -and $json.commits.Count -gt 0) {
-            $commitMsg = $json.commits[-1].message
-          } elseif ($json.head_commit) {
-            $commitMsg = $json.head_commit.message
-          }
-          echo "commit_message=$commitMsg" >> $env:GITHUB_OUTPUT
-
       - name: Notify Discord Deployment Started
         shell: powershell
         run: |
           $mention = "<@&1393590761953558608>"
-          $commitHashShort = $env:GITHUB_SHA.Substring(0,7)
-          $commitUrl = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/commit/$env:GITHUB_SHA"
-          $commitMsg = "${{ steps.get_commit_msg.outputs.commit_message }}"
-
           $embed = @{
             title = ":rocket: Deployment Started"
-            description = "$mention A deployment has started on branch **$env:GITHUB_REF_NAME** by **$env:GITHUB_ACTOR**."
-            color = 3447003
+            description = "A deployment has started on branch **$env:GITHUB_REF_NAME** by **$env:GITHUB_ACTOR**."
+            color = 3447003  # Blue color
             timestamp = (Get-Date).ToString("o")
             footer = @{ text = "GitHub Actions • TheFirm Bot" }
             author = @{
@@ -47,16 +27,12 @@ jobs:
               url = "https://github.com/$env:GITHUB_ACTOR"
               icon_url = "https://github.com/$env:GITHUB_ACTOR.png"
             }
-            fields = @(
-              @{ name = "Commit"; value = "[$commitHashShort]($commitUrl)"; inline = $true },
-              @{ name = "Message"; value = $commitMsg; inline = $false }
-            )
           }
 
           $body = @{
             content = $mention
             embeds = @($embed)
-          } | ConvertTo-Json -Depth 10
+          } | ConvertTo-Json -Depth 10 -Compress
 
           Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
 
@@ -82,30 +58,17 @@ jobs:
         if: success()
         shell: powershell
         run: |
-          $commitHashShort = $env:GITHUB_SHA.Substring(0,7)
-          $commitUrl = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/commit/$env:GITHUB_SHA"
-          $commitMsg = "${{ steps.get_commit_msg.outputs.commit_message }}"
-
           $embed = @{
             title = ":white_check_mark: Deployment Succeeded"
-            description = "Branch **$env:GITHUB_REF_NAME** was deployed successfully by **$env:GITHUB_ACTOR**."
-            color = 3066993
+            description = "Deployment succeeded on branch **$env:GITHUB_REF_NAME** by **$env:GITHUB_ACTOR**."
+            color = 3066993 # Green
             timestamp = (Get-Date).ToString("o")
             footer = @{ text = "GitHub Actions • TheFirm Bot" }
-            author = @{
-              name = "$env:GITHUB_ACTOR"
-              url = "https://github.com/$env:GITHUB_ACTOR"
-              icon_url = "https://github.com/$env:GITHUB_ACTOR.png"
-            }
-            fields = @(
-              @{ name = "Commit"; value = "[$commitHashShort]($commitUrl)"; inline = $true },
-              @{ name = "Message"; value = $commitMsg; inline = $false }
-            )
           }
 
           $body = @{
             embeds = @($embed)
-          } | ConvertTo-Json -Depth 10
+          } | ConvertTo-Json -Depth 10 -Compress
 
           Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
 
@@ -113,29 +76,16 @@ jobs:
         if: failure()
         shell: powershell
         run: |
-          $commitHashShort = $env:GITHUB_SHA.Substring(0,7)
-          $commitUrl = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/commit/$env:GITHUB_SHA"
-          $commitMsg = "${{ steps.get_commit_msg.outputs.commit_message }}"
-
           $embed = @{
             title = ":x: Deployment Failed"
-            description = "Branch **$env:GITHUB_REF_NAME** deployment failed. Triggered by **$env:GITHUB_ACTOR**."
-            color = 15158332
+            description = "Deployment failed on branch **$env:GITHUB_REF_NAME** by **$env:GITHUB_ACTOR**."
+            color = 15158332 # Red
             timestamp = (Get-Date).ToString("o")
             footer = @{ text = "GitHub Actions • TheFirm Bot" }
-            author = @{
-              name = "$env:GITHUB_ACTOR"
-              url = "https://github.com/$env:GITHUB_ACTOR"
-              icon_url = "https://github.com/$env:GITHUB_ACTOR.png"
-            }
-            fields = @(
-              @{ name = "Commit"; value = "[$commitHashShort]($commitUrl)"; inline = $true },
-              @{ name = "Message"; value = $commitMsg; inline = $false }
-            )
           }
 
           $body = @{
             embeds = @($embed)
-          } | ConvertTo-Json -Depth 10
+          } | ConvertTo-Json -Depth 10 -Compress
 
           Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $body -ContentType 'application/json'
