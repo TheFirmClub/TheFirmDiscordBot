@@ -3,6 +3,9 @@ using System.Threading.Tasks;
 
 public class TicketPanelCommand : ISlashCommand
 {
+    public string Name => "ticketpanel";
+    public string Description => "Send the ticket panel to this channel.";
+
     private readonly TicketService _ticketService;
 
     public TicketPanelCommand(TicketService ticketService)
@@ -10,12 +13,12 @@ public class TicketPanelCommand : ISlashCommand
         _ticketService = ticketService;
     }
 
-    public string Name => "ticketpanel";
-    public string Description => "Posts the ticket panel with categories";
-
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
-        await _ticketService.SendTicketPanelAsync(command.Channel);
-        await command.RespondAsync("Ticket panel sent!", ephemeral: true);
+        var channel = command.Channel;
+
+        await _ticketService.SendTicketPanelAsync(channel);
+
+        await command.RespondAsync("✅ Ticket panel sent!", ephemeral: true);
     }
 }

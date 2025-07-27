@@ -38,13 +38,12 @@ class Program
         });
 
         _client.Log += Log;
-
-        // Initialize TicketService first so it can be injected into SlashCommandHandler
-        _ticketService = new TicketService(_client);
-        _commandHandler = new SlashCommandHandler(_ticketService);
-
         _client.Ready += async () => await ReadyAsync(guildId);
         _client.SlashCommandExecuted += SlashCommandExecuted;
+
+        // Correct order: first create TicketService with DiscordSocketClient, then pass TicketService to SlashCommandHandler
+        _ticketService = new TicketService(_client);
+        _commandHandler = new SlashCommandHandler(_ticketService);
 
         string? token = _config["Discord:Token"];
         if (string.IsNullOrEmpty(token))
@@ -74,14 +73,7 @@ class Program
                 .WithName(command.Name)
                 .WithDescription(command.Description);
 
-            try
-            {
-                await guild.CreateApplicationCommandAsync(builder.Build());
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ Failed to register command {command.Name}: {ex.Message}");
-            }
+            await guild.CreateApplicationCommandAsync(builder.Build());
         }
 
         Console.WriteLine("✅ Commands registered");
@@ -95,7 +87,12 @@ class Program
 
     private async Task SlashCommandExecuted(SocketSlashCommand command)
     {
-        // No need to handle close separately since SlashCommandHandler handles it
+        if (command.CommandName == "close" && _ticketService != null)
+        {
+            await _ticketService.CloseTicketAsync(command);
+            return;
+        }
+
         if (_commandHandler != null)
         {
             await _commandHandler.HandleCommandAsync(command);
@@ -104,13 +101,9 @@ class Program
 
     private async Task Log(LogMessage msg)
     {
-        // Always log to console
         Console.WriteLine(msg.ToString());
 
-        if (msg.Severity == LogSeverity.Info ||
-            msg.Severity == LogSeverity.Warning ||
-            msg.Severity == LogSeverity.Error ||
-            msg.Severity == LogSeverity.Critical)
+        if (msg.Severity == LogSeverity.Info || msg.Severity == LogSeverity.Warning || msg.Severity == LogSeverity.Error || msg.Severity == LogSeverity.Critical)
         {
             var channel = _client?.GetChannel(_logChannelId) as IMessageChannel;
             if (channel != null)

@@ -13,7 +13,7 @@ public class TicketResolveCommand : ISlashCommand
     }
 
     public string Name => "ticketresolve";
-	public string Description => "Resolve a Ticket";
+    public string Description => "Resolve a Ticket";
 
     private readonly ulong[] _staffRoleIds = { 1393623589122736238 }; // Discord Moderator role ID
 
@@ -45,11 +45,11 @@ public class TicketResolveCommand : ISlashCommand
 
         if (ticketOwner == null)
         {
-            await command.RespondAsync("❌ Could not find the ticket owner.", ephemeral: true);
+            await command.RespondAsync("Could not find the ticket owner.", ephemeral: true);
             return;
         }
 
-        var dm = await ticketOwner.GetOrCreateDMChannelAsync();
+        var dm = await ticketOwner.CreateDMChannelAsync();
         var builder = new ComponentBuilder()
             .WithButton("Accept Resolution", $"ticket_resolve_accept_{channel.Id}", ButtonStyle.Success)
             .WithButton("Reject Resolution", $"ticket_resolve_reject_{channel.Id}", ButtonStyle.Danger);
