@@ -3,16 +3,15 @@ using System.Threading.Tasks;
 
 public class CloseTicketCommand : ISlashCommand
 {
-    public string Name => "close";
-    public string Description => "Closes the current ticket.";
-
     private readonly TicketService _ticketService;
 
-    // ✅ Constructor that accepts the client
-    public CloseTicketCommand(DiscordSocketClient client)
+    public CloseTicketCommand(TicketService ticketService)
     {
-        _ticketService = new TicketService(client);
+        _ticketService = ticketService;
     }
+
+    public string Name => "close";
+    public string Description => "Close the current ticket";
 
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
