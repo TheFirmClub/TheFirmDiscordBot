@@ -9,6 +9,7 @@ class Program
 {
     private DiscordSocketClient? _client;
     private SlashCommandHandler? _commandHandler;
+    private RoleLogger? _roleLogger;
     private IConfiguration? _config;
 
     private ulong _logChannelId = 1394449608603603085;
@@ -31,17 +32,22 @@ class Program
         }
 
         _client = new DiscordSocketClient(new DiscordSocketConfig
-		{
-		GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.MessageContent,
-		LogLevel = LogSeverity.Info  // Include Info, Warning, Error, and Critical
-		});
-
+        {
+            GatewayIntents = GatewayIntents.Guilds |
+                             GatewayIntents.GuildMessages |
+                             GatewayIntents.MessageContent |
+                             GatewayIntents.GuildMembers |
+                             GatewayIntents.GuildPresences |
+                             GatewayIntents.GuildMessageReactions,
+            LogLevel = LogSeverity.Info
+        });
 
         _client.Log += Log;
         _client.Ready += async () => await ReadyAsync(guildId);
         _client.SlashCommandExecuted += SlashCommandExecuted;
 
         _commandHandler = new SlashCommandHandler();
+        _roleLogger = new RoleLogger(_client, _logChannelId); // 🔍 Create role logger
 
         string? token = _config["Discord:Token"];
         if (string.IsNullOrEmpty(token))
@@ -85,11 +91,10 @@ class Program
 
     private async Task Log(LogMessage msg)
     {
-        // Always log to console
         Console.WriteLine(msg.ToString());
 
-        // Only send selected severities to the log channel
-        if (msg.Severity == LogSeverity.Info || msg.Severity == LogSeverity.Warning || msg.Severity == LogSeverity.Error || msg.Severity == LogSeverity.Critical)
+        if (msg.Severity == LogSeverity.Info || msg.Severity == LogSeverity.Warning ||
+            msg.Severity == LogSeverity.Error || msg.Severity == LogSeverity.Critical)
         {
             var channel = _client?.GetChannel(_logChannelId) as IMessageChannel;
             if (channel != null)
@@ -102,7 +107,7 @@ class Program
                         .WithColor(GetColorForSeverity(msg.Severity))
                         .WithFooter(footer => footer.Text = $"Source: {msg.Source}")
                         .WithTimestamp(DateTimeOffset.UtcNow)
-						.WithThumbnailUrl("https://i.ibb.co/M5Qs7SgK/Logo-Copy.png")
+                        .WithThumbnailUrl("https://i.ibb.co/M5Qs7SgK/Logo-Copy.png")
                         .Build();
 
                     await channel.SendMessageAsync(embed: embed);
@@ -115,7 +120,6 @@ class Program
         }
     }
 
-    // 🔽 Add this helper method below Log
     private Color GetColorForSeverity(LogSeverity severity)
     {
         return severity switch
