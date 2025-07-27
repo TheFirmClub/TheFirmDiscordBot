@@ -5,9 +5,12 @@ using System.Threading.Tasks;
 public class SlashCommandHandler
 {
     private readonly Dictionary<string, ISlashCommand> _commands = new();
+    private readonly TicketService _ticketService;
 
-    public SlashCommandHandler(DiscordSocketClient client)
+    public SlashCommandHandler(TicketService ticketService)
     {
+        _ticketService = ticketService;
+
         // Register commands here
         var joinCommand = new JoinCommand();
         _commands.Add(joinCommand.Name, joinCommand);
@@ -15,7 +18,8 @@ public class SlashCommandHandler
         var cleanupCommand = new CleanupCommand();
         _commands.Add(cleanupCommand.Name, cleanupCommand);
 
-        var closeTicketCommand = new CloseTicketCommand(client);  // ✅ Pass client here
+        // Register the close ticket command passing TicketService
+        var closeTicketCommand = new CloseTicketCommand(_ticketService);
         _commands.Add(closeTicketCommand.Name, closeTicketCommand);
     }
 
