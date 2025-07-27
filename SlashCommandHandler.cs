@@ -23,6 +23,7 @@ public class SlashCommandHandler
         _commands.Add("ticketaddrole", new TicketAddRoleCommand());
         _commands.Add("ticketresolve", new TicketResolveCommand());
         _commands.Add("ticketclose", new TicketCloseCommand());
+        _commands.Add("ticketrestrict", new TicketRestrictCommand());
     }
 
     public async Task HandleCommandAsync(SocketSlashCommand command)

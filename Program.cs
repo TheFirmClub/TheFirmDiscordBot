@@ -90,6 +90,10 @@ class Program
             {
                 builder.AddOption("role", ApplicationCommandOptionType.Role, "Role to add to the ticket", isRequired: true);
             }
+            else if (command.Name == "ticketrestrict")
+            {
+                builder.AddOption("role", ApplicationCommandOptionType.Role, "Role to restrict this ticket to", isRequired: true);
+            }
 
             await guild.CreateApplicationCommandAsync(builder.Build());
         }
