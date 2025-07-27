@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 public class TicketAddRoleCommand : ISlashCommand
 {
     public string Name => "ticketaddrole";
+	public string Description => "Add a role to the ticket";
 
     private readonly TicketService _ticketService;
 

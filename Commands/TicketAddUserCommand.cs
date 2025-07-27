@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 public class TicketAddUserCommand : ISlashCommand
 {
     public string Name => "ticketadduser";
+	public string Description => "Add a user to the ticket";
 
     private readonly TicketService _ticketService;
 

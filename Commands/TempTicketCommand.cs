@@ -12,6 +12,7 @@ public class TempTicketCommand : ISlashCommand
     }
 
     public string Name => "tempticket";
+	public string Description => "Staff Member to create a Temp Ticket";
 
     public async Task ExecuteAsync(SocketSlashCommand command)
     {

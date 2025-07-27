@@ -13,6 +13,7 @@ public class TicketRestrictCommand : ISlashCommand
     }
 
     public string Name => "ticketrestrict";
+	public string Description => "Restrict a Ticket to a Role";
 
     private readonly ulong[] _staffRoleIds = { 1393623589122736238 }; // Discord Moderator role ID
 

@@ -14,6 +14,7 @@ public class TicketReleaseCommand : ISlashCommand
     }
 
     public string Name => "ticketrelease";
+	public string Description => "Staff Member to Release a Ticket";
 
     private readonly ulong[] _staffRoleIds = { 1393623589122736238 }; // Discord Moderator role ID
 
