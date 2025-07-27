@@ -27,7 +27,8 @@ jobs:
             content = $mention
             embeds  = @($embed)
           }
-          $json = $body | ConvertTo-Json -Depth 10
+          # ConvertTo-Json adds escape sequences for strings, so to prevent double escaping, convert with -Depth 10
+          $json = $body | ConvertTo-Json -Depth 10 -Compress
           Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $json -ContentType 'application/json'
 
       - name: Checkout code
@@ -62,7 +63,7 @@ jobs:
           $body = @{
             embeds = @($embed)
           }
-          $json = $body | ConvertTo-Json -Depth 10
+          $json = $body | ConvertTo-Json -Depth 10 -Compress
           Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $json -ContentType 'application/json'
 
       - name: Notify Discord Deployment Failed
@@ -79,5 +80,5 @@ jobs:
           $body = @{
             embeds = @($embed)
           }
-          $json = $body | ConvertTo-Json -Depth 10
+          $json = $body | ConvertTo-Json -Depth 10 -Compress
           Invoke-RestMethod -Uri $env:DISCORD_WEBHOOK_URL -Method POST -Body $json -ContentType 'application/json'
