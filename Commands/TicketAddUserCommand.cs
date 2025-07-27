@@ -11,17 +11,34 @@ public class TicketAddUserCommand : ISlashCommand
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
         var user = command.User as SocketGuildUser;
+
         if (!PermissionHelper.IsModerator(user))
         {
             await command.RespondAsync("❌ You do not have permission to use this command.", ephemeral: true);
             return;
         }
 
+        // Validate command arguments
+        if (command.Data.Options == null || !command.Data.Options.Any())
+        {
+            await command.RespondAsync("❌ No user was specified.", ephemeral: true);
+            return;
+        }
+
         var targetUser = (SocketUser)command.Data.Options.First().Value;
+
         if (command.Channel is SocketTextChannel channel)
         {
-            await channel.AddPermissionOverwriteAsync(targetUser, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
+            await channel.AddPermissionOverwriteAsync(targetUser, new OverwritePermissions(
+                viewChannel: PermValue.Allow,
+                sendMessages: PermValue.Allow
+            ));
+
             await command.RespondAsync($"✅ Added {targetUser.Mention} to this ticket.");
+        }
+        else
+        {
+            await command.RespondAsync("❌ This command can only be used in a ticket channel.", ephemeral: true);
         }
     }
 

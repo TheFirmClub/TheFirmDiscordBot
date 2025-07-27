@@ -82,6 +82,16 @@ class Program
                 .WithName(command.Name)
                 .WithDescription(command.Description);
 
+            if (command.Name == "ticketadduser")
+            {
+                builder.AddOption("user", ApplicationCommandOptionType.User, "User to add to the ticket", isRequired: true);
+            }
+
+            else if (command.Name == "ticketaddrole")
+            {
+                builder.AddOption("role", ApplicationCommandOptionType.Role, "Role to add to the ticket", isRequired: true);
+            }
+
             await guild.CreateApplicationCommandAsync(builder.Build());
         }
 

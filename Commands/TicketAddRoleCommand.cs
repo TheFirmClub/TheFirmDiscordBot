@@ -17,11 +17,27 @@ public class TicketAddRoleCommand : ISlashCommand
             return;
         }
 
+        // Validate input
+        if (command.Data.Options == null || !command.Data.Options.Any())
+        {
+            await command.RespondAsync("❌ No role was specified.", ephemeral: true);
+            return;
+        }
+
         var role = (SocketRole)command.Data.Options.First().Value;
+
         if (command.Channel is SocketTextChannel channel)
         {
-            await channel.AddPermissionOverwriteAsync(role, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
+            await channel.AddPermissionOverwriteAsync(role, new OverwritePermissions(
+                viewChannel: PermValue.Allow,
+                sendMessages: PermValue.Allow
+            ));
+
             await command.RespondAsync($"✅ Added {role.Mention} to this ticket.");
+        }
+        else
+        {
+            await command.RespondAsync("❌ This command can only be used in a ticket channel.", ephemeral: true);
         }
     }
     
