@@ -8,14 +8,15 @@ using System.Threading.Tasks;
 public class TicketService
 {
     private readonly DiscordSocketClient _client;
-    private readonly ulong[] _allowedRolesToOpenTicket = { 1393589436402634874 }; // Your allowed roles
-    private readonly ulong _supportRoleId = 1393590761953558608; // Support role ID
+    private readonly ulong[] _allowedRolesToOpenTicket = { /* add your allowed role IDs here */ 1393589436402634874 };
+    private readonly ulong _supportRoleId = 1393590761953558608; // Your Senior Management / Support role ID
 
+    // Map ticket reasons to category channel IDs in your server
     private readonly Dictionary<string, ulong> _ticketCategories = new()
     {
-        { "ban", 1393628885484044299 },
-        { "support", 1393610364511326259 },
-        { "subscription", 1393627644326838292 }
+        { "ban", 1393628885484044299 },     // Replace with your Ban Reports category ID
+        { "support", 1393610364511326259 }, // Replace with your Support category ID
+        { "subscription", 1393627644326838292 }  // Replace with your subscription category ID
     };
 
     public TicketService(DiscordSocketClient client)
@@ -24,6 +25,7 @@ public class TicketService
         _client.InteractionCreated += InteractionCreatedAsync;
     }
 
+    // Call this method to send the ticket panel embed + select menu
     public async Task SendTicketPanelAsync(ISocketMessageChannel channel)
     {
         var selectMenu = new SelectMenuBuilder()
@@ -59,6 +61,7 @@ public class TicketService
                     return;
                 }
 
+                // Check allowed roles
                 if (!_allowedRolesToOpenTicket.Any(roleId => user.Roles.Any(r => r.Id == roleId)))
                 {
                     await component.RespondAsync("❌ You do not have permission to open tickets.", ephemeral: true);
@@ -83,6 +86,7 @@ public class TicketService
         var guild = user.Guild;
         string channelName = $"ticket-{user.Username.ToLower()}-{reason}";
 
+        // Check for existing ticket channel by name
         var existing = guild.TextChannels.FirstOrDefault(c => c.Name == channelName);
         if (existing != null)
         {
@@ -143,6 +147,8 @@ public class TicketService
     public async Task CloseTicketAsync(SocketSlashCommand command)
     {
         var channel = command.Channel as SocketTextChannel;
+        var user = command.User as SocketGuildUser;
+
         if (channel == null)
         {
             await command.RespondAsync("This command can only be used in a server text channel.", ephemeral: true);
@@ -155,8 +161,12 @@ public class TicketService
             return;
         }
 
-        await command.RespondAsync("Closing ticket...");
+        // Defer the response immediately to avoid timeout
+        await command.DeferAsync(ephemeral: true);
+
+        // Wait a little before deleting the channel
         await Task.Delay(3000);
+
         await channel.DeleteAsync();
     }
 }
