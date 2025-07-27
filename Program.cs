@@ -33,7 +33,7 @@ class Program
         _client = new DiscordSocketClient(new DiscordSocketConfig
 		{
 		GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.MessageContent,
-		LogLevel = LogSeverity.Warning  // Include Warning, Error, and Critical
+		LogLevel = LogSeverity.Info  // Include Info, Warning, Error, and Critical
 		});
 
 
@@ -89,7 +89,7 @@ class Program
         Console.WriteLine(msg.ToString());
 
         // Only send selected severities to the log channel
-        if (msg.Severity == LogSeverity.Warning || msg.Severity == LogSeverity.Error || msg.Severity == LogSeverity.Critical)
+        if (msg.Severity == LogSeverity.Info || msg.Severity == LogSeverity.Warning || msg.Severity == LogSeverity.Error || msg.Severity == LogSeverity.Critical)
         {
             var channel = _client?.GetChannel(_logChannelId) as IMessageChannel;
             if (channel != null)
