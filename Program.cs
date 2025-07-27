@@ -11,6 +11,7 @@ class Program
     private SlashCommandHandler? _commandHandler;
     private RoleLogger? _roleLogger;
     private IConfiguration? _config;
+    private SupportMenuHandler _supportMenuHandler = new();
 
     private ulong _logChannelId = 1394449608603603085;
 
@@ -45,6 +46,8 @@ class Program
         _client.Log += Log;
         _client.Ready += async () => await ReadyAsync(guildId);
         _client.SlashCommandExecuted += SlashCommandExecuted;
+        _client.SelectMenuExecuted += _supportMenuHandler.HandleAsync;
+        _client.ModalSubmitted += new SupportModalHandler().HandleModalAsync;
 
         _commandHandler = new SlashCommandHandler();
         // Correct channel for role logs
