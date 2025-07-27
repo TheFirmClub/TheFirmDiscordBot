@@ -56,9 +56,15 @@ public class SupportModalHandler
         }
 
         // Create channel
+        ulong categoryId = ticketType switch
+        {
+            "ban" => 1393628885484044299, // ⬅️ New ban ticket category
+            _ => _supportCategoryId
+        };
+
         var channel = await guild.CreateTextChannelAsync(channelName, props =>
         {
-            props.CategoryId = _supportCategoryId;
+            props.CategoryId = categoryId;
             props.PermissionOverwrites = overwrites;
         });
 
