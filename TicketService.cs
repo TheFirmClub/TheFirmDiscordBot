@@ -32,7 +32,7 @@ public class TicketService
     {
         var selectMenu = new SelectMenuBuilder()
             .WithCustomId("ticket_select_reason")
-            .WithPlaceholder("Welcome to our tickets channel! If you have any questions, concerns, or need assistance, please click the ‘Open Ticket’ button below to get in touch with our staff.")
+            .WithPlaceholder("Welcome to our tickets channel!")
             .AddOption("🐞 Ban Dispute Ticket", "ban", "Open a Ban Dispute Ticket")
             .AddOption("💬 General Support", "support", "Get help from support")
             .AddOption("💰 Subscription", "subscription", "Subscription Support");
@@ -166,6 +166,7 @@ public class TicketService
 
     public async Task CloseTicketAsync(SocketSlashCommand command)
     {
+        await command.DeferAsync(ephemeral: true); // 🔁 MUST be at the top, within 3 sec
         var channel = command.Channel as SocketTextChannel;
 
         if (channel == null || !channel.Name.StartsWith("ticket-"))
