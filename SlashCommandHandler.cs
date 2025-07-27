@@ -8,16 +8,22 @@ public class SlashCommandHandler
 
     public SlashCommandHandler()
     {
-        // Register commands here
-		
-		var joinCommand = new JoinCommand();
-		_commands.Add(joinCommand.Name, joinCommand);
-		
-		var cleanupCommand = new CleanupCommand();
-		_commands.Add(cleanupCommand.Name, cleanupCommand);
+        var joinCommand = new JoinCommand();
+        _commands.Add(joinCommand.Name, joinCommand);
 
+        var cleanupCommand = new CleanupCommand();
+        _commands.Add(cleanupCommand.Name, cleanupCommand);
+
+        var support = new SupportCommand();
+        _commands.Add(support.Name, support);
+
+        _commands.Add("ticketclaim", new TicketClaimCommand());
+        _commands.Add("ticketrelease", new TicketReleaseCommand());
+        _commands.Add("ticketadduser", new TicketAddUserCommand());
+        _commands.Add("ticketaddrole", new TicketAddRoleCommand());
+        _commands.Add("ticketresolve", new TicketResolveCommand());
+        _commands.Add("ticketclose", new TicketCloseCommand());
     }
-	
 
     public async Task HandleCommandAsync(SocketSlashCommand command)
     {
