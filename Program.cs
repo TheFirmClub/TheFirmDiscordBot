@@ -86,7 +86,6 @@ class Program
             {
                 builder.AddOption("user", ApplicationCommandOptionType.User, "User to add to the ticket", isRequired: true);
             }
-
             else if (command.Name == "ticketaddrole")
             {
                 builder.AddOption("role", ApplicationCommandOptionType.Role, "Role to add to the ticket", isRequired: true);
@@ -95,7 +94,9 @@ class Program
             await guild.CreateApplicationCommandAsync(builder.Build());
         }
 
-        Console.WriteLine("✅ Commands registered");
+        await new SupportPanelSender().SendSupportPanelAsync(_client);
+
+        Console.WriteLine("✅ Commands registered and support panel sent");
     }
 
     private async Task SlashCommandExecuted(SocketSlashCommand command)
