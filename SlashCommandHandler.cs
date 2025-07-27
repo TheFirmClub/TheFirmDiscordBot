@@ -9,15 +9,16 @@ public class SlashCommandHandler
     public SlashCommandHandler()
     {
         // Register commands here
-		
-		var joinCommand = new JoinCommand();
-		_commands.Add(joinCommand.Name, joinCommand);
-		
-		var cleanupCommand = new CleanupCommand();
-		_commands.Add(cleanupCommand.Name, cleanupCommand);
 
+        var joinCommand = new JoinCommand();
+        _commands.Add(joinCommand.Name, joinCommand);
+
+        var cleanupCommand = new CleanupCommand();
+        _commands.Add(cleanupCommand.Name, cleanupCommand);
+
+        var closeCommand = new CloseTicketCommand(); // ✅ Add the close ticket command
+        _commands.Add(closeCommand.Name, closeCommand);
     }
-	
 
     public async Task HandleCommandAsync(SocketSlashCommand command)
     {

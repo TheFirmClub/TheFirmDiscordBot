@@ -9,6 +9,7 @@ class Program
 {
     private DiscordSocketClient? _client;
     private SlashCommandHandler? _commandHandler;
+    private TicketService? _ticketService;
     private IConfiguration? _config;
 
     private ulong _logChannelId = 1394449608603603085;
@@ -31,17 +32,17 @@ class Program
         }
 
         _client = new DiscordSocketClient(new DiscordSocketConfig
-		{
-		GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.MessageContent,
-		LogLevel = LogSeverity.Info  // Include Info, Warning, Error, and Critical
-		});
-
+        {
+            GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildMessages | GatewayIntents.MessageContent,
+            LogLevel = LogSeverity.Info
+        });
 
         _client.Log += Log;
         _client.Ready += async () => await ReadyAsync(guildId);
         _client.SlashCommandExecuted += SlashCommandExecuted;
 
         _commandHandler = new SlashCommandHandler();
+        _ticketService = new TicketService(_client);
 
         string? token = _config["Discord:Token"];
         if (string.IsNullOrEmpty(token))
@@ -75,12 +76,25 @@ class Program
         }
 
         Console.WriteLine("✅ Commands registered");
+
+        // OPTIONAL: Send ticket panel on bot ready (uncomment if you want auto-sending)
+        // var ticketPanelChannelId = 123456789012345678; // your channel ID here
+        // var channel = _client.GetChannel(ticketPanelChannelId) as IMessageChannel;
+        // if (channel != null)
+        //     await _ticketService!.SendTicketPanelAsync(channel);
     }
 
     private async Task SlashCommandExecuted(SocketSlashCommand command)
     {
+        if (_ticketService != null && command.CommandName == "close")
+        {
+            await _ticketService.CloseTicketAsync(command);
+        }
+
         if (_commandHandler != null)
+        {
             await _commandHandler.HandleCommandAsync(command);
+        }
     }
 
     private async Task Log(LogMessage msg)
@@ -88,7 +102,6 @@ class Program
         // Always log to console
         Console.WriteLine(msg.ToString());
 
-        // Only send selected severities to the log channel
         if (msg.Severity == LogSeverity.Info || msg.Severity == LogSeverity.Warning || msg.Severity == LogSeverity.Error || msg.Severity == LogSeverity.Critical)
         {
             var channel = _client?.GetChannel(_logChannelId) as IMessageChannel;
@@ -102,7 +115,7 @@ class Program
                         .WithColor(GetColorForSeverity(msg.Severity))
                         .WithFooter(footer => footer.Text = $"Source: {msg.Source}")
                         .WithTimestamp(DateTimeOffset.UtcNow)
-						.WithThumbnailUrl("https://i.ibb.co/M5Qs7SgK/Logo-Copy.png")
+                        .WithThumbnailUrl("https://i.ibb.co/M5Qs7SgK/Logo-Copy.png")
                         .Build();
 
                     await channel.SendMessageAsync(embed: embed);
@@ -115,7 +128,6 @@ class Program
         }
     }
 
-    // 🔽 Add this helper method below Log
     private Color GetColorForSeverity(LogSeverity severity)
     {
         return severity switch
