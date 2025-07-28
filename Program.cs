@@ -97,6 +97,10 @@ class Program
             {
                 builder.AddOption("role", ApplicationCommandOptionType.Role, "Role to restrict this ticket to", isRequired: true);
             }
+            else if (command.Name == "tempticket")
+            {
+                builder.AddOption("user", ApplicationCommandOptionType.User, "User to open the temporary ticket for", isRequired: true);
+            }
 
             await guild.CreateApplicationCommandAsync(builder.Build());
         }
