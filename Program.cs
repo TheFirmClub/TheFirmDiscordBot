@@ -46,14 +46,15 @@ class Program
 
         _client.Log += Log;
         _client.Ready += async () => await ReadyAsync(guildId);
+        
+        _commandHandler = new SlashCommandHandler(_config);
+        _ticketButtonHandler = new TicketButtonHandler(_config);
+        
         _client.SlashCommandExecuted += SlashCommandExecuted;
         _client.SelectMenuExecuted += _supportMenuHandler.HandleAsync;
         _client.ModalSubmitted += new SupportModalHandler().HandleModalAsync;
         _client.ButtonExecuted += _ticketButtonHandler.HandleAsync;
-
-        _commandHandler = new SlashCommandHandler(_config);
-        _ticketButtonHandler = new TicketButtonHandler(_config);
-
+        
         ulong roleLogChannelId = 1393726185804005497;
         _roleLogger = new RoleLogger(_client, roleLogChannelId);
 
