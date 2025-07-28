@@ -76,10 +76,22 @@ public class SupportModalHandler
             props.PermissionOverwrites = overwrites;
         });
         
+        var fullTypeLabel = ticketType switch
+        {
+            "general" => "General Support",
+            "game" => "Game Support",
+            "ban" => "Ban Appeals",
+            "sub" => "Subscription Support",
+            _ => "Support"
+        };
+
         var embed = new EmbedBuilder()
-            .WithTitle("🎫 Support Ticket")
-            .WithDescription($"**User:** {user.Mention}\n**Type:** `{typePrefix}`\n**Reason:**\n```{reason}```")
+            .WithTitle($"🎫 {fullTypeLabel} Ticket")
             .WithColor(Color.Orange)
+            .AddField("👤 User", user.Mention, true)
+            .AddField("📂 Type", fullTypeLabel, true)
+            .AddField("📝 Reason", string.IsNullOrWhiteSpace(reason) ? "*No reason provided*" : reason.Trim())
+            .WithFooter(footer => footer.Text = "Staff will be with you shortly. All conversations are confidential.")
             .WithTimestamp(DateTimeOffset.UtcNow)
             .Build();
 
