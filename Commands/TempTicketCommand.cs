@@ -36,7 +36,12 @@ public class TempTicketCommand : ISlashCommand
 
         var guild = guildUser.Guild;
 
-        string cleanName = guildUser.Username.ToLower().Split('#')[0].Replace(" ", "");
+        string cleanName = new string(guildUser.Username
+            .ToLower()
+            .Where(char.IsLetter)
+            .ToArray());
+
+        cleanName = cleanName.Length > 10 ? cleanName.Substring(0, 10) : cleanName;
         int rand = new Random().Next(100, 999);
         string channelName = $"temp-{cleanName}-{rand}";
 
@@ -65,7 +70,7 @@ public class TempTicketCommand : ISlashCommand
 
         // Embed message
         var embed = new EmbedBuilder()
-            .WithTitle($"📌 TEMP Ticket from {staffUser.Mention}")
+            .WithTitle($"📌 TEMP Ticket from {staffUser.DisplayName}")
             .WithColor(Color.Gold)
             .WithDescription(
                 $"Hi 👋 {guildUser.Mention},\n\n" +
