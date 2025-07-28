@@ -57,22 +57,21 @@ public class TicketResolveCommand : ISlashCommand
         
         await channel.ModifyAsync(props => props.CategoryId = 1393610408706965656);
 
-        // 🧾 Build embed
-        var embed = new EmbedBuilder()
-            .WithTitle("✅ Ticket Resolved")
-            .WithDescription($"This ticket has been marked as **resolved** by {user.Mention}.\n\n" +
-                             "Kindly review the context before closing.\n\n" +
-                             "Once reviewed, click the **Close Ticket** button below.")
-            .WithColor(Color.Red)
+        var confirmEmbed = new EmbedBuilder()
+            .WithTitle("📩 Resolution Confirmation")
+            .WithDescription(
+                "The staff member has requested to resolve this ticket.\n\n" +
+                "Do you have anything else to add, or is your enquiry resolved?\n\n" +
+                "Please let us know by clicking one of the buttons below.")
+            .WithColor(Color.Orange)
             .WithTimestamp(DateTimeOffset.UtcNow)
             .Build();
 
-        // 🔴 Close button
-        var button = new ComponentBuilder()
-            .WithButton("🚫 Close Ticket", "ticket_close", ButtonStyle.Danger);
+        var confirmButtons = new ComponentBuilder()
+            .WithButton("✅ Resolved", "ticket_confirm_resolved", ButtonStyle.Success)
+            .WithButton("❌ Not Resolved", "ticket_confirm_unresolved", ButtonStyle.Danger);
 
-        // Post embed + button
-        await channel.SendMessageAsync(embed: embed, components: button.Build());
+        await channel.SendMessageAsync(embed: confirmEmbed, components: confirmButtons.Build());
 
         // Respond to slash command
         await command.FollowupAsync("✅ Ticket resolved. Senior moderators may now review and close it.", ephemeral: true);
