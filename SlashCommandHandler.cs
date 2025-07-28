@@ -14,6 +14,7 @@ public class SlashCommandHandler
         _config = config;
         
         _commands.Add("ticketclose", new TicketCloseCommand(_config));
+        
     
         var joinCommand = new JoinCommand();
         _commands.Add(joinCommand.Name, joinCommand);
