@@ -92,7 +92,7 @@ public class SupportModalHandler
         var supportRole = guild.GetRole(1393623589122736238);
         if (supportRole != null)
         {
-            await channel.SendMessageAsync($"{supportRole.Mention} 👋 A new **{fullTypeLabel}** ticket has been created.");
+            await channel.SendMessageAsync($"{supportRole.Mention}");
         }
 
         await channel.SendMessageAsync($"Thank you for creating a **{fullTypeLabel}** ticket!\n\n👋 {user.Mention}");
