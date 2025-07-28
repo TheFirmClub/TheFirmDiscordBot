@@ -12,7 +12,8 @@ public class SupportModalHandler
     private readonly ulong[] _moderatorRoleIds = new ulong[]
     {
         1393729574537396355,
-        1393623589122736238
+        1393623589122736238,
+        1393590761953558608
     };
 
     public async Task HandleModalAsync(SocketModal modal)
