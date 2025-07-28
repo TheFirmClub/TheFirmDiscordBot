@@ -9,12 +9,29 @@ public class SupportMenuHandler
     {
         if (component.Data.CustomId != "support_type_select") return;
 
-        var selectedType = component.Data.Values.First(); // e.g. "general", "ban", etc.
+        var selectedValue = component.Data.Values.First(); // e.g., "ban", "general", etc.
 
+        // 🔤 Map internal value to user-facing label
+        string label = selectedValue switch
+        {
+            "general" => "General Support",
+            "game" => "Game Support",
+            "ban" => "Ban Appeals",
+            "sub" => "Subscription Support",
+            _ => "Support"
+        };
+
+        // 🧾 Introductory message
+        string intro = $"Thank you for creating a support ticket under **{label}**.\n" +
+                       "A member of staff will be with you shortly.\n\n" +
+                       "📌 *Please note: All conversations within this ticket are confidential.*\n\n" +
+                       "📝 Let us know how we can help:";
+
+        // 🧱 Build modal
         var modal = new ModalBuilder()
-            .WithTitle("Support Ticket Reason")
-            .WithCustomId($"ticket_reason:{selectedType}")
-            .AddTextInput("What do you need help with?", "ticket_reason_input", TextInputStyle.Paragraph, required: true, maxLength: 400);
+            .WithTitle($"{label} Ticket")
+            .WithCustomId($"ticket_reason:{selectedValue}")
+            .AddTextInput(intro, "ticket_reason_input", TextInputStyle.Paragraph, placeholder: "Describe your issue here...", required: true, maxLength: 400);
 
         await component.RespondWithModalAsync(modal.Build());
     }
