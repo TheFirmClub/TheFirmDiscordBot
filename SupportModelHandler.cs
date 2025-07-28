@@ -96,7 +96,7 @@ public class SupportModalHandler
                 $"🔒 *Please note: A copy of the chat logs will be stored for audit, quality, and training purposes.*\n" +
                 $"🔐 *Disclaimer: This ticket and its contents are confidential and should not be shared or discussed outside of this channel.*"
             )
-            .AddField("📝 Description", string.IsNullOrWhiteSpace(reason) ? "*No description provided.*" : reason.Trim(), false)
+            .AddField("📝 How can we help?", string.IsNullOrWhiteSpace(reason) ? "*No description provided.*" : reason.Trim(), false)
             .WithTimestamp(DateTimeOffset.UtcNow)
             .WithFooter(footer =>
             {
