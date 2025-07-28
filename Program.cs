@@ -12,6 +12,7 @@ class Program
     private RoleLogger? _roleLogger;
     private IConfiguration? _config;
     private SupportMenuHandler _supportMenuHandler = new();
+    private TicketButtonHandler _ticketButtonHandler = new();
 
     private ulong _logChannelId = 1394449608603603085;
 
@@ -48,6 +49,7 @@ class Program
         _client.SlashCommandExecuted += SlashCommandExecuted;
         _client.SelectMenuExecuted += _supportMenuHandler.HandleAsync;
         _client.ModalSubmitted += new SupportModalHandler().HandleModalAsync;
+        _client.ButtonExecuted += _ticketButtonHandler.HandleAsync;
 
         _commandHandler = new SlashCommandHandler();
         // Correct channel for role logs

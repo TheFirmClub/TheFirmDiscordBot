@@ -76,7 +76,18 @@ public class SupportModalHandler
             props.PermissionOverwrites = overwrites;
         });
         
-        await channel.SendMessageAsync($"🎫 **New support ticket by {user.Mention}**\n**Type:** `{typePrefix}`\n**Reason:** {reason}");
+        var embed = new EmbedBuilder()
+            .WithTitle("🎫 Support Ticket")
+            .WithDescription($"**User:** {user.Mention}\n**Type:** `{typePrefix}`\n**Reason:**\n```{reason}```")
+            .WithColor(Color.Orange)
+            .WithTimestamp(DateTimeOffset.UtcNow)
+            .Build();
+
+        var buttons = new ComponentBuilder()
+            .WithButton("🎯 Claim Ticket", customId: "ticket_claim", ButtonStyle.Primary)
+            .WithButton("🔓 Release Ticket", customId: "ticket_release", ButtonStyle.Secondary);
+
+        await channel.SendMessageAsync(embed: embed, components: buttons.Build());
         await modal.RespondAsync($"✅ Your ticket has been created: {channel.Mention}", ephemeral: true);
     }
 }
