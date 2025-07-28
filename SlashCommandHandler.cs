@@ -12,6 +12,8 @@ public class SlashCommandHandler
     public SlashCommandHandler(IConfiguration config)
     {
         _config = config;
+        
+        _commands.Add("ticketclose", new TicketCloseCommand(_config));
     
         var joinCommand = new JoinCommand();
         _commands.Add(joinCommand.Name, joinCommand);
@@ -28,7 +30,6 @@ public class SlashCommandHandler
         _commands.Add("ticketaddrole", new TicketAddRoleCommand());
         _commands.Add("ticketresolve", new TicketResolveCommand());
         _commands.Add("ticketrestrict", new TicketRestrictCommand());
-        _commands.Add("ticketclose", new TicketCloseCommand(_config));
     }
 
     public async Task HandleCommandAsync(SocketSlashCommand command)
