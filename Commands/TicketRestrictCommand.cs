@@ -80,8 +80,8 @@ public class TicketRestrictCommand : ISlashCommand
                 new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
         }
 
-        await command.FollowupAsync($"🔒 Ticket has been restricted to {targetRole.Mention} and senior moderators.",
-            ephemeral: true);
+        await command.FollowupAsync($"🔒 Ticket has been restricted to {targetRole.Mention}.",
+            ephemeral: false);
 
         var logChannel = channel.Guild.GetTextChannel(1394405064520499415);
         if (logChannel != null)

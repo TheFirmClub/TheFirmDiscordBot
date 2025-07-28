@@ -171,7 +171,7 @@ public class TicketButtonHandler
                     msg.Components = disabledButtons.Build();
                 });
 
-                await component.FollowupAsync("🔁 Got it. A moderator will follow up shortly. Is there anything else we can help with?", ephemeral: false);
+                await component.FollowupAsync("🔁 Got it. A member of staff will follow up shortly. Is there anything else we can help with?", ephemeral: false);
                 break;
             }
             
