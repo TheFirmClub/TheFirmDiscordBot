@@ -47,13 +47,17 @@ public class TicketAddUserCommand : ISlashCommand
         public static bool IsModerator(SocketGuildUser user)
         {
             return user.Roles.Any(r =>
-                r.Id == 1393729574537396355 || r.Id == 1393623589122736238 ||
-                r.Id == 1393638449709584434 || r.Id == 1393590761953558608); 
+                r.Id == 1393729574537396355 ||
+                r.Id == 1393623589122736238 ||
+                r.Id == 1393638449709584434 ||
+                r.Id == 1393590761953558608); 
         }
 
         public static bool IsSeniorModerator(SocketGuildUser user)
         {
-            return user.Roles.Any(r => r.Id == 1393638449709584434);
+            return user.Roles.Any(r =>
+                r.Id == 1393638449709584434 || 
+                r.Id == 1393590761953558608);  
         }
     }
 }
