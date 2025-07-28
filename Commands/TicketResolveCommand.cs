@@ -1,5 +1,6 @@
 using Discord;
 using Discord.WebSocket;
+using System.Linq;
 using System.Threading.Tasks;
 
 public class TicketResolveCommand : ISlashCommand
@@ -22,7 +23,9 @@ public class TicketResolveCommand : ISlashCommand
             return;
         }
 
-        // Remove all current overwrites
+        await command.DeferAsync(ephemeral: true); // ✅ Avoid timeout errors
+
+        // 🔐 Remove all current overwrites
         foreach (var overwrite in channel.PermissionOverwrites)
         {
             if (overwrite.TargetType == PermissionTarget.User)
@@ -39,10 +42,11 @@ public class TicketResolveCommand : ISlashCommand
             }
         }
 
-        
+        // 🚫 Deny @everyone
         await channel.AddPermissionOverwriteAsync(channel.Guild.EveryoneRole,
             new OverwritePermissions(viewChannel: PermValue.Deny));
-        
+
+        // ✅ Allow senior moderators
         ulong seniorModRoleId = 1393638449709584434;
         var seniorRole = channel.Guild.GetRole(seniorModRoleId);
         if (seniorRole != null)
@@ -51,9 +55,27 @@ public class TicketResolveCommand : ISlashCommand
                 new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
         }
 
-        await command.RespondAsync("✅ Ticket resolved. Only Senior Moderators can now view this ticket.");
+        // 🧾 Build embed
+        var embed = new EmbedBuilder()
+            .WithTitle("✅ Ticket Resolved")
+            .WithDescription($"This ticket has been marked as **resolved** by {user.Mention}.\n\n" +
+                             "Kindly review the context before closing.\n\n" +
+                             "Once reviewed, click the **Close Ticket** button below.")
+            .WithColor(Color.Red)
+            .WithTimestamp(DateTimeOffset.UtcNow)
+            .Build();
+
+        // 🔴 Close button
+        var button = new ComponentBuilder()
+            .WithButton("🚫 Close Ticket", "ticket_close", ButtonStyle.Danger);
+
+        // Post embed + button
+        await channel.SendMessageAsync(embed: embed, components: button.Build());
+
+        // Respond to slash command
+        await command.FollowupAsync("✅ Ticket resolved. Senior moderators may now review and close it.", ephemeral: true);
     }
-    
+
     public static class PermissionHelper
     {
         public static bool IsModerator(SocketGuildUser user)

@@ -63,6 +63,11 @@ public class TicketButtonHandler
                 await component.RespondAsync($"🎯 Ticket claimed by {user.Mention}.", ephemeral: false);
                 break;
 
+            case "ticket_close":
+                await component.RespondAsync("✅ Ticket close logic triggered.", ephemeral: true);
+                break;
+
+
             case "ticket_release":
                 
                 var updatedEmbed = new EmbedBuilder();
