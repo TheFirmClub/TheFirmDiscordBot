@@ -9,18 +9,18 @@ public class TempTicketCommand : ISlashCommand
     public string Name => "tempticket";
     public string Description => "Create a temporary level 2 ticket for a user";
 
-    // IDs
     private readonly ulong _categoryId = 1393627644326838292;
+
     private readonly ulong[] _seniorModRoleIds = new ulong[]
     {
-        1393638449709584434, // senior mod
-        1393590761953558608  // another senior mod role
+        1393638449709584434,
+        1393590761953558608
     };
 
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
-        var user = command.User as SocketGuildUser;
-        if (!TicketAddRoleCommand.PermissionHelper.IsModerator(user))
+        var staffUser = command.User as SocketGuildUser;
+        if (!TicketAddRoleCommand.PermissionHelper.IsSeniorModerator(staffUser))
         {
             await command.RespondAsync("❌ You do not have permission to use this command.", ephemeral: true);
             return;
@@ -35,7 +35,8 @@ public class TempTicketCommand : ISlashCommand
         }
 
         var guild = guildUser.Guild;
-        string cleanName = guildUser.Username.ToLower().Replace(" ", "").Replace("#", "").Replace(".", "");
+
+        string cleanName = guildUser.Username.ToLower().Split('#')[0].Replace(" ", "");
         int rand = new Random().Next(100, 999);
         string channelName = $"temp-{cleanName}-{rand}";
 
@@ -62,9 +63,20 @@ public class TempTicketCommand : ISlashCommand
             props.PermissionOverwrites = perms;
         });
 
-        await channel.SendMessageAsync($"📝 Temporary ticket created for {guildUser.Mention}.\n" +
-                                       $"This channel is only visible to senior moderators and the user.");
+        // Embed message
+        var embed = new EmbedBuilder()
+            .WithTitle($"📌 TEMP Ticket from {staffUser.Mention}")
+            .WithColor(Color.Gold)
+            .WithDescription(
+                $"Hi 👋 {guildUser.Mention},\n\n" +
+                $"You have been requested in a temp ticket, please do not be alarmed — we are just looking for more information. " +
+                $"Please bear with us as we respond in this temp ticket.\n\n" +
+                $"🔒 *Please note: A copy of the chat logs will be stored for audit, quality, and training purposes.*\n" +
+                $"🔐 *Disclaimer: This ticket and its contents are confidential and should not be shared or discussed outside of this channel.*")
+            .WithTimestamp(DateTimeOffset.UtcNow)
+            .Build();
 
-        await command.RespondAsync($"✅ Ticket created: {channel.Mention}", ephemeral: true);
+        await channel.SendMessageAsync(embed: embed);
+        await command.RespondAsync($"✅ Temporary ticket created: {channel.Mention}", ephemeral: true);
     }
 }
