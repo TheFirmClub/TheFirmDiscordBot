@@ -78,11 +78,11 @@ public class TicketRestrictCommand : ISlashCommand
         {
             await channel.AddPermissionOverwriteAsync(senior,
                 new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
+
+            await channel.SendMessageAsync($"{targetRole.Mention} 🔒 This ticket has been restricted to your role by {user.Mention}.");
+
         }
-
-        await command.FollowupAsync($"🔒 Ticket has been restricted to {targetRole.Mention}.",
-            ephemeral: false);
-
+        
         var logChannel = channel.Guild.GetTextChannel(1394405064520499415);
         if (logChannel != null)
         {
