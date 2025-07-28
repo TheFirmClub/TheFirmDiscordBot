@@ -34,7 +34,7 @@ public class TicketCloseCommand : ISlashCommand
         string path = Path.GetTempFileName();
         await File.WriteAllTextAsync(path, log);
 
-        var logChannel = channel.Guild.GetTextChannel(1394449608603603085);
+        var logChannel = channel.Guild.GetTextChannel(1394405064520499415);
         if (logChannel != null)
         {
             // 📁 Upload transcript

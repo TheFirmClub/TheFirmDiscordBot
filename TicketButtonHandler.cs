@@ -75,7 +75,7 @@ public class TicketButtonHandler
                 {
                     await component.RespondAsync("⏳ Closing ticket...", ephemeral: true);
 
-                    await channel.ModifyAsync(props => props.CategoryId = 1393610408706965656);
+                    await channel.ModifyAsync(props => props.CategoryId = 1394405064520499415);
 
                     
                     var closeCommand = new TicketCloseCommand();
