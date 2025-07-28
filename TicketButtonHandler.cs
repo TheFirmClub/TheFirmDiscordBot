@@ -64,9 +64,22 @@ public class TicketButtonHandler
                 break;
 
             case "ticket_close":
-                await component.RespondAsync("✅ Ticket close logic triggered.", ephemeral: true);
-                break;
+            {
+                // 👇 DO NOT redeclare user — it's already declared above
+                if (!TicketCloseCommand.PermissionHelper.IsSeniorModerator(user))
+                {
+                    await component.RespondAsync("❌ Only Senior Moderators can close tickets.", ephemeral: true);
+                    return;
+                }
 
+                if (component.Channel is SocketTextChannel channel)
+                {
+                    await component.RespondAsync("⏳ Closing ticket...", ephemeral: true);
+                    var closeCommand = new TicketCloseCommand();
+                    await closeCommand.CloseTicketAsync(channel, user);
+                }
+                break;
+            }
 
             case "ticket_release":
                 
