@@ -95,42 +95,40 @@ public class TicketButtonHandler
             case "ticket_confirm_resolved":
             {
                 await component.DeferAsync(ephemeral: true);
+
                 if (component.Channel is SocketTextChannel channel)
                 {
+                    // Roles to keep
+                    var keepRoleIds = new ulong[]
+                    {
+                        1393638449709584434, // Senior Moderator
+                        1393590761953558608  // Senior Management
+                    };
+
+                    // Remove all roles except the allowed ones
                     foreach (var overwrite in channel.PermissionOverwrites)
                     {
-                        if (overwrite.TargetType == PermissionTarget.User)
+                        if (overwrite.TargetType == PermissionTarget.Role)
                         {
-                            var u = channel.Guild.GetUser(overwrite.TargetId);
-                            if (u != null)
-                                await channel.RemovePermissionOverwriteAsync(u);
-                        }
-                        else if (overwrite.TargetType == PermissionTarget.Role)
-                        {
-                            var r = channel.Guild.GetRole(overwrite.TargetId);
-                            if (r != null)
-                                await channel.RemovePermissionOverwriteAsync(r);
+                            if (!keepRoleIds.Contains(overwrite.TargetId))
+                            {
+                                var role = channel.Guild.GetRole(overwrite.TargetId);
+                                if (role != null)
+                                {
+                                    await channel.RemovePermissionOverwriteAsync(role);
+                                }
+                            }
                         }
                     }
 
+                    // 🚫 Deny @everyone
                     await channel.AddPermissionOverwriteAsync(channel.Guild.EveryoneRole,
                         new OverwritePermissions(viewChannel: PermValue.Deny));
 
-                    ulong seniorModRoleId1 = 1393638449709584434;
-                    ulong seniorModRoleId2 = 1393590761953558608;
-                    var role1 = channel.Guild.GetRole(seniorModRoleId1);
-                    var role2 = channel.Guild.GetRole(seniorModRoleId2);
-                    if (role1 != null)
-                    {
-                        await channel.AddPermissionOverwriteAsync(role1,
-                            new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
-                    }
-                    if (role2 != null)
-                    {
-                        await channel.AddPermissionOverwriteAsync(role2,
-                            new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
-                    }
+                    // 🏷 Move to resolved category
                     await channel.ModifyAsync(props => props.CategoryId = 1393610408706965656);
+
+                    // 🧾 Build resolved embed
                     var embed = new EmbedBuilder()
                         .WithTitle("✅ Ticket Resolved")
                         .WithDescription(
@@ -146,6 +144,7 @@ public class TicketButtonHandler
 
                     await channel.SendMessageAsync(embed: embed, components: button.Build());
                 }
+
                 break;
             }
             
