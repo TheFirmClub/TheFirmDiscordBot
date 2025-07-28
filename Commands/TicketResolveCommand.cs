@@ -74,6 +74,21 @@ public class TicketResolveCommand : ISlashCommand
 
         // Respond to slash command
         await command.FollowupAsync("✅ Ticket resolved. Senior moderators may now review and close it.", ephemeral: true);
+        
+        // Log to ticket log channel
+        var logChannel = channel.Guild.GetTextChannel(1394405064520499415);
+        if (logChannel != null)
+        {
+            var logEmbed = new EmbedBuilder()
+                .WithTitle("📌 Ticket Resolved")
+                .AddField("Resolved By", user.Mention, true)
+                .AddField("Channel", $"{channel.Name} (`{channel.Id}`)", true)
+                .WithColor(Color.Orange)
+                .WithTimestamp(DateTimeOffset.UtcNow)
+                .Build();
+
+            await logChannel.SendMessageAsync(embed: logEmbed);
+        }
     }
 
     public static class PermissionHelper

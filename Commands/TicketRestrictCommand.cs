@@ -17,69 +17,85 @@ public class TicketRestrictCommand : ISlashCommand
     private readonly ulong _seniorModRoleId = 1393638449709584434;
     private readonly ulong _restrictedCategoryId = 1393627644326838292;
 
-public async Task ExecuteAsync(SocketSlashCommand command)
-{
-    var user = command.User as SocketGuildUser;
-    if (!TicketAddRoleCommand.PermissionHelper.IsModerator(user))
+    public async Task ExecuteAsync(SocketSlashCommand command)
     {
-        await command.RespondAsync("❌ You do not have permission to use this command.", ephemeral: true);
-        return;
-    }
-
-    if (command.Channel is not SocketTextChannel channel)
-    {
-        await command.RespondAsync("❌ This command must be used in a ticket channel.", ephemeral: true);
-        return;
-    }
-
-    if (command.Data.Options == null || !command.Data.Options.Any())
-    {
-        await command.RespondAsync("❌ You must mention a role to restrict to.", ephemeral: true);
-        return;
-    }
-
-    await command.DeferAsync(ephemeral: true);
-
-    var targetRole = (SocketRole)command.Data.Options.First().Value;
-
-    await channel.ModifyAsync(props => props.CategoryId = _restrictedCategoryId);
-
-    foreach (var overwrite in channel.PermissionOverwrites)
-    {
-        if (overwrite.TargetType == PermissionTarget.User)
+        var user = command.User as SocketGuildUser;
+        if (!TicketAddRoleCommand.PermissionHelper.IsModerator(user))
         {
-            var u = channel.Guild.GetUser(overwrite.TargetId);
-            if (u != null)
-                await channel.RemovePermissionOverwriteAsync(u);
+            await command.RespondAsync("❌ You do not have permission to use this command.", ephemeral: true);
+            return;
         }
-        else if (overwrite.TargetType == PermissionTarget.Role)
+
+        if (command.Channel is not SocketTextChannel channel)
         {
-            var r = channel.Guild.GetRole(overwrite.TargetId);
-            if (r != null)
-                await channel.RemovePermissionOverwriteAsync(r);
+            await command.RespondAsync("❌ This command must be used in a ticket channel.", ephemeral: true);
+            return;
         }
-    }
 
-    await channel.AddPermissionOverwriteAsync(channel.Guild.EveryoneRole,
-        new OverwritePermissions(viewChannel: PermValue.Deny));
+        if (command.Data.Options == null || !command.Data.Options.Any())
+        {
+            await command.RespondAsync("❌ You must mention a role to restrict to.", ephemeral: true);
+            return;
+        }
 
-    foreach (var modRoleId in _moderatorRoleIds)
-    {
-        var role = channel.Guild.GetRole(modRoleId);
-        if (role != null)
-            await channel.AddPermissionOverwriteAsync(role, new OverwritePermissions(viewChannel: PermValue.Deny));
-    }
+        await command.DeferAsync(ephemeral: true);
 
-    await channel.AddPermissionOverwriteAsync(targetRole,
-        new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
+        var targetRole = (SocketRole)command.Data.Options.First().Value;
 
-    var senior = channel.Guild.GetRole(_seniorModRoleId);
-    if (senior != null)
-    {
-        await channel.AddPermissionOverwriteAsync(senior,
+        await channel.ModifyAsync(props => props.CategoryId = _restrictedCategoryId);
+
+        foreach (var overwrite in channel.PermissionOverwrites)
+        {
+            if (overwrite.TargetType == PermissionTarget.User)
+            {
+                var u = channel.Guild.GetUser(overwrite.TargetId);
+                if (u != null)
+                    await channel.RemovePermissionOverwriteAsync(u);
+            }
+            else if (overwrite.TargetType == PermissionTarget.Role)
+            {
+                var r = channel.Guild.GetRole(overwrite.TargetId);
+                if (r != null)
+                    await channel.RemovePermissionOverwriteAsync(r);
+            }
+        }
+
+        await channel.AddPermissionOverwriteAsync(channel.Guild.EveryoneRole,
+            new OverwritePermissions(viewChannel: PermValue.Deny));
+
+        foreach (var modRoleId in _moderatorRoleIds)
+        {
+            var role = channel.Guild.GetRole(modRoleId);
+            if (role != null)
+                await channel.AddPermissionOverwriteAsync(role, new OverwritePermissions(viewChannel: PermValue.Deny));
+        }
+
+        await channel.AddPermissionOverwriteAsync(targetRole,
             new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
-    }
 
-    await command.FollowupAsync($"🔒 Ticket has been restricted to {targetRole.Mention} and senior moderators.", ephemeral: true);
+        var senior = channel.Guild.GetRole(_seniorModRoleId);
+        if (senior != null)
+        {
+            await channel.AddPermissionOverwriteAsync(senior,
+                new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
+        }
+
+        await command.FollowupAsync($"🔒 Ticket has been restricted to {targetRole.Mention} and senior moderators.",
+            ephemeral: true);
+
+        var logChannel = channel.Guild.GetTextChannel(1394405064520499415);
+        if (logChannel != null)
+        {
+            var logEmbed = new EmbedBuilder()
+                .WithTitle("🔐 Ticket Restricted")
+                .AddField("Restricted By", user.Mention, true)
+                .AddField("Restricted To", targetRole.Mention, true)
+                .AddField("Channel", $"{channel.Name} (`{channel.Id}`)", false)
+                .WithColor(Color.Blue)
+                .WithTimestamp(DateTimeOffset.UtcNow)
+                .Build();
+
+            await logChannel.SendMessageAsync(embed: logEmbed);
+        }
     }
 }

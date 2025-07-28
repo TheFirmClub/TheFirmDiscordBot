@@ -37,7 +37,19 @@ public class TicketCloseCommand : ISlashCommand
         var logChannel = channel.Guild.GetTextChannel(1394449608603603085);
         if (logChannel != null)
         {
+            // 📁 Upload transcript
             await logChannel.SendFileAsync(path, $"📁 Transcript for ticket `{channel.Name}` closed by {moderator.Mention}");
+
+            // 📕 Log embed
+            var logEmbed = new EmbedBuilder()
+                .WithTitle("📕 Ticket Closed")
+                .AddField("Closed By", moderator.Mention, true)
+                .AddField("Channel", $"{channel.Name} (`{channel.Id}`)", true)
+                .WithColor(Color.DarkRed)
+                .WithTimestamp(DateTimeOffset.UtcNow)
+                .Build();
+
+            await logChannel.SendMessageAsync(embed: logEmbed);
         }
 
         File.Delete(path);
