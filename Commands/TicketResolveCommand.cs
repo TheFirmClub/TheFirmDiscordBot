@@ -54,6 +54,8 @@ public class TicketResolveCommand : ISlashCommand
             await channel.AddPermissionOverwriteAsync(seniorRole,
                 new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
         }
+        
+        await channel.ModifyAsync(props => props.CategoryId = 1393610408706965656);
 
         // 🧾 Build embed
         var embed = new EmbedBuilder()

@@ -65,7 +65,6 @@ public class TicketButtonHandler
 
             case "ticket_close":
             {
-                // 👇 DO NOT redeclare user — it's already declared above
                 if (!TicketCloseCommand.PermissionHelper.IsSeniorModerator(user))
                 {
                     await component.RespondAsync("❌ Only Senior Moderators can close tickets.", ephemeral: true);
@@ -76,11 +75,11 @@ public class TicketButtonHandler
                 {
                     await component.RespondAsync("⏳ Closing ticket...", ephemeral: true);
 
-                    // Run the core close logic
                     var closeCommand = new TicketCloseCommand();
                     await closeCommand.CloseTicketAsync(channel, user);
 
-                    // ✅ Send log embed to ticket logs
+                    await channel.ModifyAsync(props => props.CategoryId = 1393610408706965656);
+                    
                     var logChannel = channel.Guild.GetTextChannel(1394405064520499415);
                     if (logChannel != null)
                     {
