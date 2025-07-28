@@ -24,39 +24,7 @@ public class TicketResolveCommand : ISlashCommand
         }
 
         await command.DeferAsync(ephemeral: true); // ✅ Avoid timeout errors
-
-        // 🔐 Remove all current overwrites
-        foreach (var overwrite in channel.PermissionOverwrites)
-        {
-            if (overwrite.TargetType == PermissionTarget.User)
-            {
-                var u = channel.Guild.GetUser(overwrite.TargetId);
-                if (u != null)
-                    await channel.RemovePermissionOverwriteAsync(u);
-            }
-            else if (overwrite.TargetType == PermissionTarget.Role)
-            {
-                var r = channel.Guild.GetRole(overwrite.TargetId);
-                if (r != null)
-                    await channel.RemovePermissionOverwriteAsync(r);
-            }
-        }
-
-        // 🚫 Deny @everyone
-        await channel.AddPermissionOverwriteAsync(channel.Guild.EveryoneRole,
-            new OverwritePermissions(viewChannel: PermValue.Deny));
-
-        // ✅ Allow senior moderators
-        ulong seniorModRoleId = 1393638449709584434;
-        var seniorRole = channel.Guild.GetRole(seniorModRoleId);
-        if (seniorRole != null)
-        {
-            await channel.AddPermissionOverwriteAsync(seniorRole,
-                new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
-        }
         
-        await channel.ModifyAsync(props => props.CategoryId = 1393610408706965656);
-
         var confirmEmbed = new EmbedBuilder()
             .WithTitle("📩 Resolution Confirmation")
             .WithDescription(
