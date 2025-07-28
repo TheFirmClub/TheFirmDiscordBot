@@ -75,8 +75,25 @@ public class TicketButtonHandler
                 if (component.Channel is SocketTextChannel channel)
                 {
                     await component.RespondAsync("⏳ Closing ticket...", ephemeral: true);
+
+                    // Run the core close logic
                     var closeCommand = new TicketCloseCommand();
                     await closeCommand.CloseTicketAsync(channel, user);
+
+                    // ✅ Send log embed to ticket logs
+                    var logChannel = channel.Guild.GetTextChannel(1394405064520499415);
+                    if (logChannel != null)
+                    {
+                        var logEmbed = new EmbedBuilder()
+                            .WithTitle("📕 Ticket Closed (via Button)")
+                            .AddField("Closed By", user.Mention, true)
+                            .AddField("Channel", $"{channel.Name} (`{channel.Id}`)", true)
+                            .WithColor(Color.DarkRed)
+                            .WithTimestamp(DateTimeOffset.UtcNow)
+                            .Build();
+
+                        await logChannel.SendMessageAsync(embed: logEmbed);
+                    }
                 }
                 break;
             }
