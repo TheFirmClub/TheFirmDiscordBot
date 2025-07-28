@@ -2,9 +2,17 @@ using Discord;
 using Discord.WebSocket;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 
 public class TicketButtonHandler
 {
+    private readonly IConfiguration _config;
+
+    public TicketButtonHandler(IConfiguration config)
+    {
+        _config = config;
+    }
+
     private readonly ulong[] _moderatorRoleIds = new ulong[]
     {
         1393729574537396355,
@@ -75,7 +83,7 @@ public class TicketButtonHandler
                 {
                     await component.RespondAsync("⏳ Closing ticket...", ephemeral: true);
 
-                    var closeCommand = new TicketCloseCommand();
+                    var closeCommand = new TicketCloseCommand(_config);
                     await closeCommand.CloseTicketAsync(channel, user);
                 }
                 break;

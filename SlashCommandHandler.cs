@@ -1,13 +1,18 @@
 using Discord.WebSocket;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 
 public class SlashCommandHandler
 {
     private readonly Dictionary<string, ISlashCommand> _commands = new();
 
-    public SlashCommandHandler()
+    private readonly IConfiguration _config;
+
+    public SlashCommandHandler(IConfiguration config)
     {
+        _config = config;
+    
         var joinCommand = new JoinCommand();
         _commands.Add(joinCommand.Name, joinCommand);
 
@@ -22,8 +27,8 @@ public class SlashCommandHandler
         _commands.Add("ticketadduser", new TicketAddUserCommand());
         _commands.Add("ticketaddrole", new TicketAddRoleCommand());
         _commands.Add("ticketresolve", new TicketResolveCommand());
-        _commands.Add("ticketclose", new TicketCloseCommand());
         _commands.Add("ticketrestrict", new TicketRestrictCommand());
+        _commands.Add("ticketclose", new TicketCloseCommand(_config));
     }
 
     public async Task HandleCommandAsync(SocketSlashCommand command)
