@@ -32,6 +32,7 @@ public class SupportModalHandler
             "game" => "game",
             "ban" => "disputes",
             "sub" => "sub",
+            "reportstaff" => "staff",
             _ => "ticket"
         };
 
@@ -68,6 +69,7 @@ public class SupportModalHandler
         ulong categoryId = ticketType switch
         {
             "ban" => 1393628885484044299,
+            "reportstaff" => 1393627644326838292,
             _ => _supportCategoryId
         };
 
@@ -83,6 +85,7 @@ public class SupportModalHandler
             "game" => "Game Support",
             "ban" => "Ban Appeals",
             "sub" => "Subscription Support",
+            "reportstaff" => "Report a staff",
             _ => "Support"
         };
         

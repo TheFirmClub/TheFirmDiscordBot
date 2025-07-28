@@ -17,6 +17,7 @@ public class SupportMenuHandler
             "game" => "Game Support",
             "ban" => "Ban Appeals",
             "sub" => "Subscription Support",
+            "reportstaff" => "Report a staff",
             _ => "Support"
         };
 

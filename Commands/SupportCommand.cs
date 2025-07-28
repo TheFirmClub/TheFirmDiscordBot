@@ -15,7 +15,9 @@ public class SupportCommand : ISlashCommand
             .AddOption("General Support", "general")
             .AddOption("Game Support", "game")
             .AddOption("Ban Appeals", "ban")
-            .AddOption("Subscription Support", "sub");
+            .AddOption("Subscription Support", "sub")
+            .AddOption("Report a staff", "reportstaff");
+        
 
         var builder = new ComponentBuilder().WithSelectMenu(menu);
         await command.RespondAsync("Please choose your support category:", components: builder.Build(), ephemeral: true);
