@@ -95,10 +95,8 @@ public class TicketButtonHandler
             case "ticket_confirm_resolved":
             {
                 await component.DeferAsync(ephemeral: true);
-
                 if (component.Channel is SocketTextChannel channel)
                 {
-                    // 1. Remove all permission overwrites
                     foreach (var overwrite in channel.PermissionOverwrites)
                     {
                         if (overwrite.TargetType == PermissionTarget.User)
@@ -115,33 +113,24 @@ public class TicketButtonHandler
                         }
                     }
 
-                    // 2. Deny @everyone
                     await channel.AddPermissionOverwriteAsync(channel.Guild.EveryoneRole,
                         new OverwritePermissions(viewChannel: PermValue.Deny));
 
-                    // 3. Add Senior Moderator role
                     ulong seniorModRoleId1 = 1393638449709584434;
                     ulong seniorModRoleId2 = 1393590761953558608;
-
                     var role1 = channel.Guild.GetRole(seniorModRoleId1);
                     var role2 = channel.Guild.GetRole(seniorModRoleId2);
-
                     if (role1 != null)
                     {
                         await channel.AddPermissionOverwriteAsync(role1,
                             new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
                     }
-
                     if (role2 != null)
                     {
                         await channel.AddPermissionOverwriteAsync(role2,
                             new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
                     }
-
-                    // 4. Move to resolved category
                     await channel.ModifyAsync(props => props.CategoryId = 1393610408706965656);
-
-                    // 5. Send resolved embed + close button
                     var embed = new EmbedBuilder()
                         .WithTitle("✅ Ticket Resolved")
                         .WithDescription(
@@ -157,17 +146,35 @@ public class TicketButtonHandler
 
                     await channel.SendMessageAsync(embed: embed, components: button.Build());
                 }
-
                 break;
             }
             
             case "ticket_confirm_unresolved":
             {
-                await component.RespondAsync("🔁 Got it. Anything else we can help with? A moderator will be back with you shortly.", ephemeral: false);
-                // Optional: restore mod/user perms or move back to open category
+                await component.DeferAsync(ephemeral: true);
+                var original = component.Message.Embeds.FirstOrDefault();
+                var embed = new EmbedBuilder();
+                if (original != null)
+                {
+                    embed.WithTitle(original.Title)
+                        .WithDescription(original.Description)
+                        .WithColor(original.Color.GetValueOrDefault(Color.Orange))
+                        .WithTimestamp(original.Timestamp ?? DateTimeOffset.UtcNow);
+                }
+                var disabledButtons = new ComponentBuilder()
+                    .WithButton("✅ Resolved", "ticket_confirm_resolved", ButtonStyle.Success, disabled: true)
+                    .WithButton("❌ Not Resolved", "ticket_confirm_unresolved", ButtonStyle.Danger, disabled: true);
+
+                await component.Message.ModifyAsync(msg =>
+                {
+                    msg.Embed = embed.Build();
+                    msg.Components = disabledButtons.Build();
+                });
+
+                await component.FollowupAsync("🔁 Got it. A moderator will follow up shortly.", ephemeral: true);
                 break;
             }
-
+            
             case "ticket_release":
 
                 var updatedEmbed = new EmbedBuilder();

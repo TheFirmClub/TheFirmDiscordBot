@@ -42,7 +42,7 @@ public class TicketResolveCommand : ISlashCommand
         await channel.SendMessageAsync(embed: confirmEmbed, components: confirmButtons.Build());
 
         // Respond to slash command
-        await command.FollowupAsync("✅ Ticket resolved. Senior moderators may now review and close it.", ephemeral: true);
+        await command.FollowupAsync("✅ Ticket resolved requested", ephemeral: true);
         
         // Log to ticket log channel
         var logChannel = channel.Guild.GetTextChannel(1394405064520499415);
