@@ -76,7 +76,7 @@ public class TempTicketCommand : ISlashCommand
             .WithTimestamp(DateTimeOffset.UtcNow)
             .Build();
 
-        await channel.SendMessageAsync(embed: embed);
+        await channel.SendMessageAsync(embed: embed, allowedMentions: AllowedMentions.All);
         await command.RespondAsync($"✅ Temporary ticket created: {channel.Mention}", ephemeral: true);
     }
 }
