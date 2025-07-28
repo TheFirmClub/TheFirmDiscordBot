@@ -48,9 +48,9 @@ public class SupportModalHandler
         overwrites.Add(new Overwrite(user.Id, PermissionTarget.User,
             new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)));
 
-        if (ticketType == "ban")
+        if (ticketType == "ban" || ticketType == "reportstaff")
         {
-            var headModRole = guild.GetRole(1393728468608487594);
+            var headModRole = guild.GetRole(1393728468608487594); // Head Moderator
             if (headModRole != null)
             {
                 overwrites.Add(new Overwrite(headModRole.Id, PermissionTarget.Role,
