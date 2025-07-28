@@ -75,27 +75,15 @@ public class TicketButtonHandler
                 {
                     await component.RespondAsync("⏳ Closing ticket...", ephemeral: true);
 
+                    await channel.ModifyAsync(props => props.CategoryId = 1393610408706965656);
+
+                    
                     var closeCommand = new TicketCloseCommand();
                     await closeCommand.CloseTicketAsync(channel, user);
-
-                    await channel.ModifyAsync(props => props.CategoryId = 1393610408706965656);
-                    
-                    var logChannel = channel.Guild.GetTextChannel(1394405064520499415);
-                    if (logChannel != null)
-                    {
-                        var logEmbed = new EmbedBuilder()
-                            .WithTitle("📕 Ticket Closed (via Button)")
-                            .AddField("Closed By", user.Mention, true)
-                            .AddField("Channel", $"{channel.Name} (`{channel.Id}`)", true)
-                            .WithColor(Color.DarkRed)
-                            .WithTimestamp(DateTimeOffset.UtcNow)
-                            .Build();
-
-                        await logChannel.SendMessageAsync(embed: logEmbed);
-                    }
                 }
                 break;
             }
+
 
             case "ticket_release":
                 
