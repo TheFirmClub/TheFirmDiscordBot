@@ -11,7 +11,6 @@ public class SupportMenuHandler
 
         var selectedValue = component.Data.Values.First(); // e.g., "ban", "general", etc.
 
-        // 🔤 Map internal value to user-facing label
         string label = selectedValue switch
         {
             "general" => "General Support",
@@ -21,17 +20,13 @@ public class SupportMenuHandler
             _ => "Support"
         };
 
-        // 🧾 Introductory message
-        string intro = $"Thank you for creating a support ticket under **{label}**.\n" +
-                       "A member of staff will be with you shortly.\n\n" +
-                       "📌 *Please note: All conversations within this ticket are confidential.*\n\n" +
-                       "📝 Let us know how we can help:";
-
-        // 🧱 Build modal
+        string modalTitle = $"{label} Ticket";
+        string inputLabel = "Describe your issue";
+        
         var modal = new ModalBuilder()
-            .WithTitle($"{label} Ticket")
+            .WithTitle(modalTitle)
             .WithCustomId($"ticket_reason:{selectedValue}")
-            .AddTextInput(intro, "ticket_reason_input", TextInputStyle.Paragraph, placeholder: "Describe your issue here...", required: true, maxLength: 400);
+            .AddTextInput(inputLabel, "ticket_reason_input", TextInputStyle.Paragraph, placeholder: "Please explain the issue clearly...", required: true, maxLength: 400);
 
         await component.RespondWithModalAsync(modal.Build());
     }
