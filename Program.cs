@@ -32,7 +32,6 @@ class Program
             Console.WriteLine("❌ Invalid or missing GuildId in appsettings.json");
             return;
         }
-
         _client = new DiscordSocketClient(new DiscordSocketConfig
         {
             GatewayIntents = GatewayIntents.Guilds |
