@@ -84,22 +84,33 @@ public class SupportModalHandler
             "sub" => "Subscription Support",
             _ => "Support"
         };
-
+        
+        await channel.SendMessageAsync($"Thank you for creating a **{fullTypeLabel}** ticket!\n\n👋 {user.Mention}");
         var embed = new EmbedBuilder()
-            .WithTitle($"🎫 {fullTypeLabel} Ticket")
+            .WithTitle($"📄 {fullTypeLabel} Ticket Information")
             .WithColor(Color.Orange)
-            .AddField("👤 User", user.Mention, true)
-            .AddField("📂 Type", fullTypeLabel, true)
-            .AddField("📝 Reason", string.IsNullOrWhiteSpace(reason) ? "*No reason provided*" : reason.Trim())
-            .WithFooter(footer => footer.Text = "Staff will be with you shortly. All conversations are confidential.")
+            .WithDescription(
+                $"A member of staff will be with you shortly.\n\n" +
+                $"Below you will find the information you provided regarding the support request.\n" +
+                $"If you think of anything else you would like to add to the support ticket, feel free to comment below.\n\n" +
+                $"🔒 *Please note: A copy of the chat logs will be stored for audit, quality, and training purposes.*\n" +
+                $"🔐 *Disclaimer: This ticket and its contents are confidential and should not be shared or discussed outside of this channel.*"
+            )
+            .AddField("📝 Description", string.IsNullOrWhiteSpace(reason) ? "*No description provided.*" : reason.Trim(), false)
             .WithTimestamp(DateTimeOffset.UtcNow)
+            .WithFooter(footer =>
+            {
+                footer.Text = $"Created by {user.Username}";
+                footer.IconUrl = user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl();
+            })
             .Build();
-
+        
         var buttons = new ComponentBuilder()
             .WithButton("🎯 Claim Ticket", customId: "ticket_claim", ButtonStyle.Primary)
             .WithButton("🔓 Release Ticket", customId: "ticket_release", ButtonStyle.Secondary);
-
+        
         await channel.SendMessageAsync(embed: embed, components: buttons.Build());
+
         await modal.RespondAsync($"✅ Your ticket has been created: {channel.Mention}", ephemeral: true);
     }
 }
