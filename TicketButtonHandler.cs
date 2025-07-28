@@ -162,7 +162,7 @@ public class TicketButtonHandler
                         .WithTimestamp(original.Timestamp ?? DateTimeOffset.UtcNow);
                 }
                 var disabledButtons = new ComponentBuilder()
-                    .WithButton("✅ Resolved", "ticket_confirm_resolved", ButtonStyle.Success, disabled: true)
+                    .WithButton("✅ Resolved", "ticket_confirm_resolved", ButtonStyle.Success, disabled: false)
                     .WithButton("❌ Not Resolved", "ticket_confirm_unresolved", ButtonStyle.Danger, disabled: true);
 
                 await component.Message.ModifyAsync(msg =>
@@ -171,7 +171,7 @@ public class TicketButtonHandler
                     msg.Components = disabledButtons.Build();
                 });
 
-                await component.FollowupAsync("🔁 Got it. A moderator will follow up shortly.", ephemeral: true);
+                await component.FollowupAsync("🔁 Got it. A moderator will follow up shortly. Is there anything else we can help with?", ephemeral: false);
                 break;
             }
             
