@@ -18,6 +18,9 @@ public class SlashCommandHandler
         var joinCommand = new JoinCommand();
         _commands.Add(joinCommand.Name, joinCommand);
 
+        var ForumLinkCommand = new JoinCommand();
+        _commands.Add(ForumLinkCommand.Name, ForumLinkCommand);
+
         var cleanupCommand = new CleanupCommand();
         _commands.Add(cleanupCommand.Name, cleanupCommand);
 
