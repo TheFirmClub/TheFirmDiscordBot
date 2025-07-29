@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 public class ForumLinkCommand : ISlashCommand
 {
-    public string Name => "forumlink"; // 👈 changed from "howtojoin"
+    public string Name => "forumlink";
     public string Description => "Instructions to verify and link your account to The Firm Forum";
 
     public async Task ExecuteAsync(SocketSlashCommand command)
