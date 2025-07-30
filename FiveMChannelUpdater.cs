@@ -1,6 +1,7 @@
 using Discord.WebSocket;
 using System.Net.Http;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 public class FiveMChannelUpdater
 {
@@ -20,27 +21,51 @@ public class FiveMChannelUpdater
 
     public void Start()
     {
+        Console.WriteLine("⏱️ FiveMChannelUpdater: Timer started");
+
         _timer = new Timer(async _ =>
         {
             try
             {
                 using var httpClient = new HttpClient();
-                var json = await httpClient.GetStringAsync($"{_fivemUrl}/players.json");
-                var players = JsonSerializer.Deserialize<List<object>>(json);
+                var url = $"{_fivemUrl}/players.json";
+
+                Console.WriteLine($"🌐 Fetching FiveM players from {url}");
+                var json = await httpClient.GetStringAsync(url);
+
+                var players = JsonSerializer.Deserialize<List<JsonElement>>(json);
                 int playerCount = players?.Count ?? 0;
 
-                var guild = _client.GetGuild(_guildId);
-                var channel = guild?.GetVoiceChannel(_channelId);
+                Console.WriteLine($"✅ FiveM players online: {playerCount}");
 
-                if (channel != null && channel.Name != $"Online Players: {playerCount}")
+                var guild = _client.GetGuild(_guildId);
+                if (guild == null)
                 {
-                    await channel.ModifyAsync(props => props.Name = $"Online Players: {playerCount}");
-                    Console.WriteLine($"✅ Updated channel to: Online Players: {playerCount}");
+                    Console.WriteLine($"❌ Guild not found: {_guildId}");
+                    return;
+                }
+
+                var channel = guild.GetVoiceChannel(_channelId);
+                if (channel == null)
+                {
+                    Console.WriteLine($"❌ Voice channel not found: {_channelId}");
+                    return;
+                }
+
+                string newName = $"Online Players: {playerCount}";
+                if (channel.Name != newName)
+                {
+                    await channel.ModifyAsync(props => props.Name = newName);
+                    Console.WriteLine($"🔄 Channel name updated to: {newName}");
+                }
+                else
+                {
+                    Console.WriteLine("⏸️ Channel name already up to date, skipping.");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Failed to update FiveM player count: {ex.Message}");
+                Console.WriteLine($"❌ Error updating FiveM channel: {ex.Message}");
             }
 
         }, null, TimeSpan.Zero, TimeSpan.FromSeconds(30)); // every 30 seconds
