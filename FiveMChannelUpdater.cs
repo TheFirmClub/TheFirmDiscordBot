@@ -52,7 +52,7 @@ public class FiveMChannelUpdater
                     return;
                 }
 
-                string newName = $"Online Players: {playerCount}";
+                string newName = $"🎮┃Online Players: {playerCount}";
                 if (channel.Name != newName)
                 {
                     await channel.ModifyAsync(props => props.Name = newName);
