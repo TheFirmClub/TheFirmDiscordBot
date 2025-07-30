@@ -5,6 +5,9 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 
+// 🔹 Add this
+using System.Threading;
+
 class Program
 {
     private DiscordSocketClient? _client;
@@ -15,6 +18,9 @@ class Program
     private TicketButtonHandler _ticketButtonHandler;
 
     private ulong _logChannelId = 1394449608603603085;
+
+    // 🔹 FiveM integration
+    private FiveMChannelUpdater? _fivemUpdater;
 
     public static Task Main(string[] args) => new Program().MainAsync();
 
@@ -32,6 +38,7 @@ class Program
             Console.WriteLine("❌ Invalid or missing GuildId in appsettings.json");
             return;
         }
+
         _client = new DiscordSocketClient(new DiscordSocketConfig
         {
             GatewayIntents = GatewayIntents.Guilds |
@@ -45,15 +52,15 @@ class Program
 
         _client.Log += Log;
         _client.Ready += async () => await ReadyAsync(guildId);
-        
+
         _commandHandler = new SlashCommandHandler(_config);
         _ticketButtonHandler = new TicketButtonHandler(_config);
-        
+
         _client.SlashCommandExecuted += SlashCommandExecuted;
         _client.SelectMenuExecuted += _supportMenuHandler.HandleAsync;
         _client.ModalSubmitted += new SupportModalHandler().HandleModalAsync;
         _client.ButtonExecuted += _ticketButtonHandler.HandleAsync;
-        
+
         ulong roleLogChannelId = 1393726185804005497;
         _roleLogger = new RoleLogger(_client, roleLogChannelId);
 
@@ -106,6 +113,18 @@ class Program
         }
 
         await new SupportPanelSender().SendSupportPanelAsync(_client);
+
+        // 🔹 FiveM integration
+        string fivemUrl = _config!["FiveM:ServerUrl"];
+        if (!ulong.TryParse(_config["FiveM:ChannelId"], out ulong fivemChannelId))
+        {
+            Console.WriteLine("❌ Invalid FiveM ChannelId in appsettings.json");
+            return;
+        }
+
+        _fivemUpdater = new FiveMChannelUpdater(_client, fivemUrl, guildId, fivemChannelId);
+        _fivemUpdater.Start();
+        Console.WriteLine("✅ Started FiveM online player updater");
 
         Console.WriteLine("✅ Commands registered and support panel sent");
     }
