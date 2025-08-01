@@ -11,6 +11,9 @@ public class FiveMChannelUpdater
     private readonly ulong _channelId;
     private readonly Func<LogMessage, Task>? _logFunc;
     private Timer? _timer;
+    private static readonly HttpClient _httpClient = new();
+
+    private int _lastPlayerCount = -1;
 
     public FiveMChannelUpdater(
         DiscordSocketClient client,
@@ -34,31 +37,16 @@ public class FiveMChannelUpdater
         {
             try
             {
-                using var httpClient = new HttpClient();
                 string url = $"{_fivemUrl.TrimEnd('/')}/players.json";
-
-                var response = await httpClient.GetStringAsync(url);
-
-                if (string.IsNullOrWhiteSpace(response))
-                {
-                    await Log(LogSeverity.Warning, $"⚠️ Empty response from {url}");
-                    return;
-                }
-
-                await Log(LogSeverity.Debug, $"📥 Raw FiveM response: {response}");
-
-                List<JsonElement>? players;
-                try
-                {
-                    players = JsonSerializer.Deserialize<List<JsonElement>>(response);
-                }
-                catch (JsonException je)
-                {
-                    await Log(LogSeverity.Error, $"❌ Failed to parse FiveM JSON: {je.Message}");
-                    return;
-                }
-
+                var json = await _httpClient.GetStringAsync(url);
+                var players = JsonSerializer.Deserialize<List<JsonElement>>(json);
                 int playerCount = players?.Count ?? 0;
+
+                if (playerCount == _lastPlayerCount)
+                {
+                    await Log(LogSeverity.Debug, $"⏸️ Player count unchanged ({playerCount}), skipping update.");
+                    return;
+                }
 
                 var guild = _client.GetGuild(_guildId);
                 if (guild == null)
@@ -76,22 +64,17 @@ public class FiveMChannelUpdater
 
                 string newName = $"🎮┃Online Players: {playerCount}";
 
-                if (channel.Name != newName)
-                {
-                    await channel.ModifyAsync(props => props.Name = newName);
-                    await Log(LogSeverity.Info, $"🔄 Channel name updated to: {newName}");
-                }
-                else
-                {
-                    await Log(LogSeverity.Debug, $"⏸️ Channel name already up to date: {newName}");
-                }
+                await channel.ModifyAsync(props => props.Name = newName);
+                _lastPlayerCount = playerCount;
+
+                await Log(LogSeverity.Info, $"🔄 Channel name updated to: {newName}");
             }
             catch (Exception ex)
             {
                 await Log(LogSeverity.Error, $"❌ Error updating FiveM channel: {ex.Message}");
             }
 
-        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+        }, null, TimeSpan.Zero, TimeSpan.FromMinutes(5)); // Every 5 minutes
     }
 
     private Task Log(LogSeverity severity, string message)
