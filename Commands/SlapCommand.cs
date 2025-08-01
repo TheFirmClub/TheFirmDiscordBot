@@ -11,16 +11,24 @@ public class SlapCommand : ISlashCommand
 
     private readonly ulong[] allowedRoles = new ulong[]
     {
-        1393729574537396355, 
-        1393623589122736238, 
-        1393590761953558608  
+        1393729574537396355, // Senior Mod
+        1393623589122736238, // Admin
+        1393590761953558608  // Developer
     };
 
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
         var caller = (SocketGuildUser)command.User;
-        var userToSlap = (SocketUser)command.Data.Options.First().Value;
 
+        // Get the "user" option from the command
+        var userOption = command.Data.Options.FirstOrDefault(o => o.Name == "user")?.Value;
+        if (userOption is not SocketUser targetUser)
+        {
+            await command.RespondAsync("❌ You must mention a user to slap.", ephemeral: true);
+            return;
+        }
+
+        // 🔒 Role check
         bool hasAccess = caller.Roles.Any(role => allowedRoles.Contains(role.Id));
         if (!hasAccess)
         {
@@ -28,12 +36,14 @@ public class SlapCommand : ISlashCommand
             return;
         }
 
-        if (userToSlap.Id == caller.Id)
+        // ❌ Self check
+        if (targetUser.Id == caller.Id)
         {
             await command.RespondAsync("You can't slap yourself! 🤦", ephemeral: true);
             return;
         }
 
+        // 🧠 Slap logic
         var messages = new[]
         {
             "just gave a thunderous slap to",
@@ -51,12 +61,12 @@ public class SlapCommand : ISlashCommand
         };
 
         var rand = new Random();
-        var message = messages[rand.Next(messages.Length)];
+        var msg = messages[rand.Next(messages.Length)];
         var gif = gifs[rand.Next(gifs.Length)];
 
         var embed = new EmbedBuilder()
             .WithTitle("👋 SLAP!")
-            .WithDescription($"{caller.Mention} {message} {userToSlap.Mention}!")
+            .WithDescription($"{caller.Mention} {msg} {targetUser.Mention}!")
             .WithImageUrl(gif)
             .WithColor(Color.Red)
             .WithCurrentTimestamp()
