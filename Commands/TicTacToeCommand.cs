@@ -98,15 +98,15 @@ public class TicTacToeCommand : ISlashCommand
 
         public async Task HandleButton(SocketMessageComponent component)
         {
+            var coords = component.Data.CustomId.Split(',');
+            int x = int.Parse(coords[0]);
+            int y = int.Parse(coords[1]);
+
             if (component.User.Id != currentPlayer.Id)
             {
                 await component.RespondAsync("❌ It's not your turn!", ephemeral: true);
                 return;
             }
-
-            var coords = component.Data.CustomId.Split(',');
-            int x = int.Parse(coords[0]);
-            int y = int.Parse(coords[1]);
 
             if (board[x, y] != ' ')
             {
@@ -156,6 +156,7 @@ public class TicTacToeCommand : ISlashCommand
                 msg.Components = BuildGameButtons();
             });
         }
+
 
         private char GetSymbol(SocketGuildUser user) => user.Id == Player1.Id ? 'X' : 'O';
 
