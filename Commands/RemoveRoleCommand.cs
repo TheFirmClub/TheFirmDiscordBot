@@ -2,6 +2,7 @@ using Discord;
 using Discord.WebSocket;
 using System.Linq;
 using System.Threading.Tasks;
+using Discord.Net;
 
 public class RemoveRoleCommand : ISlashCommand
 {
@@ -32,7 +33,27 @@ public class RemoveRoleCommand : ISlashCommand
             return;
         }
 
-        await user.RemoveRoleAsync(role);
-        await command.RespondAsync($"✅ Removed role `{role.Name}` from {user.Mention}.");
+        // Role hierarchy checks
+        if (role.Position >= caller.Hierarchy)
+        {
+            await command.RespondAsync("❌ You cannot remove a role that is equal or higher than your own highest role.", ephemeral: true);
+            return;
+        }
+
+        if (role.Position >= guild.CurrentUser.Hierarchy)
+        {
+            await command.RespondAsync("❌ I cannot remove that role because it's higher than my highest role.", ephemeral: true);
+            return;
+        }
+
+        try
+        {
+            await user.RemoveRoleAsync(role);
+            await command.RespondAsync($"✅ Removed role `{role.Name}` from {user.Mention}.");
+        }
+        catch (HttpException ex) when (ex.DiscordCode == DiscordErrorCode.MissingPermissions)
+        {
+            await command.RespondAsync("❌ I do not have permission to remove that role.", ephemeral: true);
+        }
     }
 }
