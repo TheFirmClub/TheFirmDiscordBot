@@ -2,6 +2,7 @@ using Discord;
 using Discord.WebSocket;
 using System.Linq;
 using System.Threading.Tasks;
+using Discord.Net;
 
 public class AddRoleCommand : ISlashCommand
 {
@@ -19,7 +20,7 @@ public class AddRoleCommand : ISlashCommand
         var guild = (command.Channel as SocketGuildChannel)?.Guild;
         if (guild == null)
         {
-            await command.RespondAsync("❌ This command must be used in a server.");
+            await command.RespondAsync("❌ This command must be used in a server.", ephemeral: true);
             return;
         }
 
@@ -28,11 +29,32 @@ public class AddRoleCommand : ISlashCommand
 
         if (role == null)
         {
-            await command.RespondAsync("❌ Role not found.");
+            await command.RespondAsync("❌ Role not found.", ephemeral: true);
             return;
         }
 
-        await user.AddRoleAsync(role);
-        await command.RespondAsync($"✅ Added role `{role.Name}` to {user.Mention}.");
+        // Role hierarchy check: caller must be higher than the target role
+        if (role.Position >= caller.Hierarchy)
+        {
+            await command.RespondAsync("❌ You cannot assign a role that is equal to or higher than your own highest role.", ephemeral: true);
+            return;
+        }
+
+        // Role hierarchy check: bot must be higher than the target role
+        if (role.Position >= guild.CurrentUser.Hierarchy)
+        {
+            await command.RespondAsync("❌ I cannot assign that role because it's higher than my highest role.", ephemeral: true);
+            return;
+        }
+
+        try
+        {
+            await user.AddRoleAsync(role);
+            await command.RespondAsync($"✅ Added role `{role.Name}` to {user.Mention}.");
+        }
+        catch (HttpException ex) when (ex.DiscordCode == DiscordErrorCode.MissingPermissions)
+        {
+            await command.RespondAsync("❌ I do not have permission to add that role.", ephemeral: true);
+        }
     }
 }

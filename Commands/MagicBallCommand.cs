@@ -34,7 +34,14 @@ public class Magic8BallCommand : ISlashCommand
             return;
         }
 
-        string question = command.Data.Options.First().Value.ToString();
+        string question = command.Data.Options.FirstOrDefault(o => o.Name == "question")?.Value?.ToString();
+
+        if (string.IsNullOrWhiteSpace(question))
+        {
+            await command.RespondAsync("❌ You must provide a question.", ephemeral: true);
+            return;
+        }
+
         string answer = responses[new Random().Next(responses.Length)];
 
         var embed = new EmbedBuilder()
