@@ -52,7 +52,14 @@ class Program
         _client.SlashCommandExecuted += SlashCommandExecuted;
         _client.SelectMenuExecuted += _supportMenuHandler.HandleAsync;
         _client.ModalSubmitted += new SupportModalHandler().HandleModalAsync;
-        _client.ButtonExecuted += _ticketButtonHandler.HandleAsync;
+        _client.ButtonExecuted += async component =>
+        {
+            // First handle ticket buttons
+            await _ticketButtonHandler.HandleAsync(component);
+
+            // Then handle tic tac toe buttons
+            await TicTacToeCommand.HandleButton(component);
+        };
         
         ulong roleLogChannelId = 1393726185804005497;
         _roleLogger = new RoleLogger(_client, roleLogChannelId);
@@ -114,6 +121,11 @@ class Program
             {
                 builder.AddOption("question", ApplicationCommandOptionType.String, "Your question for the magic 8-ball", isRequired: true);
             }
+            else if (command.Name == "tictactoe")
+            {
+                builder.AddOption("opponent", ApplicationCommandOptionType.User, "User to challenge", isRequired: true);
+            }
+
 
             await guild.CreateApplicationCommandAsync(builder.Build());
         }

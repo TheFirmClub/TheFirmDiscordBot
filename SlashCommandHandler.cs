@@ -40,6 +40,8 @@ public class SlashCommandHandler
         
         _commands.Add("coinflip", new CoinFlipCommand());
         _commands.Add("8ball", new Magic8BallCommand());
+        _commands.Add("tictactoe", new TicTacToeCommand());
+
 
     }
 
