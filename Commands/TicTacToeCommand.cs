@@ -121,15 +121,23 @@ public class TicTacToeCommand : ISlashCommand
             return;
         }
 
+        // ✅ Allow only players in the game
+        if (component.User.Id != gameState.PlayerX && component.User.Id != gameState.PlayerO)
+        {
+            await component.RespondAsync("❌ You're not part of this game.", ephemeral: true);
+            return;
+        }
+
+        // ✅ Only current player's turn
         if (component.User.Id != gameState.CurrentPlayer)
         {
-            await component.RespondAsync("It's not your turn!", ephemeral: true);
+            await component.RespondAsync("❌ It's not your turn!", ephemeral: true);
             return;
         }
 
         if (gameState.Board[row, col] != ' ')
         {
-            await component.RespondAsync("That cell is already taken.", ephemeral: true);
+            await component.RespondAsync("❌ That cell is already taken.", ephemeral: true);
             return;
         }
 
