@@ -12,29 +12,11 @@ public class TicTacToeCommand : ISlashCommand
 
     private static readonly Dictionary<ulong, GameState> ActiveGames = new(); // ChannelId -> GameState
 
-    private readonly ulong[] allowedRoles = new ulong[]
-    {
-        1393729574537396355,
-        1393623589122736238,
-        1393590761953558608
-    };
-
-    private bool HasPermission(SocketGuildUser user)
-    {
-        return user.Roles.Any(r => allowedRoles.Contains(r.Id));
-    }
-
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
         if (command.User is not SocketGuildUser user)
         {
             await command.RespondAsync("❌ You must use this command in a server.", ephemeral: true);
-            return;
-        }
-
-        if (!HasPermission(user))
-        {
-            await command.RespondAsync("❌ You don’t have permission to use this command.", ephemeral: true);
             return;
         }
 
@@ -121,14 +103,12 @@ public class TicTacToeCommand : ISlashCommand
             return;
         }
 
-        // ✅ Allow only players in the game
         if (component.User.Id != gameState.PlayerX && component.User.Id != gameState.PlayerO)
         {
             await component.RespondAsync("❌ You're not part of this game.", ephemeral: true);
             return;
         }
 
-        // ✅ Only current player's turn
         if (component.User.Id != gameState.CurrentPlayer)
         {
             await component.RespondAsync("❌ It's not your turn!", ephemeral: true);
@@ -253,7 +233,6 @@ public class TicTacToeCommand : ISlashCommand
             return Board[0, 0] != ' ' && Board[0, 0] == Board[1, 1] && Board[1, 1] == Board[2, 2]
                 || Board[0, 2] != ' ' && Board[0, 2] == Board[1, 1] && Board[1, 1] == Board[2, 0];
         }
-        
 
         public bool CheckDraw()
         {
