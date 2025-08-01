@@ -22,6 +22,9 @@ public class TicketButtonHandler
 
     public async Task HandleAsync(SocketMessageComponent component)
     {
+        if (!component.Data.CustomId.StartsWith("ticket_"))
+            return;
+        
         var user = component.User as SocketGuildUser;
         bool isMod = user.Roles.Any(r => _moderatorRoleIds.Contains(r.Id));
 

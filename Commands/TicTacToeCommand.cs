@@ -3,196 +3,242 @@ using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 public class TicTacToeCommand : ISlashCommand
 {
     public string Name => "tictactoe";
-    public string Description => "Challenge another player to a game of TicTacToe!";
+    public string Description => "Challenge another user to a game of Tic Tac Toe.";
 
-    private static readonly Dictionary<ulong, TicTacToeGame> activeGames = new();
+    private static readonly Dictionary<ulong, GameState> ActiveGames = new(); // ChannelId -> GameState
 
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
-        var challenger = (SocketGuildUser)command.User;
-        var opponent = (SocketGuildUser)command.Data.Options.First().Value;
+        if (command.User is not SocketGuildUser user)
+        {
+            await command.RespondAsync("❌ You must use this command in a server.", ephemeral: true);
+            return;
+        }
 
-        if (challenger.Id == opponent.Id)
+        var opponentOption = command.Data.Options.FirstOrDefault(o => o.Name == "opponent")?.Value;
+        if (opponentOption is not SocketGuildUser opponent)
+        {
+            await command.RespondAsync("❌ Please mention a valid user to challenge.", ephemeral: true);
+            return;
+        }
+
+        if (opponent.Id == user.Id)
         {
             await command.RespondAsync("❌ You can't challenge yourself!", ephemeral: true);
             return;
         }
 
-        var game = new TicTacToeGame(challenger, opponent);
-        var embed = game.BuildGameEmbed();
-        var components = game.BuildGameButtons();
+        if (ActiveGames.ContainsKey(command.Channel.Id))
+        {
+            await command.RespondAsync("❌ A game is already active in this channel.", ephemeral: true);
+            return;
+        }
 
-        await command.RespondAsync(embed: embed, components: components);
-        var response = await command.GetOriginalResponseAsync();
+        var game = new GameState(user.Id, opponent.Id);
+        ActiveGames[command.Channel.Id] = game;
 
-        game.MessageId = response.Id;
+        var embed = new EmbedBuilder()
+            .WithTitle("Tic Tac Toe")
+            .WithDescription($"{MentionUser(game.CurrentPlayer)}'s turn (❌)")
+            .WithColor(Color.Blue)
+            .Build();
 
-        activeGames[response.Id] = game;
+        var board = BuildBoard(game.Board, disabled: false);
+        board.AddRow(new ActionRowBuilder().WithButton("End Game", "ttt_endgame", ButtonStyle.Danger));
+
+        await command.RespondAsync($"{user.Mention} vs {opponent.Mention}",
+            embed: embed,
+            components: board.Build());
     }
 
     public static async Task HandleButton(SocketMessageComponent component)
     {
-        if (!activeGames.TryGetValue(component.Message.Id, out var game))
-            return;
+        var customId = component.Data.CustomId;
 
-        await game.HandleButton(component);
-
-        if (game.IsFinished)
-            activeGames.Remove(component.Message.Id);
-    }
-
-    // Internal TicTacToeGame class
-    private class TicTacToeGame
-    {
-        public SocketGuildUser Player1 { get; }
-        public SocketGuildUser Player2 { get; }
-        public ulong MessageId { get; set; }
-
-        private readonly char[,] board = new char[3, 3];
-        private SocketGuildUser currentPlayer;
-        public bool IsFinished { get; private set; }
-
-        public TicTacToeGame(SocketGuildUser p1, SocketGuildUser p2)
+        if (customId == "ttt_endgame")
         {
-            Player1 = p1;
-            Player2 = p2;
-            currentPlayer = Player1;
+            if (!ActiveGames.TryGetValue(component.Channel.Id, out var game))
+            {
+                await component.RespondAsync("There is no active game to end.", ephemeral: true);
+                return;
+            }
 
-            for (int x = 0; x < 3; x++)
-                for (int y = 0; y < 3; y++)
-                    board[x, y] = ' ';
-        }
+            if (component.User.Id != game.PlayerX && component.User.Id != game.PlayerO)
+            {
+                await component.RespondAsync("You're not part of this game.", ephemeral: true);
+                return;
+            }
 
-        public Embed BuildGameEmbed()
-        {
-            var desc = BuildBoardVisual();
-            return new EmbedBuilder()
+            ActiveGames.Remove(component.Channel.Id);
+
+            var embed = new EmbedBuilder()
                 .WithTitle("Tic Tac Toe")
-                .WithDescription(desc)
-                .WithColor(Color.Blue)
-                .WithFooter($"{currentPlayer.Username}'s turn ({GetSymbol(currentPlayer)})")
+                .WithDescription($"Game ended by {component.User.Mention}.")
+                .WithColor(Color.DarkRed)
                 .Build();
-        }
-
-        public MessageComponent BuildGameButtons()
-        {
-            var builder = new ComponentBuilder();
-            for (int y = 0; y < 3; y++)
-            {
-                var row = new ActionRowBuilder();
-                for (int x = 0; x < 3; x++)
-                {
-                    string label = board[x, y] == ' ' ? "⬜" : board[x, y] == 'X' ? "❌" : "⭕";
-                    row.WithButton(label, $"{x},{y}", ButtonStyle.Secondary, disabled: board[x, y] != ' ');
-                }
-                builder.AddRow(row);
-            }
-            return builder.Build();
-        }
-
-        public async Task HandleButton(SocketMessageComponent component)
-        {
-            var coords = component.Data.CustomId.Split(',');
-            int x = int.Parse(coords[0]);
-            int y = int.Parse(coords[1]);
-
-            if (component.User.Id != currentPlayer.Id)
-            {
-                await component.RespondAsync("❌ It's not your turn!", ephemeral: true);
-                return;
-            }
-
-            if (board[x, y] != ' ')
-            {
-                await component.RespondAsync("❌ That spot is already taken!", ephemeral: true);
-                return;
-            }
-
-            board[x, y] = GetSymbol(currentPlayer);
-
-            if (CheckWin())
-            {
-                IsFinished = true;
-                await component.UpdateAsync(msg =>
-                {
-                    msg.Embed = new EmbedBuilder()
-                        .WithTitle("Tic Tac Toe")
-                        .WithDescription(BuildBoardVisual())
-                        .WithColor(Color.Green)
-                        .WithFooter($"{currentPlayer.Username} wins!")
-                        .Build();
-                    msg.Components = new ComponentBuilder().Build();
-                });
-                return;
-            }
-
-            if (IsDraw())
-            {
-                IsFinished = true;
-                await component.UpdateAsync(msg =>
-                {
-                    msg.Embed = new EmbedBuilder()
-                        .WithTitle("Tic Tac Toe")
-                        .WithDescription(BuildBoardVisual())
-                        .WithColor(Color.Orange)
-                        .WithFooter("It's a draw!")
-                        .Build();
-                    msg.Components = new ComponentBuilder().Build();
-                });
-                return;
-            }
-
-            currentPlayer = currentPlayer.Id == Player1.Id ? Player2 : Player1;
 
             await component.UpdateAsync(msg =>
             {
-                msg.Embed = BuildGameEmbed();
-                msg.Components = BuildGameButtons();
+                msg.Embed = embed;
+                msg.Components = new ComponentBuilder().Build();
             });
+
+            return;
         }
 
+        if (!customId.StartsWith("ttt_")) return;
 
-        private char GetSymbol(SocketGuildUser user) => user.Id == Player1.Id ? 'X' : 'O';
+        var parts = customId.Split('_');
+        if (parts.Length != 3 || !int.TryParse(parts[1], out int row) || !int.TryParse(parts[2], out int col))
+            return;
 
-        private string BuildBoardVisual()
+        if (!ActiveGames.TryGetValue(component.Channel.Id, out var gameState))
         {
-            var sb = new StringBuilder();
-            for (int y = 0; y < 3; y++)
+            await component.RespondAsync("No active game in this channel.", ephemeral: true);
+            return;
+        }
+
+        if (component.User.Id != gameState.PlayerX && component.User.Id != gameState.PlayerO)
+        {
+            await component.RespondAsync("❌ You're not part of this game.", ephemeral: true);
+            return;
+        }
+
+        if (component.User.Id != gameState.CurrentPlayer)
+        {
+            await component.RespondAsync("❌ It's not your turn!", ephemeral: true);
+            return;
+        }
+
+        if (gameState.Board[row, col] != ' ')
+        {
+            await component.RespondAsync("❌ That cell is already taken.", ephemeral: true);
+            return;
+        }
+
+        gameState.Board[row, col] = gameState.CurrentSymbol;
+        gameState.SwitchTurn();
+
+        string message;
+        var win = gameState.CheckWin();
+        var draw = gameState.CheckDraw();
+
+        if (win)
+        {
+            message = $"🎉 Game over! {MentionUser(gameState.LastPlayer)} wins!";
+            ActiveGames.Remove(component.Channel.Id);
+        }
+        else if (draw)
+        {
+            message = "🤝 Game over! It's a draw!";
+            ActiveGames.Remove(component.Channel.Id);
+        }
+        else
+        {
+            message = $"{MentionUser(gameState.CurrentPlayer)}'s turn ({(gameState.CurrentSymbol == 'X' ? "❌" : "⭕")})";
+        }
+
+        var embedUpdate = new EmbedBuilder()
+            .WithTitle("Tic Tac Toe")
+            .WithDescription(message)
+            .WithColor(win ? Color.Green : (draw ? Color.Orange : Color.Blue))
+            .Build();
+
+        var components = BuildBoard(gameState.Board, disabled: win || draw);
+        if (!win && !draw)
+        {
+            components.AddRow(new ActionRowBuilder().WithButton("End Game", "ttt_endgame", ButtonStyle.Danger));
+        }
+
+        await component.UpdateAsync(msg =>
+        {
+            msg.Embed = embedUpdate;
+            msg.Components = components.Build();
+        });
+    }
+
+    private static ComponentBuilder BuildBoard(char[,] board, bool disabled)
+    {
+        var builder = new ComponentBuilder();
+
+        for (int row = 0; row < 3; row++)
+        {
+            var actionRow = new ActionRowBuilder();
+
+            for (int col = 0; col < 3; col++)
             {
-                for (int x = 0; x < 3; x++)
+                var label = board[row, col] switch
                 {
-                    sb.Append(board[x, y] == ' ' ? "⬜" : board[x, y] == 'X' ? "❌" : "⭕");
-                }
-                sb.AppendLine();
+                    'X' => "❌",
+                    'O' => "⭕",
+                    _ => "⬜"
+                };
+
+                actionRow.WithButton(
+                    label: label,
+                    customId: $"ttt_{row}_{col}",
+                    style: ButtonStyle.Secondary,
+                    emote: null,
+                    disabled: disabled || board[row, col] != ' '
+                );
             }
-            return sb.ToString();
+
+            builder.AddRow(actionRow);
         }
 
-        private bool IsDraw()
+        return builder;
+    }
+
+    private static string MentionUser(ulong userId) => $"<@{userId}>";
+
+    private class GameState
+    {
+        public ulong PlayerX { get; }
+        public ulong PlayerO { get; }
+        public ulong CurrentPlayer { get; private set; }
+        public ulong LastPlayer { get; private set; }
+        public char CurrentSymbol => CurrentPlayer == PlayerX ? 'X' : 'O';
+        public char[,] Board { get; } = new char[3, 3]
         {
-            foreach (var cell in board)
-                if (cell == ' ') return false;
-            return true;
+            { ' ', ' ', ' ' },
+            { ' ', ' ', ' ' },
+            { ' ', ' ', ' ' }
+        };
+
+        public GameState(ulong playerX, ulong playerO)
+        {
+            PlayerX = playerX;
+            PlayerO = playerO;
+            CurrentPlayer = new Random().Next(2) == 0 ? PlayerX : PlayerO;
         }
 
-        private bool CheckWin()
+        public void SwitchTurn()
+        {
+            LastPlayer = CurrentPlayer;
+            CurrentPlayer = CurrentPlayer == PlayerX ? PlayerO : PlayerX;
+        }
+
+        public bool CheckWin()
         {
             for (int i = 0; i < 3; i++)
             {
-                if (board[i, 0] != ' ' && board[i, 0] == board[i, 1] && board[i, 1] == board[i, 2]) return true;
-                if (board[0, i] != ' ' && board[0, i] == board[1, i] && board[1, i] == board[2, i]) return true;
+                if (Board[i, 0] != ' ' && Board[i, 0] == Board[i, 1] && Board[i, 1] == Board[i, 2]) return true;
+                if (Board[0, i] != ' ' && Board[0, i] == Board[1, i] && Board[1, i] == Board[2, i]) return true;
             }
+            return Board[0, 0] != ' ' && Board[0, 0] == Board[1, 1] && Board[1, 1] == Board[2, 2]
+                || Board[0, 2] != ' ' && Board[0, 2] == Board[1, 1] && Board[1, 1] == Board[2, 0];
+        }
 
-            if (board[0, 0] != ' ' && board[0, 0] == board[1, 1] && board[1, 1] == board[2, 2]) return true;
-            if (board[0, 2] != ' ' && board[0, 2] == board[1, 1] && board[1, 1] == board[2, 0]) return true;
-
-            return false;
+        public bool CheckDraw()
+        {
+            foreach (var cell in Board)
+                if (cell == ' ') return false;
+            return !CheckWin();
         }
     }
 }
