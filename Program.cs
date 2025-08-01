@@ -125,6 +125,10 @@ class Program
             {
                 builder.AddOption("opponent", ApplicationCommandOptionType.User, "User to challenge", isRequired: true);
             }
+            else if (command.Name == "slap")
+            {
+                builder.AddOption("user", ApplicationCommandOptionType.User, "User to slap", isRequired: true);
+            }
 
 
             await guild.CreateApplicationCommandAsync(builder.Build());
