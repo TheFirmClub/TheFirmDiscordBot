@@ -253,6 +253,7 @@ public class TicTacToeCommand : ISlashCommand
             return Board[0, 0] != ' ' && Board[0, 0] == Board[1, 1] && Board[1, 1] == Board[2, 2]
                 || Board[0, 2] != ' ' && Board[0, 2] == Board[1, 1] && Board[1, 1] == Board[2, 0];
         }
+        
 
         public bool CheckDraw()
         {
