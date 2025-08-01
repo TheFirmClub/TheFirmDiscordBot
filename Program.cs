@@ -16,11 +16,13 @@ class Program
 
     private ulong _logChannelId = 1394449608603603085;
 
+    // 🔹 FiveM integration
+    private FiveMChannelUpdater? _fivemUpdater;
+
     public static Task Main(string[] args) => new Program().MainAsync();
 
     public async Task MainAsync()
     {
-        // Load config
         _config = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: false)
@@ -32,6 +34,7 @@ class Program
             Console.WriteLine("❌ Invalid or missing GuildId in appsettings.json");
             return;
         }
+
         _client = new DiscordSocketClient(new DiscordSocketConfig
         {
             GatewayIntents = GatewayIntents.Guilds |
@@ -45,22 +48,19 @@ class Program
 
         _client.Log += Log;
         _client.Ready += async () => await ReadyAsync(guildId);
-        
+
         _commandHandler = new SlashCommandHandler(_config);
         _ticketButtonHandler = new TicketButtonHandler(_config);
-        
+
         _client.SlashCommandExecuted += SlashCommandExecuted;
         _client.SelectMenuExecuted += _supportMenuHandler.HandleAsync;
         _client.ModalSubmitted += new SupportModalHandler().HandleModalAsync;
         _client.ButtonExecuted += async component =>
         {
-            // First handle ticket buttons
             await _ticketButtonHandler.HandleAsync(component);
-
-            // Then handle tic tac toe buttons
             await TicTacToeCommand.HandleButton(component);
         };
-        
+
         ulong roleLogChannelId = 1393726185804005497;
         _roleLogger = new RoleLogger(_client, roleLogChannelId);
 
@@ -93,50 +93,49 @@ class Program
                 .WithDescription(command.Description);
 
             if (command.Name == "ticketadduser")
-            {
-                builder.AddOption("user", ApplicationCommandOptionType.User, "User to add to the ticket", isRequired: true);
-            }
+                builder.AddOption("user", ApplicationCommandOptionType.User, "User to add to the ticket", true);
             else if (command.Name == "ticketaddrole")
-            {
-                builder.AddOption("role", ApplicationCommandOptionType.Role, "Role to add to the ticket", isRequired: true);
-            }
+                builder.AddOption("role", ApplicationCommandOptionType.Role, "Role to add to the ticket", true);
             else if (command.Name == "ticketrestrict")
-            {
-                builder.AddOption("role", ApplicationCommandOptionType.Role, "Role to restrict this ticket to", isRequired: true);
-            }
+                builder.AddOption("role", ApplicationCommandOptionType.Role, "Role to restrict this ticket to", true);
             else if (command.Name == "tempticket")
-            {
-                builder.AddOption("user", ApplicationCommandOptionType.User, "User to open the temporary ticket for", isRequired: true);
-            }
+                builder.AddOption("user", ApplicationCommandOptionType.User, "User to open the temporary ticket for", true);
             else if (command.Name == "addrole" || command.Name == "removerole")
             {
-                builder.AddOption("user", ApplicationCommandOptionType.User, "Target user", isRequired: true);
+                builder.AddOption("user", ApplicationCommandOptionType.User, "Target user", true);
                 builder.AddOption("role", ApplicationCommandOptionType.Role, "Role to assign/remove", true);
             }
             else if (command.Name == "checkrole")
-            {
-                builder.AddOption("user", ApplicationCommandOptionType.User, "User to check", isRequired: true);
-            }
+                builder.AddOption("user", ApplicationCommandOptionType.User, "User to check", true);
             else if (command.Name == "8ball")
-            {
-                builder.AddOption("question", ApplicationCommandOptionType.String, "Your question for the magic 8-ball", isRequired: true);
-            }
+                builder.AddOption("question", ApplicationCommandOptionType.String, "Your question for the magic 8-ball", true);
             else if (command.Name == "tictactoe")
-            {
-                builder.AddOption("opponent", ApplicationCommandOptionType.User, "User to challenge", isRequired: true);
-            }
+                builder.AddOption("opponent", ApplicationCommandOptionType.User, "User to challenge", true);
             else if (command.Name == "slap")
-            {
-                builder.AddOption("user", ApplicationCommandOptionType.User, "User to slap", isRequired: true);
-            }
-
+                builder.AddOption("user", ApplicationCommandOptionType.User, "User to slap", true);
 
             await guild.CreateApplicationCommandAsync(builder.Build());
         }
 
         await new SupportPanelSender().SendSupportPanelAsync(_client);
-
         Console.WriteLine("✅ Commands registered and support panel sent");
+
+        await StartFiveMUpdater(guildId);
+    }
+
+    private async Task StartFiveMUpdater(ulong guildId)
+    {
+        string? fivemUrl = _config["FiveM:ServerUrl"];
+        string? channelIdStr = _config["FiveM:ChannelId"];
+
+        if (string.IsNullOrWhiteSpace(fivemUrl) || !ulong.TryParse(channelIdStr, out ulong channelId))
+        {
+            await Log(new LogMessage(LogSeverity.Warning, "FiveM", "⚠️ FiveM URL or ChannelId missing in appsettings.json"));
+            return;
+        }
+
+        _fivemUpdater = new FiveMChannelUpdater(_client!, fivemUrl, guildId, channelId, Log);
+        _fivemUpdater.Start();
     }
 
     private async Task SlashCommandExecuted(SocketSlashCommand command)

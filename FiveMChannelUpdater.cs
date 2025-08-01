@@ -1,7 +1,7 @@
+using Discord;
 using Discord.WebSocket;
 using System.Net.Http;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 public class FiveMChannelUpdater
 {
@@ -9,65 +9,74 @@ public class FiveMChannelUpdater
     private readonly string _fivemUrl;
     private readonly ulong _guildId;
     private readonly ulong _channelId;
+    private readonly Func<LogMessage, Task>? _logFunc;
     private Timer? _timer;
+    private static readonly HttpClient _httpClient = new();
 
-    public FiveMChannelUpdater(DiscordSocketClient client, string fivemUrl, ulong guildId, ulong channelId)
+    public FiveMChannelUpdater(
+        DiscordSocketClient client,
+        string fivemUrl,
+        ulong guildId,
+        ulong channelId,
+        Func<LogMessage, Task>? logFunc = null)
     {
         _client = client;
         _fivemUrl = fivemUrl;
         _guildId = guildId;
         _channelId = channelId;
+        _logFunc = logFunc;
     }
 
     public void Start()
     {
-        Console.WriteLine("⏱️ FiveMChannelUpdater: Timer started");
+        _logFunc?.Invoke(new LogMessage(LogSeverity.Info, "FiveM", "⏱️ FiveMChannelUpdater started"));
 
         _timer = new Timer(async _ =>
         {
             try
             {
-                using var httpClient = new HttpClient();
-                var url = $"{_fivemUrl}/players.json";
-
-                Console.WriteLine($"🌐 Fetching FiveM players from {url}");
-                var json = await httpClient.GetStringAsync(url);
-
+                string url = $"{_fivemUrl.TrimEnd('/')}/players.json";
+                var json = await _httpClient.GetStringAsync(url);
                 var players = JsonSerializer.Deserialize<List<JsonElement>>(json);
                 int playerCount = players?.Count ?? 0;
-
-                Console.WriteLine($"✅ FiveM players online: {playerCount}");
 
                 var guild = _client.GetGuild(_guildId);
                 if (guild == null)
                 {
-                    Console.WriteLine($"❌ Guild not found: {_guildId}");
+                    await Log(LogSeverity.Warning, $"Guild not found: {_guildId}");
                     return;
                 }
 
                 var channel = guild.GetVoiceChannel(_channelId);
                 if (channel == null)
                 {
-                    Console.WriteLine($"❌ Voice channel not found: {_channelId}");
+                    await Log(LogSeverity.Warning, $"Voice channel not found: {_channelId}");
                     return;
                 }
 
                 string newName = $"🎮┃Online Players: {playerCount}";
+
                 if (channel.Name != newName)
                 {
                     await channel.ModifyAsync(props => props.Name = newName);
-                    Console.WriteLine($"🔄 Channel name updated to: {newName}");
+                    await Log(LogSeverity.Info, $"🔄 Channel name updated to: {newName}");
                 }
                 else
                 {
-                    Console.WriteLine("⏸️ Channel name already up to date, skipping.");
+                    await Log(LogSeverity.Debug, $"⏸️ Channel name already up to date: {newName}");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Error updating FiveM channel: {ex.Message}");
+                await Log(LogSeverity.Error, $"❌ Error updating FiveM channel: {ex.Message}");
             }
 
-        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(30)); // every 30 seconds
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+    }
+
+    private Task Log(LogSeverity severity, string message)
+    {
+        Console.WriteLine(message);
+        return _logFunc?.Invoke(new LogMessage(severity, "FiveM", message)) ?? Task.CompletedTask;
     }
 }
