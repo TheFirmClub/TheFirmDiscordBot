@@ -88,7 +88,7 @@ public class TicTacToeCommand : ISlashCommand
                 var row = new ActionRowBuilder();
                 for (int x = 0; x < 3; x++)
                 {
-                    string label = board[x, y] == ' ' ? " " : board[x, y].ToString();
+                    string label = board[x, y] == ' ' ? "⬜" : board[x, y] == 'X' ? "❌" : "⭕";
                     row.WithButton(label, $"{x},{y}", ButtonStyle.Secondary, disabled: board[x, y] != ' ');
                 }
                 builder.AddRow(row);
