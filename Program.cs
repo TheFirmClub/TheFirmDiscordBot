@@ -110,6 +110,10 @@ class Program
             {
                 builder.AddOption("user", ApplicationCommandOptionType.User, "User to check", isRequired: true);
             }
+            else if (command.Name == "8ball")
+            {
+                builder.AddOption("question", ApplicationCommandOptionType.String, "Your question for the magic 8-ball", isRequired: true);
+            }
 
             await guild.CreateApplicationCommandAsync(builder.Build());
         }
