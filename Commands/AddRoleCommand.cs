@@ -24,12 +24,11 @@ public class AddRoleCommand : ISlashCommand
         }
 
         var user = (SocketGuildUser)command.Data.Options.First(o => o.Name == "user").Value;
-        var roleName = command.Data.Options.First(o => o.Name == "role").Value.ToString();
-        var role = guild.Roles.FirstOrDefault(r => r.Name.Equals(roleName, System.StringComparison.OrdinalIgnoreCase));
+        var role = (SocketRole)command.Data.Options.First(o => o.Name == "role").Value;
 
         if (role == null)
         {
-            await command.RespondAsync($"❌ Role `{roleName}` not found.");
+            await command.RespondAsync("❌ Role not found.");
             return;
         }
 

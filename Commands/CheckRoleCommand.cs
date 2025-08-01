@@ -17,6 +17,7 @@ public class CheckRoleCommand : ISlashCommand
         }
 
         var user = (SocketGuildUser)command.Data.Options.First(o => o.Name == "user").Value;
+
         var roles = user.Roles.Where(r => !r.IsEveryone).Select(r => r.Name);
         var roleList = roles.Any() ? string.Join(", ", roles) : "*No roles*";
 

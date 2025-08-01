@@ -104,7 +104,7 @@ class Program
             else if (command.Name == "addrole" || command.Name == "removerole")
             {
                 builder.AddOption("user", ApplicationCommandOptionType.User, "Target user", isRequired: true);
-                builder.AddOption("role", ApplicationCommandOptionType.String, "Role name", isRequired: true);
+                builder.AddOption("role", ApplicationCommandOptionType.Role, "Role to assign/remove", true);
             }
             else if (command.Name == "checkrole")
             {
