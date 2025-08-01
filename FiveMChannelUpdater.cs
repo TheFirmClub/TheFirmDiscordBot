@@ -11,7 +11,6 @@ public class FiveMChannelUpdater
     private readonly ulong _channelId;
     private readonly Func<LogMessage, Task>? _logFunc;
     private Timer? _timer;
-    private static readonly HttpClient _httpClient = new();
 
     public FiveMChannelUpdater(
         DiscordSocketClient client,
@@ -35,9 +34,30 @@ public class FiveMChannelUpdater
         {
             try
             {
+                using var httpClient = new HttpClient();
                 string url = $"{_fivemUrl.TrimEnd('/')}/players.json";
-                var json = await _httpClient.GetStringAsync(url);
-                var players = JsonSerializer.Deserialize<List<JsonElement>>(json);
+
+                var response = await httpClient.GetStringAsync(url);
+
+                if (string.IsNullOrWhiteSpace(response))
+                {
+                    await Log(LogSeverity.Warning, $"⚠️ Empty response from {url}");
+                    return;
+                }
+
+                await Log(LogSeverity.Debug, $"📥 Raw FiveM response: {response}");
+
+                List<JsonElement>? players;
+                try
+                {
+                    players = JsonSerializer.Deserialize<List<JsonElement>>(response);
+                }
+                catch (JsonException je)
+                {
+                    await Log(LogSeverity.Error, $"❌ Failed to parse FiveM JSON: {je.Message}");
+                    return;
+                }
+
                 int playerCount = players?.Count ?? 0;
 
                 var guild = _client.GetGuild(_guildId);
