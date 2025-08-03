@@ -50,7 +50,7 @@ public class StoreEmbed
                 .WithDescription($@"
 🌟 **Support the server, unlock exclusive perks, and enhance your roleplay experience!**
 
-🔗 **[Click here to visit the store!]({StoreUrl})**
+🔗 **[https://store.thefirm.club]({StoreUrl})**
 
 🎁 Every purchase helps us improve the server for the entire community.
 ")
@@ -64,8 +64,10 @@ public class StoreEmbed
                 .WithCurrentTimestamp()
                 .Build();
 
-            await channel.SendMessageAsync(embed: embed);
-            Console.WriteLine("[StoreEmbed] Fancy embed sent.");
+            var button = new ComponentBuilder()
+                .WithButton("Visit Store", style: ButtonStyle.Link, url: StoreUrl);
+
+            await channel.SendMessageAsync(embed: embed, components: button.Build());
         }
         catch (Exception ex)
         {
