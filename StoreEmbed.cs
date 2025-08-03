@@ -55,12 +55,11 @@ public class StoreEmbed
 
 🎁 Every purchase helps us improve the server for the entire community.
 ")
-                .WithThumbnailUrl(LogoUrl)
                 .WithImageUrl(BannerImageUrl)
                 .WithColor(new Color(0x7289DA))
                 .WithFooter(footer =>
                 {
-                    footer.Text = "Thank you for supporting The Firm ♥";
+                    footer.Text = "The Firm";
                     footer.IconUrl = LogoUrl;
                 })
                 .WithCurrentTimestamp()
