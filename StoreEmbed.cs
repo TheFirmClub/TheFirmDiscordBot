@@ -45,7 +45,6 @@ public class StoreEmbed
                 Console.WriteLine("[StoreEmbed] Message already exists. Skipping.");
                 return;
             }
-
             var embed = new EmbedBuilder()
                 .WithTitle(EmbedTitle)
                 .WithDescription($@"
