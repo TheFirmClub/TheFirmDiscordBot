@@ -21,6 +21,9 @@ public class SlashCommandHandler
         var ForumLinkCommand = new ForumLinkCommand();
         _commands.Add(ForumLinkCommand.Name, ForumLinkCommand);
 
+        var clearCacheCommand = new ClearCacheCommand();
+        _commands.Add(clearCacheCommand.Name, clearCacheCommand);
+
         var cleanupCommand = new CleanupCommand();
         _commands.Add(cleanupCommand.Name, cleanupCommand);
 
