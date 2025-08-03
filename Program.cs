@@ -49,6 +49,8 @@ class Program
         _client.Log += Log;
         _client.Ready += async () => await ReadyAsync(guildId);
 
+        new StoreEmbed(_client);
+
         _commandHandler = new SlashCommandHandler(_config);
         _ticketButtonHandler = new TicketButtonHandler(_config);
 
@@ -121,6 +123,7 @@ class Program
         Console.WriteLine("✅ Commands registered and support panel sent");
 
         await StartFiveMUpdater(guildId);
+
     }
 
     private async Task StartFiveMUpdater(ulong guildId)
