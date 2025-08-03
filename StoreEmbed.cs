@@ -50,7 +50,7 @@ public class StoreEmbed
                 .WithDescription($@"
 🌟 **Support the server, unlock exclusive perks, and enhance your roleplay experience!**
 
-🔗 **[https://store.thefirm.club]({StoreUrl})**
+🔗 **https://store.thefirm.club**
 
 🎁 Every purchase helps us improve the server for the entire community.
 ")
