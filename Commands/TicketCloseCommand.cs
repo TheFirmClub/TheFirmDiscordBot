@@ -36,78 +36,39 @@ public class TicketCloseCommand : ISlashCommand
 
     public async Task CloseTicketAsync(SocketTextChannel channel, SocketGuildUser moderator)
     {
-        Console.WriteLine(
-            $"[DEBUG] CloseTicketAsync STARTED for channel: {channel.Name} ({channel.Id}) by moderator: {moderator.Username}");
+        var messages = await channel.GetMessagesAsync(int.MaxValue).FlattenAsync();
+        var log = string.Join("\n", messages.OrderBy(m => m.Timestamp).Select(m =>
+            $"[{m.Timestamp.UtcDateTime}] {m.Author.Username}: {m.Content}"));
 
-        try
+        string path = Path.GetTempFileName();
+        await File.WriteAllTextAsync(path, log);
+
+        string fileName = $"{channel.Name}-transcript.txt";
+
+        // ✅ Upload to S3
+        var s3 = new S3Bucket(_config);
+        string s3Url = await s3.UploadTranscriptAsync(path, fileName);
+
+        var logChannel = channel.Guild.GetTextChannel(1394405064520499415);
+        if (logChannel != null)
         {
-            Console.WriteLine("[DEBUG] Fetching messages...");
-            var messages = await channel.GetMessagesAsync(int.MaxValue).FlattenAsync();
-            Console.WriteLine($"[DEBUG] Fetched {messages.Count()} messages");
+            // 📎 Post S3 link
+            await logChannel.SendMessageAsync($"📁 Transcript for ticket `{channel.Name}` uploaded by {moderator.Mention}:\n{s3Url}");
 
-            var log = string.Join("\n", messages.OrderBy(m => m.Timestamp).Select(m =>
-                $"[{m.Timestamp.UtcDateTime}] {m.Author.Username}: {m.Content}"));
+            var logEmbed = new EmbedBuilder()
+                .WithTitle("📕 Ticket Closed")
+                .AddField("Closed By", moderator.Mention, true)
+                .AddField("Channel", $"{channel.Name} (`{channel.Id}`)", true)
+                .WithColor(Color.DarkRed)
+                .WithTimestamp(DateTimeOffset.UtcNow)
+                .Build();
 
-            string path = Path.GetTempFileName();
-            Console.WriteLine($"[DEBUG] Writing transcript to temp file: {path}");
-            await File.WriteAllTextAsync(path, log);
-
-            string fileName = $"{channel.Name}-transcript.txt";
-
-            // ✅ Upload to S3
-            Console.WriteLine("[DEBUG] Uploading transcript to S3...");
-            var s3 = new S3Bucket(_config);
-
-            string s3Url = "";
-            try
-            {
-                s3Url = await s3.UploadTranscriptAsync(path, fileName);
-                Console.WriteLine($"[DEBUG] Uploaded to S3. URL: {s3Url}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[ERROR] Failed to upload to S3: {ex.Message}");
-            }
-
-            var logChannel = channel.Guild.GetTextChannel(1394405064520499415);
-            if (logChannel != null)
-            {
-                Console.WriteLine(
-                    $"[DEBUG] Sending transcript and log embed to log channel: {logChannel.Name} ({logChannel.Id})");
-
-                await logChannel.SendMessageAsync(
-                    $"📁 Transcript for ticket `{channel.Name}` uploaded by {moderator.Mention}:\n{s3Url}");
-
-                var logEmbed = new EmbedBuilder()
-                    .WithTitle("📕 Ticket Closed")
-                    .AddField("Closed By", moderator.Mention, true)
-                    .AddField("Channel", $"{channel.Name} (`{channel.Id}`)", true)
-                    .WithColor(Color.DarkRed)
-                    .WithTimestamp(DateTimeOffset.UtcNow)
-                    .Build();
-
-                await logChannel.SendMessageAsync(embed: logEmbed);
-            }
-            else
-            {
-                Console.WriteLine("[WARN] Log channel not found.");
-            }
-
-            Console.WriteLine("[DEBUG] Deleting temp file...");
-            File.Delete(path);
-
-            Console.WriteLine($"[DEBUG] Deleting channel: {channel.Name} ({channel.Id})");
-            await channel.DeleteAsync();
-            Console.WriteLine("[DEBUG] Channel deleted.");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[ERROR] Exception in CloseTicketAsync: {ex}");
+            await logChannel.SendMessageAsync(embed: logEmbed);
         }
 
-        Console.WriteLine("[DEBUG] CloseTicketAsync COMPLETED");
+        File.Delete(path);
+        await channel.DeleteAsync();
     }
-
 
     public static class PermissionHelper
     {
