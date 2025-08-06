@@ -19,7 +19,16 @@ public class TicketCloseCommand : ISlashCommand
     }
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
-        var user = command.User as SocketGuildUser;
+        var guildChannel = command.Channel as SocketGuildChannel;
+        if (guildChannel == null)
+        {
+            await command.RespondAsync("❌ This command must be used in a server channel.", ephemeral: true);
+            return;
+        }
+
+        SocketGuild guild = guildChannel.Guild;
+        SocketGuildUser user = guild.GetUser(command.User.Id); // ✅ use .GetUser here
+
         if (!PermissionHelper.IsSeniorModerator(user))
         {
             await command.RespondAsync("❌ You do not have permission to use this command.", ephemeral: true);
@@ -28,7 +37,6 @@ public class TicketCloseCommand : ISlashCommand
 
         if (command.Channel is SocketTextChannel channel)
         {
-            // ✅ Respond first before deletion
             await command.RespondAsync("✅ Ticket is being closed and archived...", ephemeral: true);
             await CloseTicketAsync(channel, user);
         }
