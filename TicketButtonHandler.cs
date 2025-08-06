@@ -24,22 +24,15 @@ public class TicketButtonHandler
     {
         if (!component.Data.CustomId.StartsWith("ticket_"))
             return;
-
-        var guild = (component.Channel as SocketGuildChannel)?.Guild;
-        if (guild == null)
-        {
-            await component.RespondAsync("⚠️ Could not resolve guild.", ephemeral: true);
-            return;
-        }
-
-        var user = guild.GetUser(component.User.Id); // Refetch full user
-        if (user == null)
-        {
-            await component.RespondAsync("⚠️ Could not resolve user in guild.", ephemeral: true);
-            return;
-        }
-
+        
+        var user = component.User as SocketGuildUser;
         bool isMod = user.Roles.Any(r => _moderatorRoleIds.Contains(r.Id));
+
+        if (!isMod)
+        {
+            await component.RespondAsync("❌ Only moderators can use this.", ephemeral: true);
+            return;
+        }
 
         var originalMessage = component.Message;
 
