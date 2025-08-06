@@ -43,7 +43,7 @@ class Program
                              GatewayIntents.GuildMembers |
                              GatewayIntents.GuildPresences |
                              GatewayIntents.GuildMessageReactions,
-            LogLevel = LogSeverity.Verbose
+            LogLevel = LogSeverity.Info
         });
 
         _client.Log += Log;
@@ -151,7 +151,8 @@ class Program
     {
         Console.WriteLine(msg.ToString());
 
-        if (msg.Severity >= LogSeverity.Verbose)
+        if (msg.Severity == LogSeverity.Info || msg.Severity == LogSeverity.Warning ||
+            msg.Severity == LogSeverity.Error || msg.Severity == LogSeverity.Critical)
         {
             var channel = _client?.GetChannel(_logChannelId) as IMessageChannel;
             if (channel != null)
