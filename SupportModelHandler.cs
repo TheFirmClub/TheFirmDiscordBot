@@ -89,11 +89,22 @@ public class SupportModalHandler
             "reportstaff" => "Report a staff",
             _ => "Support"
         };
-        
-        var supportRole = guild.GetRole(1393623589122736238);
-        if (supportRole != null)
+
+        if (ticketType == "reportstaff")
         {
-            await channel.SendMessageAsync($"{supportRole.Mention}");
+            var headModRole = guild.GetRole(1393728468608487594); // Head Moderator
+            if (headModRole != null)
+            {
+                await channel.SendMessageAsync($"{headModRole.Mention}");
+            }
+        }
+        else
+        {
+            var supportRole = guild.GetRole(1393623589122736238); // Regular Moderator
+            if (supportRole != null)
+            {
+                await channel.SendMessageAsync($"{supportRole.Mention}");
+            }
         }
 
         await channel.SendMessageAsync($"Thank you for creating a **{fullTypeLabel}** ticket!\n\n👋 {user.Mention}");
