@@ -45,6 +45,7 @@ public class SlashCommandHandler
         _commands.Add("8ball", new Magic8BallCommand());
         _commands.Add("tictactoe", new TicTacToeCommand());
         _commands.Add("slap", new SlapCommand());
+        _commands.Add("rps", new RpsCommand());
 
     }
 
