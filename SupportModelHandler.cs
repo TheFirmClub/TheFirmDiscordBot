@@ -52,9 +52,17 @@ public class SupportModalHandler
         if (ticketType == "ban" || ticketType == "reportstaff")
         {
             var headModRole = guild.GetRole(1393728468608487594); // Head Moderator
+            var asstHeadModRole = guild.GetRole(1405330877440983130); // Assistant Head Moderator
+
             if (headModRole != null)
             {
                 overwrites.Add(new Overwrite(headModRole.Id, PermissionTarget.Role,
+                    new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)));
+            }
+
+            if (asstHeadModRole != null)
+            {
+                overwrites.Add(new Overwrite(asstHeadModRole.Id, PermissionTarget.Role,
                     new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)));
             }
         }
@@ -90,12 +98,18 @@ public class SupportModalHandler
             _ => "Support"
         };
 
-        if (ticketType == "reportstaff")
+        if (ticketType == "reportstaff" || ticketType == "ban")
         {
             var headModRole = guild.GetRole(1393728468608487594); // Head Moderator
-            if (headModRole != null)
+            var asstHeadModRole = guild.GetRole(1405330877440983130); // Assistant Head Moderator
+
+            string mentions = "";
+            if (headModRole != null) mentions += $"{headModRole.Mention} ";
+            if (asstHeadModRole != null) mentions += $"{asstHeadModRole.Mention} ";
+
+            if (!string.IsNullOrWhiteSpace(mentions))
             {
-                await channel.SendMessageAsync($"{headModRole.Mention}");
+                await channel.SendMessageAsync(mentions.Trim());
             }
         }
         else
