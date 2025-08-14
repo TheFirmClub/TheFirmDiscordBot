@@ -10,19 +10,8 @@ public class TriviaCommand : ISlashCommand
     public string Name => "trivia";
     public string Description => "Start a quick multiple-choice trivia round.";
 
-    // ChannelId -> active round
+    // ===== Active round state (per channel) =====
     private static readonly Dictionary<ulong, State> Active = new();
-
-    private readonly ulong[] allowedRoles = new ulong[]
-    {
-        1393729574537396355,
-        1393623589122736238,
-        1393590761953558608
-    };
-
-    private bool HasPermission(SocketGuildUser u) => u.Roles.Any(r => allowedRoles.Contains(r.Id));
-
-    private record Question(string Category, string Prompt, string Correct, string[] Wrong);
 
     private record State(
         ulong MessageId,
@@ -32,9 +21,296 @@ public class TriviaCommand : ISlashCommand
         string[] Options,
         string Prompt,
         string Category,
-        bool Finished);
+        bool Finished
+    );
 
-    // --- Tiny question bank (add more easily) ---
+    // ===== Permissions =====
+    private readonly ulong[] allowedRoles = new ulong[]
+    {
+        1393729574537396355,
+        1393623589122736238,
+        1393590761953558608
+    };
+
+    private bool HasPermission(SocketGuildUser u) => u.Roles.Any(r => allowedRoles.Contains(r.Id));
+
+    // ===== No-repeat decks (per channel + category) =====
+    private class Deck
+    {
+        public Queue<int> Order = new();
+        public Queue<int> Recent = new(); // sliding window of recently used indexes (within pool)
+        public DateTimeOffset LastReset = DateTimeOffset.MinValue;
+    }
+
+    // Keyed by $"{channelId}:{categoryOrALL}"
+    private static readonly Dictionary<string, Deck> Decks = new();
+
+    private const int RecentWindowSize = 20; // how many recent Qs to avoid
+    private static readonly TimeSpan DeckResetInterval = TimeSpan.FromHours(1); // periodic reset
+    private static readonly Random Rng = new();
+
+    private static void Shuffle<T>(IList<T> list)
+    {
+        for (int i = list.Count - 1; i > 0; i--)
+        {
+            int j = Rng.Next(i + 1);
+            (list[i], list[j]) = (list[j], list[i]);
+        }
+    }
+
+    private static void RebuildDeck(Deck deck, int poolSize)
+    {
+        var indices = Enumerable.Range(0, poolSize).ToList();
+        Shuffle(indices);
+        deck.Order.Clear();
+        foreach (var i in indices) deck.Order.Enqueue(i);
+        deck.LastReset = DateTimeOffset.UtcNow;
+    }
+
+    private static int GetNextQuestionIndex(Deck deck, int poolSize)
+    {
+        int safety = poolSize + 10;
+        while (safety-- > 0)
+        {
+            if (deck.Order.Count == 0) RebuildDeck(deck, poolSize);
+            var idx = deck.Order.Dequeue();
+
+            if (!deck.Recent.Contains(idx))
+            {
+                deck.Recent.Enqueue(idx);
+                while (deck.Recent.Count > RecentWindowSize)
+                    deck.Recent.Dequeue();
+                return idx;
+            }
+
+            // recently seen — push back for later
+            deck.Order.Enqueue(idx);
+        }
+
+        // Fallback (very rare)
+        var fallback = Rng.Next(poolSize);
+        deck.Recent.Enqueue(fallback);
+        while (deck.Recent.Count > RecentWindowSize)
+            deck.Recent.Dequeue();
+        return fallback;
+    }
+
+    private static Question PickQuestion(string? category, ulong channelId)
+    {
+        var pool = string.IsNullOrWhiteSpace(category)
+            ? Bank
+            : Bank.Where(q => q.Category.Equals(category, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        if (pool.Count == 0) pool = Bank;
+
+        var deckKey = $"{channelId}:{(string.IsNullOrWhiteSpace(category) ? "ALL" : category)}";
+        if (!Decks.TryGetValue(deckKey, out var deck))
+        {
+            deck = new Deck();
+            Decks[deckKey] = deck;
+            RebuildDeck(deck, pool.Count);
+        }
+
+        if (DateTimeOffset.UtcNow - deck.LastReset > DeckResetInterval || deck.Order.Count == 0)
+            RebuildDeck(deck, pool.Count);
+
+        int idxInPool = GetNextQuestionIndex(deck, pool.Count);
+        return pool[idxInPool];
+    }
+
+    // ===== Public API =====
+    public async Task ExecuteAsync(SocketSlashCommand command)
+    {
+        if (command.User is not SocketGuildUser user)
+        {
+            await command.RespondAsync("❌ Use this in a server.", ephemeral: true);
+            return;
+        }
+
+        if (!HasPermission(user))
+        {
+            await command.RespondAsync("❌ You don’t have permission.", ephemeral: true);
+            return;
+        }
+
+        var channelId = command.ChannelId!.Value;
+        if (Active.ContainsKey(channelId))
+        {
+            await command.RespondAsync("⚠️ There’s already a trivia running in this channel.", ephemeral: true);
+            return;
+        }
+
+        // optional category
+        string? category = command.Data.Options
+            .FirstOrDefault(o => o.Name.Equals("category", StringComparison.OrdinalIgnoreCase))
+            ?.Value as string;
+
+        var q = PickQuestion(category, channelId);
+
+        // Build options (A-D) with shuffled order
+        var opts = new List<(string text, bool isCorrect)>
+        {
+            (q.Correct, true),
+            (q.Wrong[0], false),
+            (q.Wrong[1], false),
+            (q.Wrong[2], false),
+        };
+        Shuffle(opts);
+        var optionTexts = opts.Select(o => o.text).ToArray();
+        var correctIndex = Array.FindIndex(opts.ToArray(), o => o.isCorrect);
+
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
+
+        var labels = new[] { "A", "B", "C", "D" };
+        var embed = new EmbedBuilder()
+            .WithTitle($"🧠 Trivia — {q.Category}")
+            .WithDescription(
+                $"**{q.Prompt}**\n\n" +
+                string.Join("\n", optionTexts.Select((t, i) => $"**{labels[i]}.** {t}")) +
+                $"\n\n⏳ You have **30s**. First correct click wins!")
+            .WithColor(Color.Blue)
+            .WithFooter($"Ends ~ {deadline:HH:mm:ss} UTC")
+            .Build();
+
+        // Send initial with pending IDs, then stamp actual messageId
+        await command.RespondAsync(embed: embed, components: BuildButtons("pending", optionTexts.Length));
+        var msg = await command.GetOriginalResponseAsync();
+
+        Active[channelId] = new State(
+            MessageId: msg.Id,
+            ChannelId: msg.Channel.Id,
+            Deadline: deadline,
+            CorrectIndex: correctIndex,
+            Options: optionTexts,
+            Prompt: q.Prompt,
+            Category: q.Category,
+            Finished: false
+        );
+
+        await msg.ModifyAsync(m => m.Components = BuildButtons(msg.Id.ToString(), optionTexts.Length));
+
+        // Timeout task
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(31));
+            if (Active.TryGetValue(channelId, out var s) && s.MessageId == msg.Id && !s.Finished)
+            {
+                Active.Remove(channelId);
+                var expired = new EmbedBuilder()
+                    .WithTitle($"🧠 Trivia — {s.Category}")
+                    .WithDescription(
+                        $"**{s.Prompt}**\n\n⏰ Time’s up! No winner this round.\n\n**Answer:** {s.Options[s.CorrectIndex]}")
+                    .WithColor(Color.DarkGrey)
+                    .Build();
+
+                try
+                {
+                    await msg.ModifyAsync(mm =>
+                    {
+                        mm.Embed = expired;
+                        mm.Components = DisableButtons(s.MessageId.ToString(), s.Options.Length);
+                    });
+                }
+                catch
+                {
+                    /* message may be deleted; ignore */
+                }
+            }
+        });
+    }
+
+    // Call from your global ButtonExecuted
+    public static async Task HandleButton(SocketMessageComponent component)
+    {
+        if (component.Data.CustomId is null || !component.Data.CustomId.StartsWith("trivia:"))
+            return;
+
+        // trivia:pick:<messageId>:<index>
+        var parts = component.Data.CustomId.Split(':');
+        if (parts.Length != 4 || parts[1] != "pick") return;
+        if (!ulong.TryParse(parts[2], out var msgId)) return;
+        if (!int.TryParse(parts[3], out var pickIndex)) return;
+
+        var channelId = component.Channel.Id;
+        if (!Active.TryGetValue(channelId, out var state) || state.MessageId != msgId)
+        {
+            await component.RespondAsync("This trivia has ended.", ephemeral: true);
+            return;
+        }
+
+        if (state.Finished || DateTimeOffset.UtcNow > state.Deadline)
+        {
+            Active.Remove(channelId);
+            await component.RespondAsync("⏰ This trivia round has already ended.", ephemeral: true);
+            try
+            {
+                await component.Message.ModifyAsync(m =>
+                {
+                    m.Components = DisableButtons(msgId.ToString(), state.Options.Length);
+                });
+            }
+            catch
+            {
+            }
+
+            return;
+        }
+
+        var labels = new[] { "A", "B", "C", "D" };
+
+        if (pickIndex == state.CorrectIndex)
+        {
+            Active.Remove(channelId);
+            var winner = component.User;
+
+            var win = new EmbedBuilder()
+                .WithTitle($"🧠 Trivia — {state.Category}")
+                .WithDescription(
+                    $"**{state.Prompt}**\n\n" +
+                    string.Join("\n", state.Options.Select((t, i) =>
+                        i == state.CorrectIndex ? $"**{labels[i]}.** ✅ **{t}**" : $"**{labels[i]}.** {t}")) +
+                    $"\n\n🏆 Winner: {winner.Mention}")
+                .WithColor(Color.Green)
+                .Build();
+
+            await component.UpdateAsync(m =>
+            {
+                m.Embed = win;
+                m.Components = DisableButtons(msgId.ToString(), state.Options.Length);
+            });
+        }
+        else
+        {
+            await component.RespondAsync("❌ Wrong — keep trying!", ephemeral: true);
+        }
+    }
+
+    // ===== UI helpers =====
+    private static MessageComponent BuildButtons(string messageId, int count)
+    {
+        var labels = new[] { "A", "B", "C", "D" };
+        var builder = new ComponentBuilder();
+        var row = new ActionRowBuilder();
+        for (int i = 0; i < count && i < 4; i++)
+            row.WithButton(labels[i], $"trivia:pick:{messageId}:{i}", ButtonStyle.Primary);
+        builder.AddRow(row);
+        return builder.Build();
+    }
+
+    private static MessageComponent DisableButtons(string messageId, int count)
+    {
+        var labels = new[] { "A", "B", "C", "D" };
+        var builder = new ComponentBuilder();
+        var row = new ActionRowBuilder();
+        for (int i = 0; i < count && i < 4; i++)
+            row.WithButton(labels[i], $"trivia:off:{messageId}:{i}", ButtonStyle.Secondary, disabled: true);
+        builder.AddRow(row);
+        return builder.Build();
+    }
+
+    // ===== Question model + BANK =====
+    public record Question(string Category, string Prompt, string Correct, string[] Wrong);
+    
     private static readonly List<Question> Bank = new()
     {
         new("Gaming", "What is the name of the princess in the Mario series?", "Princess Peach",
@@ -881,208 +1157,4 @@ public class TriviaCommand : ISlashCommand
         new("Geography", "What is the largest ocean on Earth?", "Pacific Ocean",
             new[] { "Atlantic Ocean", "Indian Ocean", "Arctic Ocean" }),
     };
-
-
-    public async Task ExecuteAsync(SocketSlashCommand command)
-    {
-        if (command.User is not SocketGuildUser user)
-        {
-            await command.RespondAsync("❌ Use this in a server.", ephemeral: true);
-            return;
-        }
-
-        if (!HasPermission(user))
-        {
-            await command.RespondAsync("❌ You don’t have permission.", ephemeral: true);
-            return;
-        }
-
-        var channelId = command.ChannelId!.Value;
-        if (Active.ContainsKey(channelId))
-        {
-            await command.RespondAsync("⚠️ There’s already a trivia running in this channel.", ephemeral: true);
-            return;
-        }
-
-        // Optional: allow a "category" string option if you add it during registration
-        string? category = null;
-        var catOpt = command.Data.Options
-            .FirstOrDefault(o => o.Name.Equals("category", StringComparison.OrdinalIgnoreCase))?.Value as string;
-        if (!string.IsNullOrWhiteSpace(catOpt)) category = catOpt.Trim();
-
-        var q = PickQuestion(category);
-
-        // Build shuffled options (A-D)
-        var options = new List<(string text, bool isCorrect)>();
-        options.Add((q.Correct, true));
-        options.AddRange(q.Wrong.Select(w => (w, false)));
-
-        // Shuffle
-        options = options.OrderBy(_ => Guid.NewGuid()).ToList();
-        var labels = new[] { "A", "B", "C", "D" };
-        var optionTexts = options.Select(x => x.text).ToArray();
-        var correctIndex = options.FindIndex(x => x.isCorrect);
-
-        var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
-
-        var embed = new EmbedBuilder()
-            .WithTitle($"🧠 Trivia — {q.Category}")
-            .WithDescription($"**{q.Prompt}**\n\n" +
-                             string.Join("\n", optionTexts.Select((t, i) => $"**{labels[i]}.** {t}")) +
-                             $"\n\n⏳ You have **30s**. First correct click wins!")
-            .WithColor(Color.Blue)
-            .WithFooter($"Ends ~ {deadline:HH:mm:ss} UTC")
-            .Build();
-
-        // Send initial with temporary IDs, then restamp with actual messageId
-        await command.RespondAsync(embed: embed, components: BuildButtons("pending", optionTexts.Length));
-        var msg = await command.GetOriginalResponseAsync();
-
-        var state = new State(
-            MessageId: msg.Id,
-            ChannelId: msg.Channel.Id,
-            Deadline: deadline,
-            CorrectIndex: correctIndex,
-            Options: optionTexts,
-            Prompt: q.Prompt,
-            Category: q.Category,
-            Finished: false
-        );
-
-        Active[channelId] = state;
-
-        await msg.ModifyAsync(m => m.Components = BuildButtons(msg.Id.ToString(), optionTexts.Length));
-
-        // Fire-and-forget timeout updater
-        _ = Task.Run(async () =>
-        {
-            await Task.Delay(TimeSpan.FromSeconds(31));
-            if (Active.TryGetValue(channelId, out var s) && s.MessageId == msg.Id && !s.Finished)
-            {
-                Active.Remove(channelId);
-                var expired = new EmbedBuilder()
-                    .WithTitle($"🧠 Trivia — {s.Category}")
-                    .WithDescription(
-                        $"**{s.Prompt}**\n\n⏰ Time’s up! No winner this round.\n\n**Answer:** {s.Options[s.CorrectIndex]}")
-                    .WithColor(Color.DarkGrey)
-                    .Build();
-
-                try
-                {
-                    await msg.ModifyAsync(mm =>
-                    {
-                        mm.Embed = expired;
-                        mm.Components = DisableButtons(s.MessageId.ToString(), s.Options.Length);
-                    });
-                }
-                catch
-                {
-                    /* message might be gone; ignore */
-                }
-            }
-        });
-    }
-
-    // Global button router should call this
-    public static async Task HandleButton(SocketMessageComponent component)
-    {
-        if (component.Data.CustomId is null || !component.Data.CustomId.StartsWith("trivia:"))
-            return;
-
-        // trivia:pick:<messageId>:<index>
-        var parts = component.Data.CustomId.Split(':');
-        if (parts.Length != 4 || parts[1] != "pick") return;
-        if (!ulong.TryParse(parts[2], out var msgId)) return;
-        if (!int.TryParse(parts[3], out var pickIndex)) return;
-
-        var channelId = component.Channel.Id;
-        if (!Active.TryGetValue(channelId, out var state) || state.MessageId != msgId)
-        {
-            await component.RespondAsync("This trivia has ended.", ephemeral: true);
-            return;
-        }
-
-        if (state.Finished || DateTimeOffset.UtcNow > state.Deadline)
-        {
-            Active.Remove(channelId);
-            await component.RespondAsync("⏰ This trivia round has already ended.", ephemeral: true);
-            try
-            {
-                await component.Message.ModifyAsync(m =>
-                {
-                    m.Components = DisableButtons(msgId.ToString(), state.Options.Length);
-                });
-            }
-            catch
-            {
-            }
-
-            return;
-        }
-
-        // First correct click wins
-        if (pickIndex == state.CorrectIndex)
-        {
-            Active.Remove(channelId);
-
-            var labels = new[] { "A", "B", "C", "D" };
-            var winner = component.User;
-
-            var win = new EmbedBuilder()
-                .WithTitle($"🧠 Trivia — {state.Category}")
-                .WithDescription(
-                    $"**{state.Prompt}**\n\n" +
-                    string.Join("\n", state.Options.Select((t, i) =>
-                        i == state.CorrectIndex ? $"**{labels[i]}.** ✅ **{t}**" : $"**{labels[i]}.** {t}")) +
-                    $"\n\n🏆 Winner: {winner.Mention}")
-                .WithColor(Color.Green)
-                .Build();
-
-            await component.UpdateAsync(m =>
-            {
-                m.Embed = win;
-                m.Components = DisableButtons(msgId.ToString(), state.Options.Length);
-            });
-        }
-        else
-        {
-            // Wrong answer — tell them privately
-            await component.RespondAsync("❌ Wrong — keep trying!", ephemeral: true);
-        }
-    }
-
-    // --- Helpers ---
-
-    private static Question PickQuestion(string? category)
-    {
-        var pool = string.IsNullOrWhiteSpace(category)
-            ? Bank
-            : Bank.Where(q => q.Category.Equals(category, StringComparison.OrdinalIgnoreCase)).ToList();
-
-        if (pool.Count == 0) pool = Bank;
-
-        return pool[Random.Shared.Next(pool.Count)];
-    }
-
-    private static MessageComponent BuildButtons(string messageId, int count)
-    {
-        var labels = new[] { "A", "B", "C", "D" };
-        var builder = new ComponentBuilder();
-        var row = new ActionRowBuilder();
-        for (int i = 0; i < count && i < 4; i++)
-            row.WithButton(labels[i], $"trivia:pick:{messageId}:{i}", ButtonStyle.Primary);
-        builder.AddRow(row);
-        return builder.Build();
-    }
-
-    private static MessageComponent DisableButtons(string messageId, int count)
-    {
-        var labels = new[] { "A", "B", "C", "D" };
-        var builder = new ComponentBuilder();
-        var row = new ActionRowBuilder();
-        for (int i = 0; i < count && i < 4; i++)
-            row.WithButton(labels[i], $"trivia:off:{messageId}:{i}", ButtonStyle.Secondary, disabled: true);
-        builder.AddRow(row);
-        return builder.Build();
-    }
 }
