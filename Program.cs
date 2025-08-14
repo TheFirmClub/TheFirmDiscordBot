@@ -61,6 +61,7 @@ class Program
         {
             await _ticketButtonHandler.HandleAsync(component);
             await TicTacToeCommand.HandleButton(component);
+            await RpsCommand.HandleComponentAsync(component);
         };
 
         ulong roleLogChannelId = 1393726185804005497;
