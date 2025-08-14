@@ -62,6 +62,7 @@ class Program
             await _ticketButtonHandler.HandleAsync(component);
             await TicTacToeCommand.HandleButton(component);
             await RpsCommand.HandleComponentAsync(component);
+            await TriviaCommand.HandleButton(component);
         };
 
         ulong roleLogChannelId = 1393726185804005497;
@@ -118,6 +119,8 @@ class Program
                 builder.AddOption("user", ApplicationCommandOptionType.User, "User to slap", true);
             else if (command.Name == "rps")
                 builder.AddOption("opponent", ApplicationCommandOptionType.User, "User to challenge", true);
+            else if (command.Name == "trivia")
+                builder.AddOption("category", ApplicationCommandOptionType.String, "Limit to a category (General, Gaming, Science, History, Tech, Movies)", false);
 
             await guild.CreateApplicationCommandAsync(builder.Build());
         }
