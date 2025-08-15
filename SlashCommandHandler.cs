@@ -47,6 +47,17 @@ public class SlashCommandHandler
         _commands.Add("slap", new SlapCommand());
         _commands.Add("rps", new RpsCommand());
         _commands.Add("trivia", new TriviaCommand());
+        _commands.Add("rickroll", new RickrollCommand());
+        _commands.Add("fakeban", new FakeBanCommand());
+        _commands.Add("screamer", new ScreamerCommand());
+        _commands.Add("reverse", new ReverseCommand());
+        _commands.Add("tinytext", new TinyTextCommand());
+        _commands.Add("lag", new LagCommand());
+        _commands.Add("sus", new SusCommand());
+        _commands.Add("hack", new HackCommand());
+        _commands.Add("cursedimage", new CursedImageCommand());
+        _commands.Add("loud", new LoudCommand());
+
 
     }
 

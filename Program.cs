@@ -121,6 +121,40 @@ class Program
                 builder.AddOption("opponent", ApplicationCommandOptionType.User, "User to challenge", true);
             else if (command.Name == "trivia")
                 builder.AddOption("category", ApplicationCommandOptionType.String, "Limit to a category (General, Gaming, Science, History, Tech, Movies)", false);
+            else if (command.Name == "rickroll")
+                builder.AddOption("user", ApplicationCommandOptionType.User, "User to (totally not) rickroll", false);
+            else if (command.Name == "fakeban")
+                builder.AddOption("user", ApplicationCommandOptionType.User, "User to fake-ban", true);
+            else if (command.Name == "screamer")
+            {
+                // no options
+            }
+            else if (command.Name == "reverse")
+                builder.AddOption("text", ApplicationCommandOptionType.String, "Text to reverse", true);
+            else if (command.Name == "tinytext")
+                builder.AddOption("text", ApplicationCommandOptionType.String, "Text to shrink", true);
+            else if (command.Name == "lag")
+                builder.AddOption("user", ApplicationCommandOptionType.User, "User to pretend is lagging", true);
+            else if (command.Name == "sus")
+                builder.AddOption("user", ApplicationCommandOptionType.User, "User who is kinda sus", false);
+            else if (command.Name == "hack")
+                builder.AddOption("user", ApplicationCommandOptionType.User, "Target to (pretend) hack", false);
+            else if (command.Name == "cursedimage")
+            {
+                // no options
+            }
+            else if (command.Name == "loud")
+            {
+                builder.AddOption("user", ApplicationCommandOptionType.User, "Who to appear to ping", true);
+                builder.AddOption(new SlashCommandOptionBuilder()
+                    .WithName("count")
+                    .WithDescription("How many times (visual only)")
+                    .WithType(ApplicationCommandOptionType.Integer)
+                    .WithRequired(false)
+                    .WithMinValue(1)
+                    .WithMaxValue(20));
+            }
+
 
             await guild.CreateApplicationCommandAsync(builder.Build());
         }

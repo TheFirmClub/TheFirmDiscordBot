@@ -11,9 +11,9 @@ public class SlapCommand : ISlashCommand
 
     private readonly ulong[] allowedRoles = new ulong[]
     {
-        1393729574537396355, // Senior Mod
-        1393623589122736238, // Admin
-        1393590761953558608  // Developer
+        1393729574537396355, // Game Mod
+        1393623589122736238, // Discord Mod
+        1393590761953558608  // SM
     };
 
     public async Task ExecuteAsync(SocketSlashCommand command)
