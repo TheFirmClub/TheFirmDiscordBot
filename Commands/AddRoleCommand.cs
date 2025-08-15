@@ -26,31 +26,36 @@ public class AddRoleCommand : ISlashCommand
 
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
+        await command.DeferAsync(ephemeral: true);
+
+        static Task Reply(SocketSlashCommand cmd, string text)
+            => cmd.ModifyOriginalResponseAsync(m => m.Content = text);
+        
         if (command.User is not SocketGuildUser caller || !caller.GuildPermissions.ManageRoles)
         {
-            await command.RespondAsync("❌ You need the **Manage Roles** permission to use this command.", ephemeral: true);
+            await Reply(command, "❌ You need the **Manage Roles** permission to use this command.");
             return;
         }
 
         var guild = (command.Channel as SocketGuildChannel)?.Guild;
         if (guild == null)
         {
-            await command.RespondAsync("❌ This command must be used in a server.", ephemeral: true);
+            await Reply(command, "❌ This command must be used in a server.");
             return;
         }
-        
+
         var targetUser = command.Data.Options.FirstOrDefault(o => o.Name == "user")?.Value as SocketGuildUser;
         var role = command.Data.Options.FirstOrDefault(o => o.Name == "role")?.Value as SocketRole;
 
         if (targetUser == null)
         {
-            await command.RespondAsync("❌ Please specify a valid user.", ephemeral: true);
+            await Reply(command, "❌ Please specify a valid user.");
             return;
         }
 
         if (role == null)
         {
-            await command.RespondAsync("❌ Please specify a valid role.", ephemeral: true);
+            await Reply(command, "❌ Please specify a valid role.");
             return;
         }
 
@@ -59,37 +64,37 @@ public class AddRoleCommand : ISlashCommand
             bool isSpecial = caller.Roles.Any(r => AllowedSpecialAssignerRoleIds.Contains(r.Id));
             if (!isSpecial)
             {
-                await command.RespondAsync("❌ You are not allowed to assign that role.", ephemeral: true);
+                await Reply(command, "❌ You are not allowed to assign that role.");
                 return;
             }
         }
 
         if (targetUser.Roles.Any(r => r.Id == role.Id))
         {
-            await command.RespondAsync($"ℹ️ {targetUser.Mention} already has `{role.Name}`.", ephemeral: true);
+            await Reply(command, $"ℹ️ {targetUser.Mention} already has `{role.Name}`.");
             return;
         }
 
         if (role.Position >= caller.Hierarchy)
         {
-            await command.RespondAsync("❌ You cannot assign a role that is equal to or higher than your highest role.", ephemeral: true);
+            await Reply(command, "❌ You cannot assign a role that is equal to or higher than your highest role.");
             return;
         }
 
         if (role.Position >= guild.CurrentUser.Hierarchy)
         {
-            await command.RespondAsync("❌ I cannot assign that role because it's higher than my highest role.", ephemeral: true);
+            await Reply(command, "❌ I cannot assign that role because it's higher than my highest role.");
             return;
         }
 
         try
         {
             await targetUser.AddRoleAsync(role);
-            await command.RespondAsync($"✅ Added role `{role.Name}` to {targetUser.Mention}.");
+            await Reply(command, $"✅ Added role `{role.Name}` to {targetUser.Mention}.");
         }
         catch (HttpException ex) when (ex.DiscordCode == DiscordErrorCode.MissingPermissions)
         {
-            await command.RespondAsync("❌ I do not have permission to add that role.", ephemeral: true);
+            await Reply(command, "❌ I do not have permission to add that role.");
         }
     }
 }
