@@ -350,9 +350,10 @@ public class CursedImageCommand : ISlashCommand
     // Keep SFW and broadly safe.
     private static readonly string[] Images =
     {
-        "https://i.imgur.com/0Z0Z0Z0.jpeg",
-        "https://i.imgur.com/1Y1Y1Y1.jpeg",
-        "https://i.imgur.com/2X2X2X2.jpeg"
+        "https://i.imgur.com/ni3ddw6.png",
+        "https://i.imgur.com/gMjTKlr.jpeg",
+        "https://i.imgur.com/IaGILJW.jpeg",
+        "https://i.imgur.com/7KNzj2X.jpeg"
     };
 
     public async Task ExecuteAsync(SocketSlashCommand command)
