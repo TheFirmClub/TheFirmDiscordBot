@@ -155,7 +155,6 @@ class Program
                     .WithMaxValue(20));
             }
 
-
             await guild.CreateApplicationCommandAsync(builder.Build());
         }
 

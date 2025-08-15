@@ -379,15 +379,21 @@ public class LoudCommand : ISlashCommand
     {
         if (!await TrollUtils.EnforceRoleGate(command, Name)) return;
 
-        var target = TrollUtils.GetUserOption(command, "user")?.Mention ?? "@someone";
+        var target = TrollUtils.GetUserOption(command, "user") ?? command.User;
         var count = Math.Clamp(TrollUtils.GetIntOption(command, "count", 10), 1, 20);
 
         var sb = new StringBuilder();
         for (int i = 0; i < count; i++)
-            sb.Append(i == 0 ? target : $" {target}");
+        {
+            if (i > 0) sb.Append(' ');
+            sb.Append(target.Mention);
+        }
 
-        // Put mentions inside code block to avoid real multiple pings
-        await command.RespondAsync($"```{sb}```");
+        // Shows as real mentions (blue), but **does not ping** anyone
+        await command.RespondAsync(
+            sb.ToString(),
+            allowedMentions: AllowedMentions.None
+        );
     }
 }
 
