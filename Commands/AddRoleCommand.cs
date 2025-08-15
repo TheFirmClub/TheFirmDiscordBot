@@ -10,16 +10,17 @@ public class AddRoleCommand : ISlashCommand
     public string Name => "addrole";
     public string Description => "Adds a role to a user";
 
-    private static readonly HashSet<ulong> RestrictedRoleIds = new()
+    private const ulong SeniorManagementRoleId = 1393590761953558608; // Senior Management
+
+    private static readonly HashSet<ulong> AllowedModeratorRoleIds = new()
     {
         1393729574537396355, // Game Moderator
         1393623589122736238, // Discord Moderator
         1393638449709584434, // Senior Moderator
     };
 
-    private static readonly HashSet<ulong> AllowedSpecialAssignerRoleIds = new()
+    private static readonly HashSet<ulong> AssistantOrHeadModRoleIds = new()
     {
-        1393590761953558608, // Senior Management
         1405330877440983130, // Assistant Head Moderator
         1393728468608487594, // Head Moderator
     };
@@ -30,10 +31,10 @@ public class AddRoleCommand : ISlashCommand
 
         static Task Reply(SocketSlashCommand cmd, string text)
             => cmd.ModifyOriginalResponseAsync(m => m.Content = text);
-        
-        if (command.User is not SocketGuildUser caller || !caller.GuildPermissions.ManageRoles)
+
+        if (command.User is not SocketGuildUser caller)
         {
-            await Reply(command, "❌ You need the **Manage Roles** permission to use this command.");
+            await Reply(command, "❌ This command must be used in a server.");
             return;
         }
 
@@ -41,6 +42,15 @@ public class AddRoleCommand : ISlashCommand
         if (guild == null)
         {
             await Reply(command, "❌ This command must be used in a server.");
+            return;
+        }
+
+        bool isSeniorManagement = caller.Roles.Any(r => r.Id == SeniorManagementRoleId);
+        bool isAssistantOrHeadMod = caller.Roles.Any(r => AssistantOrHeadModRoleIds.Contains(r.Id));
+
+        if (!isSeniorManagement && !isAssistantOrHeadMod)
+        {
+            await Reply(command, "❌ You are not allowed to use this command.");
             return;
         }
 
@@ -59,14 +69,10 @@ public class AddRoleCommand : ISlashCommand
             return;
         }
 
-        if (RestrictedRoleIds.Contains(role.Id))
+        if (isAssistantOrHeadMod && !AllowedModeratorRoleIds.Contains(role.Id))
         {
-            bool isSpecial = caller.Roles.Any(r => AllowedSpecialAssignerRoleIds.Contains(r.Id));
-            if (!isSpecial)
-            {
-                await Reply(command, "❌ You are not allowed to assign that role.");
-                return;
-            }
+            await Reply(command, "❌ You can only assign the approved moderator roles.");
+            return;
         }
 
         if (targetUser.Roles.Any(r => r.Id == role.Id))
