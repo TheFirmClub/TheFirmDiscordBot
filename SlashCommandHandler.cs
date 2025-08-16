@@ -6,10 +6,7 @@ using Microsoft.Extensions.Configuration;
 public class SlashCommandHandler
 {
     private readonly Dictionary<string, ISlashCommand> _commands = new();
-
     private readonly IConfiguration _config;
-    
-    private readonly InviteTrackerService _inviteTracker;
 
     public SlashCommandHandler(IConfiguration config, InviteTrackerService inviteTracker)
     {

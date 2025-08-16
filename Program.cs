@@ -51,13 +51,15 @@ class Program
         _client.Ready += async () => await ReadyAsync(guildId);
 
         new StoreEmbed(_client);
-
-        _commandHandler = new SlashCommandHandler(_config, _inviteTracker!);
-        _ticketButtonHandler = new TicketButtonHandler(_config);
         
+        // after _client is created
         _inviteTracker = new InviteTrackerService(_client);
         await _inviteTracker.InitializeAsync();
 
+        _commandHandler = new SlashCommandHandler(_config, _inviteTracker);
+        
+        _ticketButtonHandler = new TicketButtonHandler(_config);
+        
         _client.SlashCommandExecuted += SlashCommandExecuted;
         _client.SelectMenuExecuted += _supportMenuHandler.HandleAsync;
         _client.ModalSubmitted += new SupportModalHandler().HandleModalAsync;

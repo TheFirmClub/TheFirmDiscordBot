@@ -1,5 +1,4 @@
 using Discord.WebSocket;
-using System.Threading.Tasks;
 
 public class MyInvitesCommand : ISlashCommand
 {
@@ -11,13 +10,8 @@ public class MyInvitesCommand : ISlashCommand
 
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
-        if (command.GuildId is null)
-        {
-            await command.RespondAsync("Use this in a server.", ephemeral: true);
-            return;
-        }
-        var guildId = command.GuildId.Value;
-        var count = _tracker.GetUserTotal(guildId, command.User.Id);
-        await command.RespondAsync($"You’ve invited **{count}** member(s) here.", ephemeral: true);
+        if (command.GuildId is null) { await command.RespondAsync("Use this in a server.", ephemeral:true); return; }
+        var count = _tracker.GetUserTotal(command.GuildId.Value, command.User.Id);
+        await command.RespondAsync($"You’ve invited **{count}** member(s) here.", ephemeral:true);
     }
 }
