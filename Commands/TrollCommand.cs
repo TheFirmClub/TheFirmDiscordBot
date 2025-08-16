@@ -158,13 +158,16 @@ public class FakeBanCommand : ISlashCommand
         if (!await TrollUtils.EnforceRoleGate(command, Name)) return;
 
         var target = TrollUtils.GetUserOption(command, "user");
+        var reason = (string)command.Data.Options.FirstOrDefault(x => x.Name == "reason")?.Value ?? "No reason provided";
+
         if (target == null)
         {
             await command.RespondAsync("❌ You must choose a user.", ephemeral: true);
             return;
         }
 
-        var eb = TrollUtils.BasicEmbed("User Banned", $"🔨 {target.Mention} has been **permanently banned** for: `Being too awesome`")
+        var eb = TrollUtils.BasicEmbed("User Banned", 
+                $"🔨 {target.Mention} has been **permanently banned** for: `{reason}`")
             .WithColor(Color.DarkRed)
             .WithFooter("This is a joke. No one was banned.");
 

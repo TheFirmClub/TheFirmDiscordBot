@@ -130,7 +130,11 @@ class Program
             else if (command.Name == "rickroll")
                 builder.AddOption("user", ApplicationCommandOptionType.User, "User to (totally not) rickroll", false);
             else if (command.Name == "fakeban")
-                builder.AddOption("user", ApplicationCommandOptionType.User, "User to fake-ban", true);
+            {
+                builder.AddOption("user", ApplicationCommandOptionType.User, "Who to fake ban", true);
+                builder.AddOption("reason", ApplicationCommandOptionType.String, "Reason for the fake ban", false);
+            }
+
             else if (command.Name == "screamer")
             {
                 // no options
