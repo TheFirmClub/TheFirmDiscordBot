@@ -49,7 +49,7 @@ public class SupportPanelSender
             .AddOption("Game Support", "game", "Issues with gameplay or features")
             .AddOption("Ban Appeals", "ban", "Request to appeal a ban")
             .AddOption("Subscription Support", "sub", "Payment, perks, or upgrades")
-            .AddOption("Report a staff", "reportstaff", "Report a moderator / staff");
+            .AddOption("Report a Staff Member", "reportstaff", "Report a Moderator / Staff Member");
 
         var component = new ComponentBuilder().WithSelectMenu(menu);
 
