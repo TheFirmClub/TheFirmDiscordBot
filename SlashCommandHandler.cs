@@ -8,8 +8,10 @@ public class SlashCommandHandler
     private readonly Dictionary<string, ISlashCommand> _commands = new();
 
     private readonly IConfiguration _config;
+    
+    private readonly InviteTrackerService _inviteTracker;
 
-    public SlashCommandHandler(IConfiguration config)
+    public SlashCommandHandler(IConfiguration config, InviteTrackerService inviteTracker)
     {
         _config = config;
         
@@ -58,6 +60,10 @@ public class SlashCommandHandler
         _commands.Add("cursedimage", new CursedImageCommand());
         _commands.Add("loud", new LoudCommand());
 
+        // --- NEW: invite tracker commands ---
+        _commands.Add("myinvites",  new MyInvitesCommand(inviteTracker));
+        _commands.Add("topinvites", new TopInvitesCommand(inviteTracker));
+        _commands.Add("invitecodes",new InviteCodesCommand(inviteTracker));
 
     }
 

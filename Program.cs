@@ -13,6 +13,7 @@ class Program
     private IConfiguration? _config;
     private SupportMenuHandler _supportMenuHandler = new();
     private TicketButtonHandler _ticketButtonHandler;
+    private InviteTrackerService? _inviteTracker;
 
     private ulong _logChannelId = 1394449608603603085;
 
@@ -51,8 +52,11 @@ class Program
 
         new StoreEmbed(_client);
 
-        _commandHandler = new SlashCommandHandler(_config);
+        _commandHandler = new SlashCommandHandler(_config, _inviteTracker!);
         _ticketButtonHandler = new TicketButtonHandler(_config);
+        
+        _inviteTracker = new InviteTrackerService(_client);
+        await _inviteTracker.InitializeAsync();
 
         _client.SlashCommandExecuted += SlashCommandExecuted;
         _client.SelectMenuExecuted += _supportMenuHandler.HandleAsync;
