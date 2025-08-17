@@ -153,6 +153,10 @@ class Program
             {
                 // no options
             }
+            else if (command.Name == "hangman")
+            {
+                // no options for now
+            }
             else if (command.Name == "loud")
             {
                 builder.AddOption("user", ApplicationCommandOptionType.User, "Who to appear to ping", true);
