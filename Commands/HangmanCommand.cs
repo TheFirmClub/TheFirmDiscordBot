@@ -1,13 +1,17 @@
-using System.Text;
 using Discord;
 using Discord.WebSocket;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 public class HangmanCommand : ISlashCommand
 {
     public string Name => "hangman";
     public string Description => "Start a game of Hangman in this channel.";
 
-    // ===== Permissions =====
+    // ===== Permissions (same as your Trivia) =====
     private readonly ulong[] allowedRoles = new ulong[]
     {
         1393729574537396355, // Game Mod
@@ -16,7 +20,7 @@ public class HangmanCommand : ISlashCommand
     };
     private bool HasPermission(SocketGuildUser u) => u.Roles.Any(r => allowedRoles.Contains(r.Id));
 
-    // ===== Active Games =====
+    // ===== State =====
     private class Game
     {
         public string Word = "";
@@ -29,7 +33,7 @@ public class HangmanCommand : ISlashCommand
     }
     private static readonly Dictionary<string, Game> Games = new();
 
-    // ===== Word Bank =====
+    // ===== Words / Art =====
     private static readonly string[] Words =
     {
         // 🎮 Popular Games
@@ -71,7 +75,7 @@ public class HangmanCommand : ISlashCommand
 
     private static readonly Random Rng = new();
 
-    // ===== Start Command =====
+    // ===== Slash entry =====
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
         if (command.User is not SocketGuildUser caller || !HasPermission(caller))
@@ -80,8 +84,8 @@ public class HangmanCommand : ISlashCommand
             return;
         }
 
-        var word = Words[Rng.Next(Words.Length)];
         var gameId = Guid.NewGuid().ToString("N");
+        var word = Words[Rng.Next(Words.Length)];
 
         var game = new Game
         {
@@ -93,19 +97,22 @@ public class HangmanCommand : ISlashCommand
 
         var (embed, components) = BuildView(gameId, game, "🎲 Hangman — New Game");
         await command.RespondAsync(embed: embed, components: components, allowedMentions: AllowedMentions.None);
+
         var original = await command.GetOriginalResponseAsync();
         game.MessageId = original.Id;
     }
 
-    // ===== Component Handling =====
-    public static async Task HandleSelectAsync(SocketMessageComponent component)
+    // ===== Button handler (wire in Program.cs) =====
+    public static async Task HandleButtonAsync(SocketMessageComponent component)
     {
-        // Expect: "hang:sel1:{gameId}" or "hang:sel2:{gameId}"
-        if (!component.Data.CustomId.StartsWith("hang:sel")) return;
+        // Expect: hang:btn:{gameId}:{label}  (label = "A".."X" or "YZ")
+        if (!component.Data.CustomId.StartsWith("hang:btn:")) return;
 
-        var parts = component.Data.CustomId.Split(':'); // hang sel1 gameId
-        if (parts.Length != 3) return;
+        var parts = component.Data.CustomId.Split(':'); // hang btn gameId label
+        if (parts.Length != 4) return;
+
         var gameId = parts[2];
+        var label = parts[3]; // "A".."X" or "YZ"
 
         if (!Games.TryGetValue(gameId, out var game))
         {
@@ -113,94 +120,111 @@ public class HangmanCommand : ISlashCommand
             return;
         }
 
-        var letterStr = component.Data.Values?.FirstOrDefault();
-        if (string.IsNullOrWhiteSpace(letterStr)) { await component.RespondAsync("Pick a letter!", ephemeral: true); return; }
+        // Convert label to letters (YZ is two at once)
+        var letters = label == "YZ"
+            ? new[] { 'Y', 'Z' }
+            : new[] { char.ToUpperInvariant(label[0]) };
 
-        var ch = char.ToUpperInvariant(letterStr[0]);
-
-        if (game.Guessed.Contains(ch) || game.Wrong.Contains(ch))
+        // If all letters already chosen, just ignore
+        if (letters.All(ch => game.Guessed.Contains(ch) || game.Wrong.Contains(ch)))
         {
-            await component.RespondAsync("Already guessed that letter.", ephemeral: true);
+            await component.RespondAsync("Already picked.", ephemeral: true);
             return;
         }
 
-        if (game.Word.Contains(ch)) game.Guessed.Add(ch);
-        else { game.Wrong.Add(ch); game.Lives = Math.Max(0, game.Lives - 1); }
+        bool anyHit = false;
+        foreach (var ch in letters)
+        {
+            if (game.Word.Contains(ch))
+            {
+                anyHit = true;
+                game.Guessed.Add(ch);
+            }
+        }
 
-        var won = IsWin(game);
+        if (!anyHit)
+        {
+            // Count as one wrong guess even if label has two letters (YZ)
+            // Only add letters to Wrong that weren’t seen yet
+            foreach (var ch in letters)
+                if (!game.Guessed.Contains(ch)) game.Wrong.Add(ch);
+            game.Lives = Math.Max(0, game.Lives - 1);
+        }
+
+        var won  = IsWin(game);
         var lost = game.Lives <= 0;
 
-        var (embed, components) = BuildView(gameId, game, won ? "✅ You Win!" : lost ? "❌ You Lose!" : "🎯 Hangman");
+        var (embed, comps) = BuildView(gameId, game, won ? "✅ You Win!" : (lost ? "❌ You Lose!" : "🎯 Hangman"));
 
-        await component.UpdateAsync(msg =>
+        await component.UpdateAsync(m =>
         {
-            msg.Embed = embed;
-            msg.Components = components;
-            msg.AllowedMentions = AllowedMentions.None;
+            m.Embed = embed;
+            m.Components = comps;
+            m.AllowedMentions = AllowedMentions.None;
         });
 
         if (won || lost) Games.Remove(gameId);
     }
 
-    // ===== Helpers =====
+    // ===== Rendering =====
     private static (Embed, MessageComponent) BuildView(string gameId, Game g, string title)
-{
-    string Mask(string w, HashSet<char> guessed)
-        => string.Join(' ', w.Select(ch => ch == ' ' ? ' ' : (guessed.Contains(ch) ? ch : '_'))).TrimEnd();
-
-    var masked = Mask(g.Word, g.Guessed);
-    var wrong = g.Wrong.Count == 0 ? "—" : string.Join(" ", g.Wrong.OrderBy(c => c));
-    var stage = Gallows[6 - g.Lives];
-
-    var desc = (IsWin(g), g.Lives <= 0) switch
     {
-        (true, _)  => $"`{g.Word}`\n\n**You nailed it!** 🎉",
-        (_, true)  => $"The word was: **`{g.Word}`**\n\nBetter luck next time!",
-        _          => $"{stage}\n**Word:** `{masked}`\n**Lives:** {new string('❤', g.Lives)}  ({g.Lives}/6)\n**Wrong:** `{wrong}`\n\nPick a letter from the menus below."
-    };
+        string Mask(string w, HashSet<char> guessed)
+            => string.Join(' ', w.Select(ch => ch == ' ' ? ' ' : (guessed.Contains(ch) ? ch : '_'))).TrimEnd();
 
-    var eb = new EmbedBuilder()
-        .WithTitle(title)
-        .WithDescription(desc)
-        .WithColor(IsWin(g) ? new Color(0x22BB66) : (g.Lives <= 0 ? new Color(0xCC3333) : new Color(0x5865F2)))
-        .WithFooter($"Started by: {MentionUtils.MentionUser(g.StarterId)} • Game #{gameId[..6].ToUpperInvariant()}");
+        var masked = Mask(g.Word, g.Guessed);
+        var wrong  = g.Wrong.Count == 0 ? "—" : string.Join(" ", g.Wrong.OrderBy(c => c));
+        var stage  = Gallows[6 - g.Lives];
 
-    bool disabled = IsWin(g) || g.Lives <= 0;
+        string desc;
+        if (IsWin(g))
+            desc = $"`{g.Word}`\n\n**You nailed it!** 🎉";
+        else if (g.Lives <= 0)
+            desc = $"The word was: **`{g.Word}`**\n\nBetter luck next time!";
+        else
+            desc = $"{stage}\n**Word:** `{masked}`\n**Lives:** {new string('❤', g.Lives)}  ({g.Lives}/6)\n**Wrong:** `{wrong}`\n\nPress a letter below.";
 
-    var remaining = Enumerable.Range('A', 26).Select(i => (char)i)
-        .Except(g.Guessed)
-        .Except(g.Wrong)
-        .ToHashSet();
+        var eb = new EmbedBuilder()
+            .WithTitle(title)
+            .WithDescription(desc)
+            .WithColor(IsWin(g) ? new Color(0x22BB66) : (g.Lives <= 0 ? new Color(0xCC3333) : new Color(0x5865F2)))
+            .WithFooter($"Started by: {MentionUtils.MentionUser(g.StarterId)} • Game #{gameId[..6].ToUpperInvariant()}");
 
-    SelectMenuBuilder BuildMenu(string id, IEnumerable<char> letters, string placeholder)
-    {
-        var m = new SelectMenuBuilder()
-            .WithCustomId(id)
-            .WithPlaceholder(placeholder)
-            .WithMinValues(1).WithMaxValues(1)
-            .WithDisabled(disabled);
+        bool disabled = IsWin(g) || g.Lives <= 0;
 
-        foreach (var c in letters)
-            m.AddOption(c.ToString(), c.ToString());
-
-        if (m.Options.Count == 0)
+        // 25 buttons, 5 rows x 5 columns: A..X then "YZ"
+        var labels = new[]
         {
-            m.AddOption("No letters left", "none", isDefault: true);
-            m.IsDisabled = true;
+            "A","B","C","D","E","F","G","H","I","J",
+            "K","L","M","N","O","P","Q","R","S","T",
+            "U","V","W","X","YZ"
+        };
+
+        var cb = new ComponentBuilder();
+        for (int row = 0; row < 5; row++)
+        {
+            var rowLabels = labels.Skip(row * 5).Take(5);
+            var actionRow = new ActionRowBuilder();
+
+            foreach (var label in rowLabels)
+            {
+                var letters = label == "YZ" ? new[] { 'Y', 'Z' } : new[] { label[0] };
+                bool already = letters.All(ch => g.Guessed.Contains(ch) || g.Wrong.Contains(ch));
+
+                var btn = new ButtonBuilder()
+                    .WithLabel(label)
+                    .WithCustomId($"hang:btn:{gameId}:{label}")
+                    .WithStyle(ButtonStyle.Primary)
+                    .WithDisabled(disabled || already);
+
+                actionRow.AddComponent(btn.Build());
+            }
+
+            cb.AddRow(actionRow);
         }
-        return m;
+
+        return (eb.Build(), cb.Build());
     }
-
-    var group1 = remaining.Where(c => c <= 'M'); // 13 max
-    var group2 = remaining.Where(c => c >= 'N'); // 13 max (<=14 including N..Z but under 25 limit anyway)
-
-    var comps = new ComponentBuilder()
-        .WithSelectMenu(BuildMenu($"hang:sel1:{gameId}", group1, "Letters A–M"))
-        .WithSelectMenu(BuildMenu($"hang:sel2:{gameId}", group2, "Letters N–Z"))
-        .Build();
-
-    return (eb.Build(), comps);
-}
 
     private static bool IsWin(Game g) => g.Word.All(ch => ch == ' ' || g.Guessed.Contains(ch));
 }

@@ -69,6 +69,7 @@ class Program
             await TicTacToeCommand.HandleButton(component);
             await RpsCommand.HandleComponentAsync(component);
             await TriviaCommand.HandleButton(component);
+            await HangmanCommand.HandleButtonAsync(component);
         };
 
         ulong roleLogChannelId = 1393726185804005497;
