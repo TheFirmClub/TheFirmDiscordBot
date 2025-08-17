@@ -62,7 +62,10 @@ public class SlashCommandHandler
         _commands.Add("myinvites",  new MyInvitesCommand(inviteTracker));
         _commands.Add("topinvites", new TopInvitesCommand(inviteTracker));
         _commands.Add("invitecodes",new InviteCodesCommand(inviteTracker));
-
+        
+        // --- NEW: /preban ---
+        var preban = new PrebanCommand();
+        _commands.Add(preban.Name, preban);
     }
 
     public async Task HandleCommandAsync(SocketSlashCommand command)

@@ -169,6 +169,16 @@ class Program
                     .WithMinValue(1)
                     .WithMaxValue(20));
             }
+            else if (command.Name == "preban")
+            {
+                // Only members with Ban Members can see/use it by default
+                builder.WithDefaultMemberPermissions(GuildPermission.BanMembers);
+
+                // Options
+                builder.AddOption("userid", ApplicationCommandOptionType.String, "Discord user ID to pre-ban", true);
+                builder.AddOption("reason", ApplicationCommandOptionType.String, "Reason for the ban", false);
+                
+            }
 
             await guild.CreateApplicationCommandAsync(builder.Build());
         }
