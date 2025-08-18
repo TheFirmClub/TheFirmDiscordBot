@@ -2,6 +2,7 @@ using Discord;
 using Discord.WebSocket;
 using System.Linq;
 using System.Threading.Tasks;
+using System;
 
 public class TicketRestrictCommand : ISlashCommand
 {
@@ -42,24 +43,22 @@ public class TicketRestrictCommand : ISlashCommand
 
         var targetRole = (SocketRole)command.Data.Options.First().Value;
 
-        await channel.ModifyAsync(props => props.CategoryId = _restrictedCategoryId);
-
-        foreach (var overwrite in channel.PermissionOverwrites)
+        if (channel.CategoryId != _restrictedCategoryId)
         {
-            if (overwrite.TargetType == PermissionTarget.User)
-            {
-                var u = channel.Guild.GetUser(overwrite.TargetId);
-                if (u != null)
-                    await channel.RemovePermissionOverwriteAsync(u);
-            }
-            else if (overwrite.TargetType == PermissionTarget.Role)
-            {
-                var r = channel.Guild.GetRole(overwrite.TargetId);
-                if (r != null)
-                    await channel.RemovePermissionOverwriteAsync(r);
-            }
+            await channel.ModifyAsync(props => props.CategoryId = _restrictedCategoryId);
         }
 
+        var roleOverwrites = channel.PermissionOverwrites
+            .Where(po => po.TargetType == PermissionTarget.Role)
+            .ToList();
+
+        foreach (var po in roleOverwrites)
+        {
+            var role = channel.Guild.GetRole(po.TargetId);
+            if (role != null)
+                await channel.RemovePermissionOverwriteAsync(role);
+        }
+        
         await channel.AddPermissionOverwriteAsync(channel.Guild.EveryoneRole,
             new OverwritePermissions(viewChannel: PermValue.Deny));
 
@@ -72,27 +71,23 @@ public class TicketRestrictCommand : ISlashCommand
 
         await channel.AddPermissionOverwriteAsync(targetRole,
             new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
-
-        await channel.SendMessageAsync($"{targetRole.Mention} 🔒 This ticket has been restricted by {user.Mention}.");
-
+        
         if (targetRole.Id == 1393590761953558608)
         {
             var senior = channel.Guild.GetRole(_seniorModRoleId);
             if (senior != null)
-            {
                 await channel.RemovePermissionOverwriteAsync(senior);
-            }
         }
         else
         {
             var senior = channel.Guild.GetRole(_seniorModRoleId);
             if (senior != null)
-            {
                 await channel.AddPermissionOverwriteAsync(senior,
                     new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
-            }
         }
-        
+
+        await channel.SendMessageAsync($"{targetRole.Mention} 🔒 This ticket has been restricted by {user.Mention}.");
+
         var logChannel = channel.Guild.GetTextChannel(1394405064520499415);
         if (logChannel != null)
         {
@@ -107,5 +102,7 @@ public class TicketRestrictCommand : ISlashCommand
 
             await logChannel.SendMessageAsync(embed: logEmbed);
         }
+
+        await command.FollowupAsync($"✅ Restricted this ticket to {targetRole.Mention}.", ephemeral: true);
     }
 }
