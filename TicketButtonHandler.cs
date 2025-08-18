@@ -19,13 +19,13 @@ public class TicketButtonHandler
     {
         1393729574537396355, // Game Mod
         1393623589122736238, // Discord Mod
-        1393590761953558608  // Senior Management
+        1393590761953558608 // Senior Management
     };
 
     private readonly ulong[] _keepRoleIds = new ulong[]
     {
         1393638449709584434, // Senior Moderator
-        1393590761953558608  // Senior Management
+        1393590761953558608 // Senior Management
     };
 
     public async Task HandleAsync(SocketMessageComponent component)
@@ -147,7 +147,8 @@ public class TicketButtonHandler
             {
                 if (!(isMod || isOwner))
                 {
-                    await component.RespondAsync("❌ Only the ticket owner or a moderator can mark this as resolved.", ephemeral: true);
+                    await component.RespondAsync("❌ Only the ticket owner or a moderator can mark this as resolved.",
+                        ephemeral: true);
                     return;
                 }
 
@@ -155,26 +156,56 @@ public class TicketButtonHandler
 
                 if (component.Channel is SocketTextChannel channel)
                 {
-                    foreach (var overwrite in channel.PermissionOverwrites)
+                    var keepRoleIds = new HashSet<ulong>(_keepRoleIds); // Senior Mod + Senior Management
+                    var keepUserIds = new HashSet<ulong>
+                    {
+                        channel.Guild.CurrentUser.Id // keep the bot
+                    };
+
+                    // Remove all *role & user* overwrites except the keep lists
+                    foreach (var overwrite in channel.PermissionOverwrites.ToArray())
                     {
                         if (overwrite.TargetType == PermissionTarget.Role)
                         {
-                            if (!_keepRoleIds.Contains(overwrite.TargetId))
+                            if (!keepRoleIds.Contains(overwrite.TargetId))
                             {
                                 var role = channel.Guild.GetRole(overwrite.TargetId);
-                                if (role != null)
-                                {
-                                    await channel.RemovePermissionOverwriteAsync(role);
-                                }
+                                if (role != null) await channel.RemovePermissionOverwriteAsync(role);
+                            }
+                        }
+                        else if (overwrite.TargetType == PermissionTarget.User)
+                        {
+                            if (!keepUserIds.Contains(overwrite.TargetId))
+                            {
+                                var member = channel.Guild.GetUser(overwrite.TargetId);
+                                if (member != null) await channel.RemovePermissionOverwriteAsync(member);
                             }
                         }
                     }
 
+                    // 🚫 Deny @everyone
                     await channel.AddPermissionOverwriteAsync(channel.Guild.EveryoneRole,
                         new OverwritePermissions(viewChannel: PermValue.Deny));
 
+                    // 🚫 Explicitly remove the ticket creator’s access (only if they’re not in kept roles)
+                    if (ticketOwnerId.HasValue)
+                    {
+                        var ownerUser = channel.Guild.GetUser(ticketOwnerId.Value);
+                        if (ownerUser != null)
+                        {
+                            bool ownerHasKeptRole = ownerUser.Roles.Any(r => keepRoleIds.Contains(r.Id));
+                            if (!ownerHasKeptRole)
+                            {
+                                await channel.AddPermissionOverwriteAsync(ownerUser,
+                                    new OverwritePermissions(viewChannel: PermValue.Deny));
+                            }
+                        }
+                    }
+
+                    // 🏷 Move to resolved category
                     await channel.ModifyAsync(props => props.CategoryId = 1393610408706965656);
 
+                    // 🧾 Resolved embed + close button
                     var embed = new EmbedBuilder()
                         .WithTitle("✅ Ticket Resolved")
                         .WithDescription(
@@ -194,11 +225,13 @@ public class TicketButtonHandler
                 break;
             }
 
+
             case "ticket_confirm_unresolved":
             {
                 if (!(isMod || isOwner))
                 {
-                    await component.RespondAsync("❌ Only the ticket owner or a moderator can do that.", ephemeral: true);
+                    await component.RespondAsync("❌ Only the ticket owner or a moderator can do that.",
+                        ephemeral: true);
                     return;
                 }
 
@@ -224,7 +257,9 @@ public class TicketButtonHandler
                     msg.Components = disabledButtons.Build();
                 });
 
-                await component.FollowupAsync("🔁 Got it. A member of staff will follow up shortly. Is there anything else we can help with?", ephemeral: false);
+                await component.FollowupAsync(
+                    "🔁 Got it. A member of staff will follow up shortly. Is there anything else we can help with?",
+                    ephemeral: false);
                 break;
             }
         }
