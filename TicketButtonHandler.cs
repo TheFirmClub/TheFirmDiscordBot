@@ -145,62 +145,34 @@ public class TicketButtonHandler
 
             case "ticket_confirm_resolved":
             {
-                if (!(isMod || isOwner))
-                {
-                    await component.RespondAsync("❌ Only the ticket owner or a moderator can mark this as resolved.",
-                        ephemeral: true);
-                    return;
-                }
-
                 await component.DeferAsync(ephemeral: true);
 
                 if (component.Channel is SocketTextChannel channel)
                 {
-                    var keepRoleIds = new HashSet<ulong>(_keepRoleIds); // Senior Mod + Senior Management
-                    var keepUserIds = new HashSet<ulong>
-                    {
-                        channel.Guild.CurrentUser.Id // keep the bot
-                    };
-
-                    // Remove all *role & user* overwrites except the keep lists
+                    // Remove all role overwrites except the keep list
                     foreach (var overwrite in channel.PermissionOverwrites.ToArray())
                     {
                         if (overwrite.TargetType == PermissionTarget.Role)
                         {
-                            if (!keepRoleIds.Contains(overwrite.TargetId))
+                            if (!_keepRoleIds.Contains(overwrite.TargetId))
                             {
                                 var role = channel.Guild.GetRole(overwrite.TargetId);
-                                if (role != null) await channel.RemovePermissionOverwriteAsync(role);
+                                if (role != null)
+                                    await channel.RemovePermissionOverwriteAsync(role);
                             }
                         }
                         else if (overwrite.TargetType == PermissionTarget.User)
                         {
-                            if (!keepUserIds.Contains(overwrite.TargetId))
-                            {
-                                var member = channel.Guild.GetUser(overwrite.TargetId);
-                                if (member != null) await channel.RemovePermissionOverwriteAsync(member);
-                            }
+                            // remove all per-user overwrites too
+                            var member = channel.Guild.GetUser(overwrite.TargetId);
+                            if (member != null)
+                                await channel.RemovePermissionOverwriteAsync(member);
                         }
                     }
 
                     // 🚫 Deny @everyone
                     await channel.AddPermissionOverwriteAsync(channel.Guild.EveryoneRole,
                         new OverwritePermissions(viewChannel: PermValue.Deny));
-
-                    // 🚫 Explicitly remove the ticket creator’s access (only if they’re not in kept roles)
-                    if (ticketOwnerId.HasValue)
-                    {
-                        var ownerUser = channel.Guild.GetUser(ticketOwnerId.Value);
-                        if (ownerUser != null)
-                        {
-                            bool ownerHasKeptRole = ownerUser.Roles.Any(r => keepRoleIds.Contains(r.Id));
-                            if (!ownerHasKeptRole)
-                            {
-                                await channel.AddPermissionOverwriteAsync(ownerUser,
-                                    new OverwritePermissions(viewChannel: PermValue.Deny));
-                            }
-                        }
-                    }
 
                     // 🏷 Move to resolved category
                     await channel.ModifyAsync(props => props.CategoryId = 1393610408706965656);
@@ -225,16 +197,8 @@ public class TicketButtonHandler
                 break;
             }
 
-
             case "ticket_confirm_unresolved":
             {
-                if (!(isMod || isOwner))
-                {
-                    await component.RespondAsync("❌ Only the ticket owner or a moderator can do that.",
-                        ephemeral: true);
-                    return;
-                }
-
                 await component.DeferAsync(ephemeral: true);
 
                 var original = component.Message.Embeds.FirstOrDefault();
