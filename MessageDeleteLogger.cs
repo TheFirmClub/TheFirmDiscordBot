@@ -1,85 +1,66 @@
-using Discord;
-using Discord.WebSocket;
 using System;
 using System.Threading.Tasks;
-using System.Linq;
-using System.Collections.Generic;
-using System.IO;
+using Discord;
+using Discord.WebSocket;
 
 public class MessageDeleteLogger
 {
     private readonly DiscordSocketClient _client;
     private readonly ulong _logChannelId;
 
-    private static readonly TimeSpan AuditWindow = TimeSpan.FromSeconds(10);
-
     public MessageDeleteLogger(DiscordSocketClient client, ulong logChannelId)
     {
         _client = client;
         _logChannelId = logChannelId;
 
-        _client.MessageDeleted += OnMessageDeleted;
-        _client.MessagesBulkDeleted += OnMessagesBulkDeleted;
+        _client.MessageDeleted += OnMessageDeletedAsync;
     }
 
-    private async Task OnMessageDeleted(Cacheable<IMessage, ulong> cachedMessage, Cacheable<IMessageChannel, ulong> cachedChannel)
+    private async Task OnMessageDeletedAsync(Cacheable<IMessage, ulong> cachedMessage, Cacheable<IMessageChannel, ulong> cachedChannel)
     {
-        var channel = await cachedChannel.GetOrDownloadAsync() as SocketTextChannel;
-        if (channel == null) return;
+        try
+        {
+            var channel = await cachedChannel.GetOrDownloadAsync();
+            var guildChannel = channel as SocketGuildChannel;
+            if (guildChannel == null) return;
 
-        var guild = channel.Guild;
-        var logChannel = guild.GetTextChannel(_logChannelId);
-        if (logChannel == null) return;
+            var guild = guildChannel.Guild;
+            var logChannel = guild.GetTextChannel(_logChannelId);
+            if (logChannel == null) return;
 
-        var message = await cachedMessage.GetOrDownloadAsync();
-        var content = message?.Content ?? "*Message content unavailable*";
+            // Get the deleted message (if cached)
+            var message = cachedMessage.HasValue ? cachedMessage.Value : null;
+            string messageContent = message?.Content ?? "*Unknown or uncached content*";
 
-        // Find who deleted it
-        SocketGuildUser? moderator = await FindDeleterAsync(guild, channel.Id);
+            // Try to find who deleted the message from audit logs
+            string deletedBy = "Unknown";
+            var logs = await guild.GetAuditLogsAsync(1, actionType: ActionType.MessageDeleted).FlattenAsync();
+            var entry = logs.FirstOrDefault();
+            if (entry != null && entry is MessageDeleteAuditLogEntry msgEntry)
+            {
+                deletedBy = msgEntry.User?.ToString() ?? "Unknown";
+            }
 
-        var embed = new EmbedBuilder()
-            .WithTitle("🗑️ Message Deleted")
-            .WithColor(Color.Orange)
-            .AddField("Channel", channel.Mention, true)
-            .AddField("Author", message?.Author?.Mention ?? "Unknown", true)
-            .AddField("Deleted By", moderator?.Mention ?? "Unknown", true)
-            .AddField("Content", content.Length > 1024 ? content.Substring(0, 1021) + "..." : content)
-            .WithFooter($"Message ID: {cachedMessage.Id}")
-            .WithTimestamp(DateTimeOffset.UtcNow)
-            .Build();
+            var embed = new EmbedBuilder()
+                .WithTitle("🗑️ Message Deleted")
+                .WithColor(Color.Red)
+                .AddField("Channel", channel.Name, true)
+                .AddField("Deleted By", deletedBy, true)
+                .AddField("Message Content", messageContent.Length > 0 ? messageContent : "*No text (embed/attachment)*")
+                .WithTimestamp(DateTimeOffset.UtcNow)
+                .Build();
 
-        await logChannel.SendMessageAsync(embed: embed);
+            await logChannel.SendMessageAsync(embed: embed);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error logging deleted message: {ex.Message}");
+        }
     }
+}
 
-    private async Task OnMessagesBulkDeleted(IReadOnlyCollection<Cacheable<IMessage, ulong>> cachedMessages, Cacheable<IMessageChannel, ulong> cachedChannel)
-    {
-        var channel = await cachedChannel.GetOrDownloadAsync() as SocketTextChannel;
-        if (channel == null) return;
-
-        var guild = channel.Guild;
-        var logChannel = guild.GetTextChannel(_logChannelId);
-        if (logChannel == null) return;
-
-        // Try to find who purged
-        SocketGuildUser? moderator = await FindDeleterAsync(guild, channel.Id);
-
-        int count = cachedMessages.Count;
-        string deletedBy = moderator?.Mention ?? "Unknown";
-
-        var embed = new EmbedBuilder()
-            .WithTitle("🗑️ Bulk Message Deletion")
-            .WithColor(Color.Red)
-            .AddField("Channel", channel.Mention, true)
-            .AddField("Deleted By", deletedBy, true)
-            .AddField("Messages Deleted", count.ToString(), true)
-            .WithFooter($"Bulk purge event | Channel ID: {channel.Id}")
-            .WithTimestamp(DateTimeOffset.UtcNow)
-            .Build();
-
-        await logChannel.SendMessageAsync(embed: embed);
-
-        // Save deleted messages into a text file
-        var logLines = new List<string>();
+// Save deleted messages into a text file
+var logLines = new List<string>();
         foreach (var cachedMsg in cachedMessages)
         {
             var msg = await cachedMsg.GetOrDownloadAsync();
