@@ -9,17 +9,19 @@ public class SocialsCommand : ISlashCommand
 
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
+        var description =
+            "📢 **Discord:** https://discord.thefirm.club\n" +
+            "📸 **Instagram:** https://instagram.thefirm.club\n" +
+            "▶️ **YouTube:** https://youtube.thefirm.club\n" +
+            "🐦 **Twitter / X:** https://twitter.thefirm.club\n" +
+            "🎵 **TikTok:** https://tiktok.thefirm.club\n" +
+            "📘 **Facebook:** https://facebook.thefirm.club";
+
         var embed = new EmbedBuilder()
             .WithTitle("🌐 The Firm — Social Media Links")
-            .WithDescription("Stay connected with us on all of our platforms below:")
+            .WithDescription(description)
             .WithColor(Color.Purple)
             .WithThumbnailUrl("https://thefirm.club/Media/thefirm-thumb.png")
-            .AddField("📢 Discord", "https://discord.thefirm.club", true)
-            .AddField("📸 Instagram", "https://instagram.thefirm.club", true)
-            .AddField("▶️ YouTube", "https://youtube.thefirm.club", true)
-            .AddField("🐦 Twitter / X", "https://twitter.thefirm.club", true)
-            .AddField("🎵 TikTok", "https://tiktok.thefirm.club", true)
-            .AddField("📘 Facebook", "https://facebook.thefirm.club", true)
             .WithFooter("The Firm • Building our community together")
             .WithCurrentTimestamp()
             .Build();
