@@ -57,6 +57,7 @@ public class SlashCommandHandler
         _commands.Add("cursedimage", new CursedImageCommand());
         _commands.Add("loud", new LoudCommand());
         _commands.Add("hangman", new HangmanCommand());
+        _commands.Add("socials", new SocialsCommand());
 
         // --- NEW: invite tracker commands ---
         _commands.Add("myinvites",  new MyInvitesCommand(inviteTracker));
