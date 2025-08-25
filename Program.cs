@@ -20,6 +20,9 @@ class Program
     // 🔹 FiveM integration
     private FiveMChannelUpdater? _fivemUpdater;
 
+    // 🔹 Add message delete logger
+    private MessageDeleteLogger? _messageDeleteLogger;
+
     public static Task Main(string[] args) => new Program().MainAsync();
 
     public async Task MainAsync()
@@ -51,15 +54,15 @@ class Program
         _client.Ready += async () => await ReadyAsync(guildId);
 
         new StoreEmbed(_client);
-        
+
         // after _client is created
         _inviteTracker = new InviteTrackerService(_client);
         await _inviteTracker.InitializeAsync();
 
         _commandHandler = new SlashCommandHandler(_config, _inviteTracker);
-        
+
         _ticketButtonHandler = new TicketButtonHandler(_config);
-        
+
         _client.SlashCommandExecuted += SlashCommandExecuted;
         _client.SelectMenuExecuted += _supportMenuHandler.HandleAsync;
         _client.ModalSubmitted += new SupportModalHandler().HandleModalAsync;
@@ -74,6 +77,9 @@ class Program
 
         ulong roleLogChannelId = 1393726185804005497;
         _roleLogger = new RoleLogger(_client, roleLogChannelId);
+
+        // 🔹 Add message delete logger (logs into 1394429251968696442)
+        _messageDeleteLogger = new MessageDeleteLogger(_client, 1394429251968696442);
 
         string? token = _config["Discord:Token"];
         if (string.IsNullOrEmpty(token))
@@ -177,7 +183,7 @@ class Program
                 // Options
                 builder.AddOption("userid", ApplicationCommandOptionType.String, "Discord user ID to pre-ban", true);
                 builder.AddOption("reason", ApplicationCommandOptionType.String, "Reason for the ban", false);
-                
+
             }
 
             await guild.CreateApplicationCommandAsync(builder.Build());
