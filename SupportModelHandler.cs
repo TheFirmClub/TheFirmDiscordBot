@@ -86,6 +86,7 @@ public class SupportModalHandler
         {
             props.CategoryId = categoryId;
             props.PermissionOverwrites = overwrites;
+            props.Topic = $"owner:{user.Id}; type:{ticketType}; created:{DateTimeOffset.UtcNow:O}";
         });
         
         var fullTypeLabel = ticketType switch
