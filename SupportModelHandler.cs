@@ -37,9 +37,8 @@ public class SupportModalHandler
             _ => "ticket"
         };
 
-        string cleanName = user.Username.ToLower().Replace(" ", "").Replace("#", "").Replace(".", "");
-        int rand = new Random().Next(100, 999);
-        string channelName = $"{typePrefix}-{cleanName}-{rand}";
+        int rand = new Random().Next(1000, 9999);
+        string channelName = $"{typePrefix}-{rand}";
         
         var overwrites = new List<Overwrite>();
 
