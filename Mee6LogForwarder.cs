@@ -1,20 +1,22 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 
-public class Mee6Forwarder
+public class Mee6LogForwarder
 {
     private readonly DiscordSocketClient _client;
     private readonly ulong _adminChannelId = 1393597248495030272;   // Admin Logs
     private readonly ulong _modNotesChannelId = 1394451583709745273; // Mod Notes
-    private readonly ulong _mee6Id = 1393611163853656085; // The Firm (MEE6 custom bot) ID
+    private readonly ulong _mee6Id = 1393611163853656085;            // MEE6-TheFirm Bot ID
 
-    // List of moderation keywords to filter embeds
-    private readonly string[] _moderationKeywords = new[] { "mute", "banned", "ban", "kicked", "deafen", "warn" };
+    // List of moderation keywords to filter
+    private readonly string[] _moderationKeywords = new[]
+    {
+        "[MUTE]", "[UNMUTE]", "[BAN]", "[KICK]", "[WARN]", "[DEAFEN]", "[UNDEAFEN]"
+    };
 
-    public Mee6Forwarder(DiscordSocketClient client)
+    public Mee6LogForwarder(DiscordSocketClient client)
     {
         _client = client;
         _client.MessageReceived += OnMessageReceivedAsync;
@@ -27,65 +29,72 @@ public class Mee6Forwarder
             if (message is not SocketUserMessage msg)
                 return;
 
-            // Only forward from Admin Logs channel
+            // Only forward messages from the Admin Logs channel
             if (msg.Channel.Id != _adminChannelId)
                 return;
 
-            // Only forward if it's from MEE6 (The Firm bot)
+            // Only forward messages from MEE6-TheFirm
             if (msg.Author.Id != _mee6Id)
                 return;
 
-            // Get Mod Notes channel
-            if (_client.GetChannel(_modNotesChannelId) is not IMessageChannel modNotesChannel)
+            // Get the Mod Notes channel
+            var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
+            if (modNotesChannel == null)
                 return;
 
-            bool shouldForward = false;
+            bool forwarded = false;
 
-            // Check if embed contains moderation keyword
+            // Forward moderation embeds
             if (msg.Embeds.Count > 0)
             {
                 foreach (var embed in msg.Embeds)
                 {
-                    string embedText = string.Join(" ", new[]
+                    string titleOrDesc = (embed.Title ?? "") + " " + (embed.Description ?? "");
+
+                    bool isModeration = false;
+                    foreach (var keyword in _moderationKeywords)
                     {
-                        embed.Title,
-                        embed.Description,
-                        embed.Footer?.Text ?? "",
-                        string.Join(" ", embed.Fields.Select(f => f.Name + " " + f.Value))
-                    }).ToLower();
-
-                    if (_moderationKeywords.Any(k => embedText.Contains(k)))
-                    {
-                        shouldForward = true;
-
-                        var eb = new EmbedBuilder()
-                            .WithAuthor(embed.Author?.Name, embed.Author?.IconUrl, embed.Author?.Url)
-                            .WithColor(embed.Color ?? Color.Blue)
-                            .WithDescription(embed.Description)
-                            .WithFooter(embed.Footer?.Text, embed.Footer?.IconUrl)
-                            .WithImageUrl(embed.Image?.Url)
-                            .WithThumbnailUrl(embed.Thumbnail?.Url)
-                            .WithTimestamp(embed.Timestamp ?? DateTimeOffset.UtcNow)
-                            .WithTitle(embed.Title)
-                            .WithUrl(embed.Url);
-
-                        foreach (var field in embed.Fields)
-                            eb.AddField(field.Name, field.Value, field.Inline);
-
-                        await modNotesChannel.SendMessageAsync(embed: eb.Build());
+                        if (titleOrDesc.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                        {
+                            isModeration = true;
+                            break;
+                        }
                     }
+
+                    if (!isModeration)
+                        continue; // Skip non-moderation embeds
+
+                    var eb = new EmbedBuilder()
+                        .WithAuthor(embed.Author?.Name, embed.Author?.IconUrl, embed.Author?.Url)
+                        .WithTitle(embed.Title)
+                        .WithDescription(embed.Description)
+                        .WithColor(embed.Color ?? Color.Blue)
+                        .WithFooter(embed.Footer?.Text, embed.Footer?.IconUrl)
+                        .WithThumbnailUrl(embed.Thumbnail?.Url)
+                        .WithImageUrl(embed.Image?.Url)
+                        .WithTimestamp(embed.Timestamp ?? DateTimeOffset.UtcNow)
+                        .WithUrl(embed.Url);
+
+                    foreach (var field in embed.Fields)
+                        eb.AddField(field.Name, field.Value, field.Inline);
+
+                    await modNotesChannel.SendMessageAsync(embed: eb.Build());
+                    forwarded = true;
                 }
             }
 
-            // Optional: plain text fallback for moderation keywords
-            if (!shouldForward && !string.IsNullOrWhiteSpace(msg.Content))
+            // Fallback: forward plain-text moderation messages
+            if (!forwarded && !string.IsNullOrWhiteSpace(msg.Content))
             {
-                string text = msg.Content.ToLower();
-                if (_moderationKeywords.Any(k => text.Contains(k)))
+                foreach (var keyword in _moderationKeywords)
                 {
-                    await modNotesChannel.SendMessageAsync(
-                        $"📢 **Forwarded from Admin Logs:**\n{msg.Content}"
-                    );
+                    if (msg.Content.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                    {
+                        await modNotesChannel.SendMessageAsync(
+                            $"📢 **Forwarded from Admin Logs:**\n{msg.Content}"
+                        );
+                        break;
+                    }
                 }
             }
         }
