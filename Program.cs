@@ -20,6 +20,8 @@ class Program
     // 🔹 FiveM integration
     private FiveMChannelUpdater? _fivemUpdater;
 
+    private Mee6LogForwarder? _mee6Forwarder;
+
     public static Task Main(string[] args) => new Program().MainAsync();
 
     public async Task MainAsync()
