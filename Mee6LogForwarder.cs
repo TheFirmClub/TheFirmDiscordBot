@@ -8,20 +8,17 @@ public class Mee6LogForwarder
 {
     private readonly DiscordSocketClient _client;
 
-    // Channel IDs
-    private readonly ulong _adminChannelId = 1393597248495030272;   // Admin Logs
-    private readonly ulong _modNotesChannelId = 1394451583709745273; // Mod Notes
-    private readonly ulong _mee6Id = 1393611163853656085;            // MEE6-TheFirm Bot ID
+    // Channel IDs (Admin logs channel is optional if you only forward to Mod Notes)
+    private readonly ulong _modNotesChannelId = 1394451583709745273;
 
-    // List of moderation keywords
-    private readonly string[] _moderationKeywords = new[]
-    {
-        "MUTE", "UNMUTE", "BAN", "KICK", "WARN", "DEAFEN", "UNDEAFEN"
-    };
+    // MEE6 bot ID
+    private readonly ulong _mee6Id = 1393611163853656085;
 
     public Mee6LogForwarder(DiscordSocketClient client)
     {
-        _client = client;
+        _client = client ?? throw new ArgumentNullException(nameof(client));
+
+        // Subscribe to message received event
         _client.MessageReceived += OnMessageReceivedAsync;
     }
 
@@ -44,9 +41,13 @@ public class Mee6LogForwarder
 
         if (!hasUserAndModerator) return;
 
-        // Check if the embed description contains any moderation keyword
+        // List of moderation keywords (case-insensitive)
+        var moderationKeywords = new[] { "MUTE", "UNMUTE", "BAN", "KICK", "WARN", "DEAFEN", "UNDEAFEN" };
+
         string embedText = embed.Description ?? string.Empty;
-        bool isModerationAction = _moderationKeywords.Any(k => embedText.Contains(k, StringComparison.OrdinalIgnoreCase));
+
+        // Check if the embed contains any moderation keyword
+        bool isModerationAction = moderationKeywords.Any(k => embedText.Contains(k, StringComparison.OrdinalIgnoreCase));
 
         if (!isModerationAction) return;
 
@@ -54,12 +55,18 @@ public class Mee6LogForwarder
         var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
         if (modNotesChannel != null)
         {
+            // Recreate the embed for Mod Notes
             var forwardEmbed = new EmbedBuilder()
                 .WithTitle(embed.Title)
                 .WithDescription(embed.Description)
                 .WithColor(embed.Color ?? Color.DarkRed)
                 .WithTimestamp(embed.Timestamp ?? DateTimeOffset.Now)
-                .WithFields(embedFields)
+                .WithFields(embedFields.Select(f => new EmbedFieldBuilder
+                {
+                    Name = f.Name,
+                    Value = f.Value,
+                    IsInline = f.Inline
+                }))
                 .Build();
 
             await modNotesChannel.SendMessageAsync(embed: forwardEmbed);
