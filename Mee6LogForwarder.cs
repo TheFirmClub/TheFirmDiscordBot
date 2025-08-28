@@ -17,6 +17,8 @@ public class Mee6LogForwarder
     public Mee6LogForwarder(DiscordSocketClient client)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
+
+        // Subscribe to message received event
         _client.MessageReceived += OnMessageReceivedAsync;
     }
 
@@ -25,7 +27,7 @@ public class Mee6LogForwarder
         // Only process messages from MEE6-TheFirm Bot
         if (message.Author.Id != _mee6Id) return;
 
-        // Only process messages with embeds
+        // Only process messages that have embeds
         if (message.Embeds.Count == 0) return;
 
         var embed = message.Embeds.First();
@@ -36,12 +38,17 @@ public class Mee6LogForwarder
         // Only forward if both "User" and "Moderator" fields exist
         bool hasUserAndModerator = embedFields.Any(f => f.Name.Equals("User", StringComparison.OrdinalIgnoreCase))
                                  && embedFields.Any(f => f.Name.Equals("Moderator", StringComparison.OrdinalIgnoreCase));
+
         if (!hasUserAndModerator) return;
 
-        // Determine forward title
+        // Determine the line for Mod Notes (preserve the [MUTE]/[UNMUTE]/etc)
         string forwardTitle = embed.Title;
 
-        // If title is empty, use first field value (usually the [MUTE] line)
+        if (string.IsNullOrWhiteSpace(forwardTitle) && embed.Author != null)
+        {
+            forwardTitle = embed.Author.Name;
+        }
+
         if (string.IsNullOrWhiteSpace(forwardTitle) && embedFields.Count > 0)
         {
             forwardTitle = embedFields[0].Value?.ToString() ?? string.Empty;
@@ -51,6 +58,7 @@ public class Mee6LogForwarder
         var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
         if (modNotesChannel != null)
         {
+            // Recreate the embed for Mod Notes
             var forwardEmbed = new EmbedBuilder()
                 .WithTitle(forwardTitle)
                 .WithDescription(embed.Description)
