@@ -51,7 +51,8 @@ public class Mee6LogForwarder
                 : embed.Description;
 
             var forwardEmbed = new EmbedBuilder()
-                .WithDescription(combinedDescription)
+                .WithTitle(embed.Title)               // <-- preserve the original embed title
+                .WithDescription(embed.Description)   // <-- keep the original description
                 .WithColor(embed.Color ?? Color.DarkRed)
                 .WithTimestamp(embed.Timestamp ?? DateTimeOffset.Now)
                 .WithFields(embedFields.Select(f => new EmbedFieldBuilder
