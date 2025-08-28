@@ -11,7 +11,7 @@ public class Mee6LogForwarder
     private readonly ulong _modNotesChannelId = 1394451583709745273; // Mod Notes
     private readonly ulong _mee6Id = 1393611163853656085;            // MEE6-TheFirm Bot ID
 
-    // List of moderation keywords to filter
+    // Moderation keywords
     private readonly string[] _moderationKeywords = new[]
     {
         "[MUTE]", "[UNMUTE]", "[BAN]", "[KICK]", "[WARN]", "[DEAFEN]", "[UNDEAFEN]"
@@ -30,31 +30,32 @@ public class Mee6LogForwarder
             if (message is not SocketUserMessage msg)
                 return;
 
-            // Only forward from Admin Logs channel
             if (msg.Channel.Id != _adminChannelId)
                 return;
 
-            // Only forward if it's from MEE6 (The Firm bot)
             if (msg.Author.Id != _mee6Id)
                 return;
 
-            // Get Mod Notes channel
             var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
             if (modNotesChannel == null)
                 return;
 
-            // Forward embeds if they contain moderation keywords
             if (msg.Embeds.Count > 0)
             {
                 foreach (var embed in msg.Embeds)
                 {
                     bool isModerationLog = false;
 
-                    // Check title & description for keywords
+                    // Check title, description, and fields
                     if (!string.IsNullOrEmpty(embed.Title))
                         isModerationLog |= _moderationKeywords.Any(k => embed.Title.Contains(k, StringComparison.OrdinalIgnoreCase));
+
                     if (!string.IsNullOrEmpty(embed.Description))
                         isModerationLog |= _moderationKeywords.Any(k => embed.Description.Contains(k, StringComparison.OrdinalIgnoreCase));
+
+                    if (embed.Fields.Count > 0)
+                        isModerationLog |= embed.Fields.Any(f => _moderationKeywords.Any(k => f.Name.Contains(k, StringComparison.OrdinalIgnoreCase)
+                                                                                         || f.Value.Contains(k, StringComparison.OrdinalIgnoreCase)));
 
                     if (isModerationLog)
                     {
@@ -68,7 +69,6 @@ public class Mee6LogForwarder
                             .WithImageUrl(embed.Image?.Url)
                             .WithTimestamp(embed.Timestamp ?? DateTimeOffset.UtcNow);
 
-                        // Copy fields
                         foreach (var field in embed.Fields)
                             eb.AddField(field.Name, field.Value, field.Inline);
 
