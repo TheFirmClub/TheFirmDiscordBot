@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.WebSocket;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -7,11 +8,10 @@ public class Mee6LogForwarder
 {
     private readonly DiscordSocketClient _client;
     private readonly ulong _modNotesChannelId = 1394451583709745273; // Mod Notes
-    private readonly ulong _adminChannelId = 1394451583709745272;    // Admin Logs
-    private readonly ulong _mee6Id = 1393611163853656085;            // MEE6-TheFirm Bot ID
+    private readonly ulong _adminChannelId    = 1394451583709745272;  // Admin Logs
+    private readonly ulong _mee6Id            = 1393611163853656085;  // MEE6-TheFirm Bot ID
 
-    // List of moderation keywords to filter
-    private readonly string[] _moderationKeywords = new[]
+    private static readonly string[] _moderationKeywords =
     {
         "[MUTE]", "[UNMUTE]", "[BAN]", "[KICK]", "[WARN]", "[DEAFEN]", "[UNDEAFEN]"
     };
@@ -24,7 +24,7 @@ public class Mee6LogForwarder
 
     private async Task OnMessageReceivedAsync(SocketMessage message)
     {
-        // Only process messages from MEE6 in the Admin Logs channel
+        // Only process embeds from MEE6 in the Admin Logs channel
         if (message.Author.Id != _mee6Id || message.Channel.Id != _adminChannelId)
             return;
 
@@ -35,40 +35,51 @@ public class Mee6LogForwarder
         if (embed == null)
             return;
 
-        // Check Title OR Description for moderation keywords
+        // Case-insensitive moderation keyword match in title or description
         bool containsModerationKeyword =
-            _moderationKeywords.Any(k => (embed.Title != null && embed.Title.Contains(k))) ||
-            _moderationKeywords.Any(k => (embed.Description != null && embed.Description.Contains(k)));
+            _moderationKeywords.Any(k =>
+                (!string.IsNullOrEmpty(embed.Title) && embed.Title.IndexOf(k, StringComparison.OrdinalIgnoreCase) >= 0) ||
+                (!string.IsNullOrEmpty(embed.Description) && embed.Description.IndexOf(k, StringComparison.OrdinalIgnoreCase) >= 0));
 
         if (!containsModerationKeyword)
             return;
 
-        // Forward the embed to Mod Notes
-        var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
-        if (modNotesChannel == null)
+        // Forward to Mod Notes
+        if (_client.GetChannel(_modNotesChannelId) is not IMessageChannel modNotesChannel)
             return;
 
-        var embedBuilder = new EmbedBuilder()
-            .WithTitle(embed.Title ?? "")
-            .WithDescription(embed.Description ?? "")
+        var eb = new EmbedBuilder()
+            .WithTitle(embed.Title ?? string.Empty)
+            .WithDescription(embed.Description ?? string.Empty)
             .WithColor(embed.Color ?? Color.DarkBlue);
 
-        // Copy fields safely
-        foreach (var f in embed.Fields)
+        if (embed.Timestamp.HasValue)
+            eb.WithTimestamp(embed.Timestamp.Value);
+
+        // Safe copies for footer/author across Discord.NET versions
+        if (embed.Footer is { } footer)
+            eb.WithFooter(footer.Text, footer.IconUrl);
+
+        if (embed.Author is { } author)
+            eb.WithAuthor(author.Name, author.IconUrl, author.Url);
+
+        // Copy fields if any
+        if (embed.Fields != null)
         {
-            embedBuilder.AddField(f.Name, f.Value, f.Inline); // ✅ correct property
+            foreach (var f in embed.Fields)
+            {
+                if (f != null && !string.IsNullOrEmpty(f.Name))
+                    eb.AddField(f.Name, f.Value ?? "\u200B", f.Inline);
+            }
         }
 
-        // (optional) preserve footer, timestamp, author if present
-        if (embed.Timestamp.HasValue)
-            embedBuilder.WithTimestamp(embed.Timestamp.Value);
+        // (Optional) Copy thumbnail/image if present
+        if (embed.Thumbnail is { } thumb && !string.IsNullOrEmpty(thumb.Url))
+            eb.WithThumbnailUrl(thumb.Url);
 
-        if (embed.Footer.HasValue)
-            embedBuilder.WithFooter(embed.Footer.Value.Text, embed.Footer.Value.IconUrl);
+        if (embed.Image is { } img && !string.IsNullOrEmpty(img.Url))
+            eb.WithImageUrl(img.Url);
 
-        if (embed.Author.HasValue)
-            embedBuilder.WithAuthor(embed.Author.Value.Name, embed.Author.Value.IconUrl, embed.Author.Value.Url);
-
-        await modNotesChannel.SendMessageAsync(embed: embedBuilder.Build());
+        await modNotesChannel.SendMessageAsync(embed: eb.Build());
     }
 }
