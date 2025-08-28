@@ -11,7 +11,6 @@ public class Mee6LogForwarder
     private readonly ulong _modNotesChannelId = 1394451583709745273; // Mod Notes
     private readonly ulong _mee6Id = 1393611163853656085;            // MEE6-TheFirm Bot ID
 
-    // List of moderation keywords to filter
     private readonly string[] _moderationKeywords = new[]
     {
         "[MUTE]", "[UNMUTE]", "[BAN]", "[KICK]", "[WARN]", "[DEAFEN]", "[UNDEAFEN]"
@@ -25,56 +24,50 @@ public class Mee6LogForwarder
 
     private async Task OnMessageReceivedAsync(SocketMessage message)
     {
+        if (message is not SocketUserMessage msg)
+            return;
+
+        // Only process messages from Admin Logs channel
+        if (msg.Channel.Id != _adminChannelId)
+            return;
+
+        // Only process messages from the MEE6 bot
+        if (msg.Author.Id != _mee6Id)
+            return;
+
         try
         {
-            if (message is not SocketUserMessage msg)
+            // Check if any moderation keyword exists in embed title or description
+            bool isModerationLog = msg.Embeds.Any(embed =>
+                (_moderationKeywords.Any(k => (embed.Title ?? "").Contains(k, StringComparison.OrdinalIgnoreCase))) ||
+                (_moderationKeywords.Any(k => (embed.Description ?? "").Contains(k, StringComparison.OrdinalIgnoreCase)))
+            );
+
+            if (!isModerationLog)
                 return;
 
-            // Only forward from Admin Logs channel
-            if (msg.Channel.Id != _adminChannelId)
-                return;
-
-            // Only forward if it's from MEE6 (The Firm bot)
-            if (msg.Author.Id != _mee6Id)
-                return;
-
-            // Get Mod Notes channel
             var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
             if (modNotesChannel == null)
                 return;
 
-            // Forward embeds if they contain moderation keywords
-            if (msg.Embeds.Count > 0)
+            // Forward all matching embeds
+            foreach (var embed in msg.Embeds)
             {
-                foreach (var embed in msg.Embeds)
-                {
-                    bool isModerationLog = false;
+                var eb = new EmbedBuilder()
+                    .WithAuthor(embed.Author?.Name, embed.Author?.IconUrl, embed.Author?.Url)
+                    .WithColor(embed.Color ?? Color.Blue)
+                    .WithDescription(embed.Description)
+                    .WithFooter(embed.Footer?.Text, embed.Footer?.IconUrl)
+                    .WithImageUrl(embed.Image?.Url)
+                    .WithThumbnailUrl(embed.Thumbnail?.Url)
+                    .WithTimestamp(embed.Timestamp ?? DateTimeOffset.UtcNow)
+                    .WithTitle(embed.Title)
+                    .WithUrl(embed.Url);
 
-                    // Check title & description for keywords
-                    if (!string.IsNullOrEmpty(embed.Title))
-                        isModerationLog |= _moderationKeywords.Any(k => embed.Title.Contains(k, StringComparison.OrdinalIgnoreCase));
-                    if (!string.IsNullOrEmpty(embed.Description))
-                        isModerationLog |= _moderationKeywords.Any(k => embed.Description.Contains(k, StringComparison.OrdinalIgnoreCase));
+                foreach (var field in embed.Fields)
+                    eb.AddField(field.Name, field.Value, field.Inline);
 
-                    if (isModerationLog)
-                    {
-                        var eb = new EmbedBuilder()
-                            .WithAuthor(embed.Author?.Name, embed.Author?.IconUrl, embed.Author?.Url)
-                            .WithTitle(embed.Title)
-                            .WithDescription(embed.Description)
-                            .WithColor(embed.Color ?? Color.Blue)
-                            .WithFooter(embed.Footer?.Text, embed.Footer?.IconUrl)
-                            .WithThumbnailUrl(embed.Thumbnail?.Url)
-                            .WithImageUrl(embed.Image?.Url)
-                            .WithTimestamp(embed.Timestamp ?? DateTimeOffset.UtcNow);
-
-                        // Copy fields
-                        foreach (var field in embed.Fields)
-                            eb.AddField(field.Name, field.Value, field.Inline);
-
-                        await modNotesChannel.SendMessageAsync(embed: eb.Build());
-                    }
-                }
+                await modNotesChannel.SendMessageAsync(embed: eb.Build());
             }
         }
         catch (Exception ex)
