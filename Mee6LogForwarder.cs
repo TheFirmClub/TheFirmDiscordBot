@@ -11,11 +11,12 @@ public class Mee6LogForwarder
     // Channel IDs
     private readonly ulong _adminChannelId = 1393597248495030272;   // Admin Logs
     private readonly ulong _modNotesChannelId = 1394451583709745273; // Mod Notes
+    private readonly ulong _mee6Id = 1393611163853656085;            // MEE6-TheFirm Bot ID
 
-    // Only forward these types of logs
+    // List of moderation keywords
     private readonly string[] _moderationKeywords = new[]
     {
-        "[MUTE]", "[UNMUTE]", "[BAN]", "[KICK]", "[WARN]", "[DEAFEN]", "[UNDEAFEN]"
+        "MUTE", "UNMUTE", "BAN", "KICK", "WARN", "DEAFEN", "UNDEAFEN"
     };
 
     public Mee6LogForwarder(DiscordSocketClient client)
@@ -24,67 +25,44 @@ public class Mee6LogForwarder
         _client.MessageReceived += OnMessageReceivedAsync;
     }
 
-    private async Task OnMessageReceivedAsync(SocketMessage message)
+    public async Task OnMessageReceivedAsync(SocketMessage message)
     {
-        try
+        // Only process messages from MEE6-TheFirm Bot
+        if (message.Author.Id != _mee6Id) return;
+
+        // Only process embedded messages
+        if (message.Embeds.Count == 0) return;
+
+        var embed = message.Embeds.First();
+
+        // Extract all embed fields
+        var embedFields = embed.Fields.ToList();
+
+        // Only forward if both "User" and "Moderator" fields exist
+        bool hasUserAndModerator = embedFields.Any(f => f.Name.Equals("User", StringComparison.OrdinalIgnoreCase))
+                                 && embedFields.Any(f => f.Name.Equals("Moderator", StringComparison.OrdinalIgnoreCase));
+
+        if (!hasUserAndModerator) return;
+
+        // Check if the embed description contains any moderation keyword
+        string embedText = embed.Description ?? string.Empty;
+        bool isModerationAction = _moderationKeywords.Any(k => embedText.Contains(k, StringComparison.OrdinalIgnoreCase));
+
+        if (!isModerationAction) return;
+
+        // Forward to Mod Notes channel
+        var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
+        if (modNotesChannel != null)
         {
-            if (message.Channel.Id != _adminChannelId) return;
-            if (!message.Author.IsBot) return;
+            var forwardEmbed = new EmbedBuilder()
+                .WithTitle(embed.Title)
+                .WithDescription(embed.Description)
+                .WithColor(embed.Color ?? Color.DarkRed)
+                .WithTimestamp(embed.Timestamp ?? DateTimeOffset.Now)
+                .WithFields(embedFields)
+                .Build();
 
-            var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
-            if (modNotesChannel == null) return;
-
-            bool containsModerationKeyword = false;
-
-            // Debug: print all embed text to console
-            if (message.Embeds.Any())
-            {
-                foreach (var embed in message.Embeds)
-                {
-                    string embedText = $"{embed.Title} {embed.Description} " +
-                                       string.Join(" ", embed.Fields.Select(f => f.Name + " " + f.Value)) +
-                                       $" {embed.Footer?.Text}";
-
-                    Console.WriteLine($"[Mee6LogForwarder] Embed received:\n{embedText}");
-
-                    if (_moderationKeywords.Any(k => embedText.Contains(k, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        containsModerationKeyword = true;
-
-                        var builder = new EmbedBuilder()
-                            .WithAuthor(embed.Author?.Name ?? "MEE6 Log", embed.Author?.IconUrl, embed.Author?.Url)
-                            .WithTitle(embed.Title)
-                            .WithDescription(embed.Description)
-                            .WithColor(embed.Color ?? Color.DarkGrey)
-                            .WithFooter(embed.Footer?.Text, embed.Footer?.IconUrl)
-                            .WithTimestamp(embed.Timestamp ?? DateTimeOffset.UtcNow);
-
-                        foreach (var field in embed.Fields)
-                        {
-                            builder.AddField(field.Name, field.Value, field.Inline);
-                        }
-
-                        Console.WriteLine($"[Mee6LogForwarder] Forwarding moderation log → Mod Notes.");
-                        await modNotesChannel.SendMessageAsync(embed: builder.Build());
-                    }
-                }
-            }
-
-            if (!containsModerationKeyword && !string.IsNullOrWhiteSpace(message.Content))
-            {
-                Console.WriteLine($"[Mee6LogForwarder] Plain message: {message.Content}");
-
-                if (_moderationKeywords.Any(k => message.Content.Contains(k, StringComparison.OrdinalIgnoreCase)))
-                {
-                    Console.WriteLine($"[Mee6LogForwarder] Forwarding plain moderation log → Mod Notes.");
-                    await modNotesChannel.SendMessageAsync($"📋 **MEE6 Log Message:** {message.Content}");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[Mee6LogForwarder] Error forwarding message: {ex}");
+            await modNotesChannel.SendMessageAsync(embed: forwardEmbed);
         }
     }
-
 }
