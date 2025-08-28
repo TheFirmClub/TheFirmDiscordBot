@@ -16,6 +16,12 @@ public class Mee6LogForwarder
         "[MUTE]", "[UNMUTE]", "[BAN]", "[KICK]", "[WARN]", "[DEAFEN]", "[UNDEAFEN]"
     };
 
+    public Mee6LogForwarder(DiscordSocketClient client)
+    {
+        _client = client;
+        _client.MessageReceived += OnMessageReceivedAsync;
+    }
+
     private async Task OnMessageReceivedAsync(SocketMessage message)
     {
         if (message is not SocketUserMessage msg)
@@ -31,16 +37,10 @@ public class Mee6LogForwarder
 
         try
         {
-            // Case-insensitive check for any moderation keyword
+            // Check if any moderation keyword exists in embed title or description
             bool isModerationLog = msg.Embeds.Any(embed =>
-                _moderationKeywords.Any(keyword =>
-                    (!string.IsNullOrEmpty(embed.Title) && embed.Title.Contains(keyword, StringComparison.OrdinalIgnoreCase)) ||
-                    (!string.IsNullOrEmpty(embed.Description) && embed.Description.Contains(keyword, StringComparison.OrdinalIgnoreCase)) ||
-                    embed.Fields.Any(f =>
-                        (!string.IsNullOrEmpty(f.Name) && f.Name.Contains(keyword, StringComparison.OrdinalIgnoreCase)) ||
-                        (!string.IsNullOrEmpty(f.Value) && f.Value.Contains(keyword, StringComparison.OrdinalIgnoreCase))
-                    )
-                )
+                (_moderationKeywords.Any(k => (embed.Title ?? "").Contains(k, StringComparison.OrdinalIgnoreCase))) ||
+                (_moderationKeywords.Any(k => (embed.Description ?? "").Contains(k, StringComparison.OrdinalIgnoreCase)))
             );
 
             if (!isModerationLog)
@@ -59,7 +59,7 @@ public class Mee6LogForwarder
                     .WithDescription(embed.Description)
                     .WithFooter(embed.Footer?.Text, embed.Footer?.IconUrl)
                     .WithImageUrl(embed.Image?.Url)
-                    .WithThumbnail(embed.Thumbnail?.Url)
+                    .WithThumbnailUrl(embed.Thumbnail?.Url)
                     .WithTimestamp(embed.Timestamp ?? DateTimeOffset.UtcNow)
                     .WithTitle(embed.Title)
                     .WithUrl(embed.Url);
