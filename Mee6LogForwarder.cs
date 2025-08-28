@@ -1,4 +1,10 @@
-﻿public class Mee6LogForwarder
+﻿using Discord;
+using Discord.WebSocket;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+
+public class Mee6LogForwarder
 {
     private readonly DiscordSocketClient _client;
     private readonly ulong _adminChannelId = 1393597248495030272;   // Admin Logs
