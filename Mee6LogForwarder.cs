@@ -1,6 +1,5 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -19,49 +18,47 @@ public class Mee6LogForwarder
 
     public Mee6LogForwarder(DiscordSocketClient client)
     {
-        _client = client ?? throw new ArgumentNullException(nameof(client));
+        _client = client;
         _client.MessageReceived += OnMessageReceivedAsync;
     }
 
     private async Task OnMessageReceivedAsync(SocketMessage message)
     {
-        // Only handle messages from the MEE6 bot
+        // Only handle messages from MEE6 bot
         if (message.Author.Id != _mee6Id)
             return;
 
-        // Only handle messages in the Admin Logs channel
-        if (message.Channel.Id != _adminChannelId)
-            return;
-
-        // Only handle embeds
         if (message is not IUserMessage userMessage || userMessage.Embeds.Count == 0)
             return;
 
-        foreach (var embed in userMessage.Embeds)
-        {
-            // Skip non-moderation embeds
-            if (!_moderationKeywords.Any(k => embed.Title != null && embed.Title.Contains(k)))
-                continue;
+        var embed = userMessage.Embeds.FirstOrDefault();
+        if (embed == null)
+            return;
 
-            var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
-            if (modNotesChannel == null)
-                continue;
+        // Check Title OR Description for moderation keywords
+        bool containsModerationKeyword =
+            _moderationKeywords.Any(k => (embed.Title != null && embed.Title.Contains(k))) ||
+            _moderationKeywords.Any(k => (embed.Description != null && embed.Description.Contains(k)));
 
-            var eb = new EmbedBuilder()
-                .WithTitle(embed.Title)
-                .WithDescription(embed.Description)
-                .WithColor(embed.Color ?? Color.LightGrey)
-                .WithFooter(embed.Footer?.Text)
-                .WithTimestamp(embed.Timestamp ?? DateTimeOffset.UtcNow);
+        if (!containsModerationKeyword)
+            return;
 
-            // Copy fields safely
-            foreach (var field in embed.Fields)
+        // Forward the embed to Mod Notes
+        var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
+        if (modNotesChannel == null)
+            return;
+
+        var embedBuilder = new EmbedBuilder()
+            .WithTitle(embed.Title ?? "")
+            .WithDescription(embed.Description ?? "")
+            .WithColor(embed.Color ?? Color.DarkBlue)
+            .WithFields(embed.Fields.Select(f => new EmbedFieldBuilder
             {
-                eb.AddField(field.Name, field.Value, field.Inline);
-            }
+                Name = f.Name,
+                Value = f.Value,
+                IsInline = f.IsInline
+            }));
 
-            // Send to Mod Notes
-            await modNotesChannel.SendMessageAsync(embed: eb.Build());
-        }
+        await modNotesChannel.SendMessageAsync(embed: embedBuilder.Build());
     }
 }
