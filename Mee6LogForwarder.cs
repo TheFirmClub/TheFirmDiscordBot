@@ -8,7 +8,7 @@ public class Mee6LogForwarder
 {
     private readonly DiscordSocketClient _client;
 
-    // Channel IDs (Admin logs channel is optional if you only forward to Mod Notes)
+    // Mod Notes channel ID
     private readonly ulong _modNotesChannelId = 1394451583709745273;
 
     // MEE6 bot ID
@@ -40,16 +40,6 @@ public class Mee6LogForwarder
                                  && embedFields.Any(f => f.Name.Equals("Moderator", StringComparison.OrdinalIgnoreCase));
 
         if (!hasUserAndModerator) return;
-
-        // List of moderation keywords (case-insensitive)
-        var moderationKeywords = new[] { "MUTE", "UNMUTE", "BAN", "KICK", "WARN", "DEAFEN", "UNDEAFEN" };
-
-        string embedText = embed.Description ?? string.Empty;
-
-        // Check if the embed contains any moderation keyword
-        bool isModerationAction = moderationKeywords.Any(k => embedText.Contains(k, StringComparison.OrdinalIgnoreCase));
-
-        if (!isModerationAction) return;
 
         // Forward to Mod Notes channel
         var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
