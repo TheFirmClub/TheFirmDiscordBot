@@ -9,6 +9,7 @@ public class Mee6LogForwarder
     private readonly DiscordSocketClient _client;
     private readonly ulong _mee6LogChannelId;  // MEE6 Admin Log channel
     private readonly ulong _modNotesChannelId; // Your Mod Notes channel
+    private readonly ulong _mee6Id = 1393611163853656085; // official Mee6 bot ID
 
     public Mee6LogForwarder(DiscordSocketClient client, ulong mee6LogChannelId, ulong modNotesChannelId)
     {
