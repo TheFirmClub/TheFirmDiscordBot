@@ -17,8 +17,6 @@ public class Mee6LogForwarder
     public Mee6LogForwarder(DiscordSocketClient client)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
-
-        // Subscribe to message received event
         _client.MessageReceived += OnMessageReceivedAsync;
     }
 
@@ -27,7 +25,7 @@ public class Mee6LogForwarder
         // Only process messages from MEE6-TheFirm Bot
         if (message.Author.Id != _mee6Id) return;
 
-        // Only process embedded messages
+        // Only process messages with embeds
         if (message.Embeds.Count == 0) return;
 
         var embed = message.Embeds.First();
@@ -38,21 +36,24 @@ public class Mee6LogForwarder
         // Only forward if both "User" and "Moderator" fields exist
         bool hasUserAndModerator = embedFields.Any(f => f.Name.Equals("User", StringComparison.OrdinalIgnoreCase))
                                  && embedFields.Any(f => f.Name.Equals("Moderator", StringComparison.OrdinalIgnoreCase));
-
         if (!hasUserAndModerator) return;
+
+        // Determine forward title
+        string forwardTitle = embed.Title;
+
+        // If title is empty, use first field value (usually the [MUTE] line)
+        if (string.IsNullOrWhiteSpace(forwardTitle) && embedFields.Count > 0)
+        {
+            forwardTitle = embedFields[0].Value?.ToString() ?? string.Empty;
+        }
 
         // Forward to Mod Notes channel
         var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
         if (modNotesChannel != null)
         {
-            // Combine title and description to ensure action text like [UNMUTE] is preserved
-            string combinedDescription = !string.IsNullOrEmpty(embed.Title)
-                ? $"{embed.Title}\n{embed.Description}"
-                : embed.Description;
-
             var forwardEmbed = new EmbedBuilder()
-                .WithTitle(embed.Title)               // <-- preserve the original embed title
-                .WithDescription(embed.Description)   // <-- keep the original description
+                .WithTitle(forwardTitle)
+                .WithDescription(embed.Description)
                 .WithColor(embed.Color ?? Color.DarkRed)
                 .WithTimestamp(embed.Timestamp ?? DateTimeOffset.Now)
                 .WithFields(embedFields.Select(f => new EmbedFieldBuilder
