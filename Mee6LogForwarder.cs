@@ -45,10 +45,13 @@ public class Mee6LogForwarder
         var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
         if (modNotesChannel != null)
         {
-            // Recreate the embed for Mod Notes
+            // Combine title and description to ensure action text like [UNMUTE] is preserved
+            string combinedDescription = !string.IsNullOrEmpty(embed.Title)
+                ? $"{embed.Title}\n{embed.Description}"
+                : embed.Description;
+
             var forwardEmbed = new EmbedBuilder()
-                .WithTitle(embed.Title)
-                .WithDescription(embed.Description)
+                .WithDescription(combinedDescription)
                 .WithColor(embed.Color ?? Color.DarkRed)
                 .WithTimestamp(embed.Timestamp ?? DateTimeOffset.Now)
                 .WithFields(embedFields.Select(f => new EmbedFieldBuilder
