@@ -1,10 +1,4 @@
-﻿using Discord;
-using Discord.WebSocket;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-
-public class Mee6LogForwarder
+﻿public class Mee6LogForwarder
 {
     private readonly DiscordSocketClient _client;
     private readonly ulong _adminChannelId = 1393597248495030272;   // Admin Logs
@@ -54,15 +48,15 @@ public class Mee6LogForwarder
             foreach (var embed in msg.Embeds)
             {
                 var eb = new EmbedBuilder()
-                    .WithAuthor(embed.Author?.Name, embed.Author?.IconUrl, embed.Author?.Url)
-                    .WithColor(embed.Color ?? Color.Blue)
-                    .WithDescription(embed.Description)
-                    .WithFooter(embed.Footer?.Text, embed.Footer?.IconUrl)
-                    .WithImageUrl(embed.Image?.Url)
-                    .WithThumbnailUrl(embed.Thumbnail?.Url)
-                    .WithTimestamp(embed.Timestamp ?? DateTimeOffset.UtcNow)
-                    .WithTitle(embed.Title)
-                    .WithUrl(embed.Url);
+                .WithAuthor(embed.Author?.Name, embed.Author?.IconUrl, embed.Author?.Url)
+                .WithColor(embed.Color ?? Color.Blue)
+                .WithDescription(embed.Description)
+                .WithFooter(embed.Footer?.Text, embed.Footer?.IconUrl)
+                .WithImageUrl(embed.Image?.Url)
+                .WithThumbnailUrl(embed.Thumbnail?.Url) // FIXED
+                .WithTimestamp(embed.Timestamp ?? DateTimeOffset.UtcNow)
+                .WithTitle(embed.Title)
+                .WithUrl(embed.Url);
 
                 foreach (var field in embed.Fields)
                     eb.AddField(field.Name, field.Value, field.Inline);
