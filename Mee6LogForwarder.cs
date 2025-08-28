@@ -28,10 +28,7 @@ public class Mee6LogForwarder
     {
         try
         {
-            // Only process messages in Admin Logs channel
             if (message.Channel.Id != _adminChannelId) return;
-
-            // Ignore if not from a bot (so random chatter doesn’t get logged)
             if (!message.Author.IsBot) return;
 
             var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
@@ -39,7 +36,7 @@ public class Mee6LogForwarder
 
             bool containsModerationKeyword = false;
 
-            // Check embeds for moderation keywords
+            // Debug: print all embed text to console
             if (message.Embeds.Any())
             {
                 foreach (var embed in message.Embeds)
@@ -47,6 +44,8 @@ public class Mee6LogForwarder
                     string embedText = $"{embed.Title} {embed.Description} " +
                                        string.Join(" ", embed.Fields.Select(f => f.Name + " " + f.Value)) +
                                        $" {embed.Footer?.Text}";
+
+                    Console.WriteLine($"[Mee6LogForwarder] Embed received:\n{embedText}");
 
                     if (_moderationKeywords.Any(k => embedText.Contains(k, StringComparison.OrdinalIgnoreCase)))
                     {
@@ -65,16 +64,19 @@ public class Mee6LogForwarder
                             builder.AddField(field.Name, field.Value, field.Inline);
                         }
 
+                        Console.WriteLine($"[Mee6LogForwarder] Forwarding moderation log → Mod Notes.");
                         await modNotesChannel.SendMessageAsync(embed: builder.Build());
                     }
                 }
             }
 
-            // Check plain text content
             if (!containsModerationKeyword && !string.IsNullOrWhiteSpace(message.Content))
             {
+                Console.WriteLine($"[Mee6LogForwarder] Plain message: {message.Content}");
+
                 if (_moderationKeywords.Any(k => message.Content.Contains(k, StringComparison.OrdinalIgnoreCase)))
                 {
+                    Console.WriteLine($"[Mee6LogForwarder] Forwarding plain moderation log → Mod Notes.");
                     await modNotesChannel.SendMessageAsync($"📋 **MEE6 Log Message:** {message.Content}");
                 }
             }
@@ -84,4 +86,5 @@ public class Mee6LogForwarder
             Console.WriteLine($"[Mee6LogForwarder] Error forwarding message: {ex}");
         }
     }
+
 }
