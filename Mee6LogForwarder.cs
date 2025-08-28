@@ -11,7 +11,7 @@ public class Mee6LogForwarder
     private readonly ulong _modNotesChannelId = 1394451583709745273; // Mod Notes
     private readonly ulong _mee6Id = 1393611163853656085;            // MEE6-TheFirm Bot ID
 
-    // Moderation keywords
+    // List of moderation keywords to filter
     private readonly string[] _moderationKeywords = new[]
     {
         "[MUTE]", "[UNMUTE]", "[BAN]", "[KICK]", "[WARN]", "[DEAFEN]", "[UNDEAFEN]"
@@ -30,51 +30,80 @@ public class Mee6LogForwarder
             if (message is not SocketUserMessage msg)
                 return;
 
+            // Only forward from Admin Logs channel
             if (msg.Channel.Id != _adminChannelId)
                 return;
 
+            // Only forward if it's from MEE6 (The Firm bot)
             if (msg.Author.Id != _mee6Id)
                 return;
 
-            var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
-            if (modNotesChannel == null)
-                return;
+            // Check if this message contains a moderation event
+            bool isModerationLog = false;
 
+            // Check embeds first
             if (msg.Embeds.Count > 0)
             {
                 foreach (var embed in msg.Embeds)
                 {
-                    bool isModerationLog = false;
-
-                    // Check title, description, and fields
-                    if (!string.IsNullOrEmpty(embed.Title))
+                    // Check title, description, and fields for moderation keywords
+                    if (!string.IsNullOrWhiteSpace(embed.Title))
                         isModerationLog |= _moderationKeywords.Any(k => embed.Title.Contains(k, StringComparison.OrdinalIgnoreCase));
 
-                    if (!string.IsNullOrEmpty(embed.Description))
+                    if (!string.IsNullOrWhiteSpace(embed.Description))
                         isModerationLog |= _moderationKeywords.Any(k => embed.Description.Contains(k, StringComparison.OrdinalIgnoreCase));
 
                     if (embed.Fields.Count > 0)
-                        isModerationLog |= embed.Fields.Any(f => _moderationKeywords.Any(k => f.Name.Contains(k, StringComparison.OrdinalIgnoreCase)
-                                                                                         || f.Value.Contains(k, StringComparison.OrdinalIgnoreCase)));
-
-                    if (isModerationLog)
-                    {
-                        var eb = new EmbedBuilder()
-                            .WithAuthor(embed.Author?.Name, embed.Author?.IconUrl, embed.Author?.Url)
-                            .WithTitle(embed.Title)
-                            .WithDescription(embed.Description)
-                            .WithColor(embed.Color ?? Color.Blue)
-                            .WithFooter(embed.Footer?.Text, embed.Footer?.IconUrl)
-                            .WithThumbnailUrl(embed.Thumbnail?.Url)
-                            .WithImageUrl(embed.Image?.Url)
-                            .WithTimestamp(embed.Timestamp ?? DateTimeOffset.UtcNow);
-
-                        foreach (var field in embed.Fields)
-                            eb.AddField(field.Name, field.Value, field.Inline);
-
-                        await modNotesChannel.SendMessageAsync(embed: eb.Build());
-                    }
+                        isModerationLog |= embed.Fields.Any(f => _moderationKeywords.Any(k =>
+                            (!string.IsNullOrEmpty(f.Name) && f.Name.Contains(k, StringComparison.OrdinalIgnoreCase)) ||
+                            (!string.IsNullOrEmpty(f.Value) && f.Value.Contains(k, StringComparison.OrdinalIgnoreCase))
+                        ));
                 }
+            }
+
+            // If not an embed, check content
+            if (!isModerationLog && !string.IsNullOrWhiteSpace(msg.Content))
+            {
+                isModerationLog = _moderationKeywords.Any(k => msg.Content.Contains(k, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!isModerationLog)
+                return;
+
+            // Get Mod Notes channel
+            var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
+            if (modNotesChannel == null)
+                return;
+
+            // Forward embeds if present
+            if (msg.Embeds.Count > 0)
+            {
+                foreach (var embed in msg.Embeds)
+                {
+                    var eb = new EmbedBuilder()
+                        .WithAuthor(embed.Author?.Name, embed.Author?.IconUrl, embed.Author?.Url)
+                        .WithColor(embed.Color ?? Color.Blue)
+                        .WithDescription(embed.Description)
+                        .WithFooter(embed.Footer?.Text, embed.Footer?.IconUrl)
+                        .WithImageUrl(embed.Image?.Url)
+                        .WithThumbnailUrl(embed.Thumbnail?.Url)
+                        .WithTimestamp(embed.Timestamp ?? DateTimeOffset.UtcNow)
+                        .WithTitle(embed.Title)
+                        .WithUrl(embed.Url);
+
+                    // Copy fields
+                    foreach (var field in embed.Fields)
+                    {
+                        eb.AddField(field.Name, field.Value, field.Inline);
+                    }
+
+                    await modNotesChannel.SendMessageAsync(embed: eb.Build());
+                }
+            }
+            else
+            {
+                // Fallback: plain text
+                await modNotesChannel.SendMessageAsync(msg.Content);
             }
         }
         catch (Exception ex)
