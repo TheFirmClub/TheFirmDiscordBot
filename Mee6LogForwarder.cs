@@ -1,14 +1,13 @@
 ﻿using Discord;
 using Discord.WebSocket;
-using System;
 using System.Linq;
 using System.Threading.Tasks;
 
 public class Mee6LogForwarder
 {
     private readonly DiscordSocketClient _client;
-    private readonly ulong _adminChannelId = 1393597248495030272;   // Admin Logs
     private readonly ulong _modNotesChannelId = 1394451583709745273; // Mod Notes
+    private readonly ulong _adminChannelId = 1394451583709745272;    // Admin Logs
     private readonly ulong _mee6Id = 1393611163853656085;            // MEE6-TheFirm Bot ID
 
     // List of moderation keywords to filter
@@ -19,49 +18,57 @@ public class Mee6LogForwarder
 
     public Mee6LogForwarder(DiscordSocketClient client)
     {
-        _client = client ?? throw new ArgumentNullException(nameof(client));
+        _client = client;
         _client.MessageReceived += OnMessageReceivedAsync;
     }
 
     private async Task OnMessageReceivedAsync(SocketMessage message)
     {
-        // Only handle messages from the MEE6 bot
-        if (message.Author.Id != _mee6Id)
+        // Only process messages from MEE6 in the Admin Logs channel
+        if (message.Author.Id != _mee6Id || message.Channel.Id != _adminChannelId)
             return;
 
-        // Only handle messages in the Admin Logs channel
-        if (message.Channel.Id != _adminChannelId)
-            return;
-
-        // Only handle embeds
         if (message is not IUserMessage userMessage || userMessage.Embeds.Count == 0)
             return;
 
-        foreach (var embed in userMessage.Embeds)
+        var embed = userMessage.Embeds.FirstOrDefault();
+        if (embed == null)
+            return;
+
+        // Check Title OR Description for moderation keywords
+        bool containsModerationKeyword =
+            _moderationKeywords.Any(k => (embed.Title != null && embed.Title.Contains(k))) ||
+            _moderationKeywords.Any(k => (embed.Description != null && embed.Description.Contains(k)));
+
+        if (!containsModerationKeyword)
+            return;
+
+        // Forward the embed to Mod Notes
+        var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
+        if (modNotesChannel == null)
+            return;
+
+        var embedBuilder = new EmbedBuilder()
+            .WithTitle(embed.Title ?? "")
+            .WithDescription(embed.Description ?? "")
+            .WithColor(embed.Color ?? Color.DarkBlue);
+
+        // Copy fields safely
+        foreach (var f in embed.Fields)
         {
-            // Skip non-moderation embeds
-            if (!_moderationKeywords.Any(k => embed.Title != null && embed.Title.Contains(k)))
-                continue;
-
-            var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
-            if (modNotesChannel == null)
-                continue;
-
-            var eb = new EmbedBuilder()
-                .WithTitle(embed.Title)
-                .WithDescription(embed.Description)
-                .WithColor(embed.Color ?? Color.LightGrey)
-                .WithFooter(embed.Footer?.Text)
-                .WithTimestamp(embed.Timestamp ?? DateTimeOffset.UtcNow);
-
-            // Copy fields safely
-            foreach (var field in embed.Fields)
-            {
-                eb.AddField(field.Name, field.Value, field.Inline);
-            }
-
-            // Send to Mod Notes
-            await modNotesChannel.SendMessageAsync(embed: eb.Build());
+            embedBuilder.AddField(f.Name, f.Value, f.Inline); // ✅ correct property
         }
+
+        // (optional) preserve footer, timestamp, author if present
+        if (embed.Timestamp.HasValue)
+            embedBuilder.WithTimestamp(embed.Timestamp.Value);
+
+        if (embed.Footer.HasValue)
+            embedBuilder.WithFooter(embed.Footer.Value.Text, embed.Footer.Value.IconUrl);
+
+        if (embed.Author.HasValue)
+            embedBuilder.WithAuthor(embed.Author.Value.Name, embed.Author.Value.IconUrl, embed.Author.Value.Url);
+
+        await modNotesChannel.SendMessageAsync(embed: embedBuilder.Build());
     }
 }
