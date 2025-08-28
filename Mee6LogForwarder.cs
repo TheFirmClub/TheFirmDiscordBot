@@ -1,93 +1,67 @@
 ﻿using Discord;
+using Discord;
 using Discord.WebSocket;
-using System;
-using System.Linq;
 using System.Threading.Tasks;
 
-public class Mee6LogForwarder
+public class Mee6Forwarder
 {
     private readonly DiscordSocketClient _client;
-    private readonly ulong _mee6LogChannelId;  // MEE6 Admin Log channel
-    private readonly ulong _modNotesChannelId; // Your Mod Notes channel
-    private readonly ulong _mee6Id = 1393611163853656085; // official Mee6 bot ID
+    private readonly ulong _adminChannelId = 1393597248495030272;   // Admin Logs
+    private readonly ulong _modNotesChannelId = 1394451583709745273; // Mod Notes
+    private readonly ulong _mee6Id = 1393611163853656085; // The Firm (Mee6 custom bot) ID
 
-    public Mee6LogForwarder(DiscordSocketClient client, ulong mee6LogChannelId, ulong modNotesChannelId)
+    public Mee6Forwarder(DiscordSocketClient client)
     {
         _client = client;
-        _mee6LogChannelId = mee6LogChannelId;
-        _modNotesChannelId = modNotesChannelId;
-
         _client.MessageReceived += OnMessageReceivedAsync;
     }
 
     private async Task OnMessageReceivedAsync(SocketMessage message)
     {
-        try
+        if (message is not SocketUserMessage msg)
+            return;
+
+        // Only forward from Admin Logs channel
+        if (msg.Channel.Id != _adminChannelId)
+            return;
+
+        // Only forward if it's from MEE6 (The Firm bot)
+        if (msg.Author.Id != _mee6Id)
+            return;
+
+        // Get Mod Notes channel
+        var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
+        if (modNotesChannel == null)
+            return;
+
+        // Forward embeds if they exist
+        if (msg.Embeds.Count > 0)
         {
-            if (message.Channel.Id != _mee6LogChannelId) return; // Only watch MEE6 log channel
-            if (!message.Author.IsBot) return;                   // Only forward bot logs (MEE6)
-
-            var modChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
-            if (modChannel == null) return;
-
-            bool isModerationLog = false;
-
-            foreach (var embed in message.Embeds)
+            foreach (var embed in msg.Embeds)
             {
-                string combinedText = $"{embed.Title} {embed.Description} " +
-                                      string.Join(" ", embed.Fields.Select(f => f.Name + " " + f.Value));
+                var eb = new EmbedBuilder()
+                    .WithAuthor(embed.Author?.Name, embed.Author?.IconUrl, embed.Author?.Url)
+                    .WithColor(embed.Color ?? Color.Blue)
+                    .WithDescription(embed.Description)
+                    .WithFooter(embed.Footer?.Text, embed.Footer?.IconUrl)
+                    .WithImageUrl(embed.Image?.Url)
+                    .WithThumbnailUrl(embed.Thumbnail?.Url)
+                    .WithTimestamp(embed.Timestamp ?? System.DateTimeOffset.UtcNow)
+                    .WithTitle(embed.Title)
+                    .WithUrl(embed.Url);
 
-                combinedText = combinedText.ToLower();
-
-                if (combinedText.Contains("mute") ||
-                    combinedText.Contains("banned") ||
-                    combinedText.Contains("BAN") ||
-                    combinedText.Contains("kicked") ||
-                    combinedText.Contains("deafen") ||
-                    combinedText.Contains("warn"))
+                // Copy fields if there are any
+                foreach (var field in embed.Fields)
                 {
-                    isModerationLog = true;
-
-                    // Copy embed to a new builder so we can add moderator info
-                    var embedBuilder = embed.ToEmbedBuilder();
-
-                    // Try to extract moderator info
-                    string? moderator = null;
-
-                    // From fields
-                    var modField = embed.Fields.FirstOrDefault(f =>
-                        f.Name.ToLower().Contains("moderator") ||
-                        f.Value.ToLower().Contains("moderator"));
-
-                    if (modField.Name != null)
-                        moderator = $"{modField.Value}";
-
-                    // From footer
-                    if (string.IsNullOrEmpty(moderator) && embed.Footer.HasValue)
-                        moderator = embed.Footer.Value.Text;
-
-                    // From description
-                    if (string.IsNullOrEmpty(moderator) && !string.IsNullOrWhiteSpace(embed.Description))
-                    {
-                        var desc = embed.Description.ToLower();
-                        if (desc.Contains("by "))
-                        {
-                            int idx = desc.LastIndexOf("by ");
-                            moderator = embed.Description.Substring(idx + 3).Trim();
-                        }
-                    }
-
-                    if (!string.IsNullOrEmpty(moderator))
-                    {
-                        embedBuilder.AddField("👮 Moderator", moderator, inline: false);
-                    }
-
-                    await modChannel.SendMessageAsync(embed: embedBuilder.Build());
+                    eb.AddField(field.Name, field.Value, field.Inline);
                 }
-            }
 
-            // Fallback: plain text (rare for MEE6)
-            if (!isModerationLog && !string.IsNullOrWhiteSpace(message.Content))
+                await modNotesChannel.SendMessageAsync(embed: eb.Build());
+            }
+        }
+
+        // Fallback: plain text (rare for MEE6)
+        if (!isModerationLog && !string.IsNullOrWhiteSpace(message.Content))
             {
                 string text = message.Content.ToLower();
                 if (text.Contains("mute") ||

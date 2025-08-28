@@ -53,7 +53,8 @@ class Program
         _client.Ready += async () => await ReadyAsync(guildId);
 
         new StoreEmbed(_client);
-        
+        new Mee6Forwarder(_client);
+
         // after _client is created
         _inviteTracker = new InviteTrackerService(_client);
         await _inviteTracker.InitializeAsync();
