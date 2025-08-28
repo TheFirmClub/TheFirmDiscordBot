@@ -38,14 +38,24 @@ public class Mee6LogForwarder
             if (msg.Author.Id != _mee6Id)
                 return;
 
+<<<<<<< HEAD
             // Check if this message contains a moderation event
             bool isModerationLog = false;
 
             // Check embeds first
+=======
+            // Get Mod Notes channel
+            var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
+            if (modNotesChannel == null)
+                return;
+
+            // Forward embeds if they contain moderation keywords
+>>>>>>> parent of ea715db (Update Mee6LogForwarder.cs)
             if (msg.Embeds.Count > 0)
             {
                 foreach (var embed in msg.Embeds)
                 {
+<<<<<<< HEAD
                     // Check title, description, and fields for moderation keywords
                     if (!string.IsNullOrWhiteSpace(embed.Title))
                         isModerationLog |= _moderationKeywords.Any(k => embed.Title.Contains(k, StringComparison.OrdinalIgnoreCase));
@@ -58,6 +68,34 @@ public class Mee6LogForwarder
                             (!string.IsNullOrEmpty(f.Name) && f.Name.Contains(k, StringComparison.OrdinalIgnoreCase)) ||
                             (!string.IsNullOrEmpty(f.Value) && f.Value.Contains(k, StringComparison.OrdinalIgnoreCase))
                         ));
+=======
+                    bool isModerationLog = false;
+
+                    // Check title & description for keywords
+                    if (!string.IsNullOrEmpty(embed.Title))
+                        isModerationLog |= _moderationKeywords.Any(k => embed.Title.Contains(k, StringComparison.OrdinalIgnoreCase));
+                    if (!string.IsNullOrEmpty(embed.Description))
+                        isModerationLog |= _moderationKeywords.Any(k => embed.Description.Contains(k, StringComparison.OrdinalIgnoreCase));
+
+                    if (isModerationLog)
+                    {
+                        var eb = new EmbedBuilder()
+                            .WithAuthor(embed.Author?.Name, embed.Author?.IconUrl, embed.Author?.Url)
+                            .WithTitle(embed.Title)
+                            .WithDescription(embed.Description)
+                            .WithColor(embed.Color ?? Color.Blue)
+                            .WithFooter(embed.Footer?.Text, embed.Footer?.IconUrl)
+                            .WithThumbnailUrl(embed.Thumbnail?.Url)
+                            .WithImageUrl(embed.Image?.Url)
+                            .WithTimestamp(embed.Timestamp ?? DateTimeOffset.UtcNow);
+
+                        // Copy fields
+                        foreach (var field in embed.Fields)
+                            eb.AddField(field.Name, field.Value, field.Inline);
+
+                        await modNotesChannel.SendMessageAsync(embed: eb.Build());
+                    }
+>>>>>>> parent of ea715db (Update Mee6LogForwarder.cs)
                 }
             }
 
