@@ -17,8 +17,6 @@ public class Mee6LogForwarder
     public Mee6LogForwarder(DiscordSocketClient client)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
-
-        // Subscribe to message received event
         _client.MessageReceived += OnMessageReceivedAsync;
     }
 
@@ -32,7 +30,7 @@ public class Mee6LogForwarder
 
         var embed = message.Embeds.First();
 
-        // Extract all embed fields
+        // Extract embed fields
         var embedFields = embed.Fields.ToList();
 
         // Only forward if both "User" and "Moderator" fields exist
@@ -41,14 +39,16 @@ public class Mee6LogForwarder
 
         if (!hasUserAndModerator) return;
 
-        // Determine the line for Mod Notes (preserve the [MUTE]/[UNMUTE]/etc)
+        // Determine forward title
         string forwardTitle = embed.Title;
 
+        // Use embed.Author if Title is null or empty
         if (string.IsNullOrWhiteSpace(forwardTitle) && embed.Author != null)
         {
-            forwardTitle = embed.Author.Name;
+            forwardTitle = embed.Author?.Name ?? string.Empty;
         }
 
+        // Fallback: use the first field value if still empty
         if (string.IsNullOrWhiteSpace(forwardTitle) && embedFields.Count > 0)
         {
             forwardTitle = embedFields[0].Value?.ToString() ?? string.Empty;
@@ -58,7 +58,6 @@ public class Mee6LogForwarder
         var modNotesChannel = _client.GetChannel(_modNotesChannelId) as IMessageChannel;
         if (modNotesChannel != null)
         {
-            // Recreate the embed for Mod Notes
             var forwardEmbed = new EmbedBuilder()
                 .WithTitle(forwardTitle)
                 .WithDescription(embed.Description)
