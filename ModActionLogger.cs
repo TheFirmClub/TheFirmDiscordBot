@@ -1,118 +1,62 @@
-﻿using Discord;
+﻿using System.Threading.Tasks;
+using Discord;
 using Discord.WebSocket;
-using System.Linq;
-using System.Threading.Tasks;
 
 public class ModActionLogger
 {
     private readonly DiscordSocketClient _client;
-    private readonly ulong _modNotesChannelId;
+    private const ulong LogChannelId = 1394451583709745273; // Mod action log channel
 
-    public ModActionLogger(DiscordSocketClient client, ulong modNotesChannelId)
+    public ModActionLogger(DiscordSocketClient client)
     {
         _client = client;
-        _modNotesChannelId = modNotesChannelId;
+        _client.UserBanned += OnUserBanned;
+        _client.UserUnbanned += OnUserUnbanned;
+        _client.UserLeft += OnUserLeft;
     }
 
-    private async Task<ITextChannel?> GetLogChannelAsync(SocketGuild guild)
+    private async Task OnUserBanned(SocketUser user, SocketGuild guild)
     {
-        return guild.GetTextChannel(_modNotesChannelId);
+        var log = await guild.GetAuditLogsAsync(1).FirstAsync();
+        var entry = log.Entries.FirstOrDefault(e => e.Action == ActionType.Ban);
+        if (entry == null) return;
+
+        var moderator = entry.User;
+        var reason = entry.Reason ?? "No reason provided";
+
+        await SendLogAsync(guild, $"{user.Username} was **banned** by {moderator.Username}. Reason: {reason}");
     }
 
-    public async Task OnUserBannedAsync(SocketUser user, SocketGuild guild)
+    private async Task OnUserUnbanned(SocketUser user, SocketGuild guild)
     {
-        var logs = await guild.GetAuditLogsAsync(1).FlattenAsync();
-        var entry = logs.FirstOrDefault();
+        var log = await guild.GetAuditLogsAsync(1).FirstAsync();
+        var entry = log.Entries.FirstOrDefault(e => e.Action == ActionType.Unban);
+        if (entry == null) return;
 
-        var moderator = entry?.User;
-        var channel = await GetLogChannelAsync(guild);
-        if (channel == null) return;
+        var moderator = entry.User;
+        var reason = entry.Reason ?? "No reason provided";
 
-        var embed = new EmbedBuilder()
-            .WithTitle("[BAN]")
-            .AddField("User", user.Mention, true)
-            .AddField("Moderator", moderator?.Mention ?? "Unknown", true)
-            .WithColor(Color.DarkRed)
-            .WithCurrentTimestamp();
-
-        await channel.SendMessageAsync(embed: embed.Build());
+        await SendLogAsync(guild, $"{user.Username} was **unbanned** by {moderator.Username}. Reason: {reason}");
     }
 
-    public async Task OnUserUnbannedAsync(SocketUser user, SocketGuild guild)
+    private async Task OnUserLeft(SocketGuild guild, SocketUser user)
     {
-        var logs = await guild.GetAuditLogsAsync(1).FlattenAsync();
-        var entry = logs.FirstOrDefault();
+        var log = await guild.GetAuditLogsAsync(1).FirstAsync();
+        var entry = log.Entries.FirstOrDefault(e => e.Action == ActionType.Kick);
+        if (entry == null) return;
 
-        var moderator = entry?.User;
-        var channel = await GetLogChannelAsync(guild);
-        if (channel == null) return;
+        var moderator = entry.User;
+        var reason = entry.Reason ?? "No reason provided";
 
-        var embed = new EmbedBuilder()
-            .WithTitle("[UNBAN]")
-            .AddField("User", user.Mention, true)
-            .AddField("Moderator", moderator?.Mention ?? "Unknown", true)
-            .WithColor(Color.Green)
-            .WithCurrentTimestamp();
-
-        await channel.SendMessageAsync(embed: embed.Build());
+        await SendLogAsync(guild, $"{user.Username} was **kicked** by {moderator.Username}. Reason: {reason}");
     }
 
-    public async Task OnUserLeftAsync(SocketGuildUser user)
+    private async Task SendLogAsync(SocketGuild guild, string message)
     {
-        var guild = user.Guild;
-        var logs = await guild.GetAuditLogsAsync(1).FlattenAsync();
-        var entry = logs.FirstOrDefault();
-
-        string actionType;
-        IUser? moderator = null;
-
-        if (entry != null && entry.Action == ActionType.Kick && entry.Target.Id == user.Id)
+        var channel = guild.GetTextChannel(LogChannelId);
+        if (channel != null)
         {
-            actionType = "[KICK]";
-            moderator = entry.User;
-        }
-        else
-        {
-            actionType = "[LEAVE]";
-        }
-
-        var channel = await GetLogChannelAsync(guild);
-        if (channel == null) return;
-
-        var embed = new EmbedBuilder()
-            .WithTitle(actionType)
-            .AddField("User", user.Mention, true);
-
-        if (moderator != null)
-            embed.AddField("Moderator", moderator.Mention, true);
-
-        embed.WithColor(actionType == "[LEAVE]" ? Color.LightGrey : Color.DarkOrange)
-             .WithCurrentTimestamp();
-
-        await channel.SendMessageAsync(embed: embed.Build());
-    }
-
-    public async Task OnGuildMemberUpdatedAsync(SocketGuildUser before, SocketGuildUser after)
-    {
-        var channel = await GetLogChannelAsync(after.Guild);
-        if (channel == null) return;
-
-        if (before.TimedOutUntil != after.TimedOutUntil)
-        {
-            var logs = await after.Guild.GetAuditLogsAsync(1).FlattenAsync();
-            var entry = logs.FirstOrDefault();
-
-            var moderator = entry?.User;
-
-            var embed = new EmbedBuilder()
-                .WithTitle("[TIMEOUT]")
-                .AddField("User", after.Mention, true)
-                .AddField("Moderator", moderator?.Mention ?? "Unknown", true)
-                .AddField("Until", after.TimedOutUntil?.ToString("f") ?? "Removed", true)
-                .WithColor(Color.Blue)
-                .WithCurrentTimestamp();
-
-            await channel.SendMessageAsync(embed: embed.Build());
+            await channel.SendMessageAsync(message);
         }
     }
 }
