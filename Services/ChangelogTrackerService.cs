@@ -23,7 +23,7 @@ public class ChangelogTrackerService
 
     // Channel IDs
     private const ulong SourceChannelId = 1393640613576179752UL;
-    private const ulong StatsChannelId  = 1393711403356913816UL;
+    private const ulong StatsChannelId  = 1393637573385126058UL;
 
     // Data and persistence
     private readonly ConcurrentDictionary<ulong, UserStats> _byUser = new();
@@ -73,7 +73,8 @@ public class ChangelogTrackerService
         int items = CountChangelogItems(msg.Content);
         if (items <= 0) return;
 
-        Tally(msg.Author, items);
+        var displayName = (msg.Author as SocketGuildUser)?.DisplayName ?? msg.Author.Username;
+        Tally(msg.Author, items, displayName);
         _messageItemCounts[msg.Id] = items;
         _messageAuthors[msg.Id] = msg.Author.Id;
         Save();
@@ -92,7 +93,8 @@ public class ChangelogTrackerService
             {
                 if (newItems > 0)
                 {
-                    Tally(after.Author, newItems);
+                    var displayName = (after.Author as SocketGuildUser)?.DisplayName ?? after.Author.Username;
+                    Tally(after.Author, newItems, displayName);
                     _messageItemCounts[after.Id] = newItems;
                     _messageAuthors[after.Id] = after.Author.Id;
                     Save();
@@ -170,8 +172,17 @@ public class ChangelogTrackerService
                 int items = CountChangelogItems(m.Content);
                 if (items <= 0) continue;
 
+                // Prefer guild display name
+                string displayName = m.Author.Username;
+                try
+                {
+                    var gu = await chan.GetUserAsync(m.Author.Id);
+                    if (gu != null) displayName = gu.DisplayName ?? gu.Username;
+                }
+                catch { }
+
                 // Tally
-                Tally(m.Author, items);
+                Tally(m.Author, items, displayName);
 
                 // Track counts for future edit/delete consistency
                 _messageItemCounts[m.Id] = items;
@@ -199,7 +210,6 @@ public class ChangelogTrackerService
         }
 
         int totalItems = _byUser.Values.Sum(s => s.Items);
-        int totalMessages = _byUser.Values.Sum(s => s.Messages);
 
         var top10 = _byUser.Values
             .OrderByDescending(s => s.Items)
@@ -211,15 +221,16 @@ public class ChangelogTrackerService
         int rank = 1;
         foreach (var u in top10)
         {
-            desc.AppendLine($"**{rank}.** {Escape(u.DisplayName)} — **{u.Items}** items *(in {u.Messages} msgs)*");
+            desc.AppendLine($"**{rank}.** {Escape(u.DisplayName)} — **{u.Items}** items");
             rank++;
         }
 
         var embed = new EmbedBuilder()
-            .WithTitle("📦 Changelog Contribution Stats")
+            .WithTitle("📦 Changelog Stats")
             .WithDescription(desc.Length > 0 ? desc.ToString() : "No data yet. Post some bullets in the changelog channel!")
             .WithColor(new Color(155, 100, 255))
-            .AddField("Totals", $"Items: **{totalItems}**\nMessages: **{totalMessages}**", true)
+            .WithThumbnailUrl("https://www.thefirm.club/Media/thefirm-thumb.png")
+            .AddField("Total Items", $"**{totalItems}**", true)
             .WithFooter($"Updated • {DateTimeOffset.Now:yyyy-MM-dd HH:mm}")
             .Build();
 
@@ -249,17 +260,17 @@ public class ChangelogTrackerService
         return s.Replace("*", "\\*").Replace("_", "\\_").Replace("~", "\\~").Replace("`", "\\`");
     }
 
-    private void Tally(IUser author, int items)
+    private void Tally(IUser author, int items, string? displayNameOverride = null)
     {
         var stats = _byUser.GetOrAdd(author.Id, _ => new UserStats
         {
             UserId = author.Id,
-            DisplayName = author.Username
+            DisplayName = displayNameOverride ?? author.Username
         });
 
-        stats.DisplayName = author.Username;
+        // Keep display name fresh
+        stats.DisplayName = displayNameOverride ?? author.Username;
         stats.Items += items;
-        stats.Messages += 1;
         stats.LastAt = DateTimeOffset.UtcNow;
 
         if (stats.FirstAt == default)
@@ -352,7 +363,6 @@ public class ChangelogTrackerService
         public ulong UserId { get; set; }
         public string DisplayName { get; set; } = string.Empty;
         public int Items { get; set; }
-        public int Messages { get; set; }
         public DateTimeOffset FirstAt { get; set; }
         public DateTimeOffset LastAt { get; set; }
     }
