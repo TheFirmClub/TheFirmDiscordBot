@@ -24,6 +24,8 @@ class Program
     
     private ChangelogTrackerService? _changelogTracker;
 
+    private ModActionLogger? _modActionLogger;
+
     public static Task Main(string[] args) => new Program().MainAsync();
 
     public async Task MainAsync()
@@ -63,6 +65,15 @@ class Program
         
         // Changelog tracker (listens in changelog channel and posts stats)
         _changelogTracker = new ChangelogTrackerService(_client!);
+
+        ulong modNotesChannelId = 1394451583709745273;
+        _modActionLogger = new ModActionLogger(_client, modNotesChannelId);
+
+        // Subscribe ModActionLogger events
+        _client.UserBanned += async (user, guild) => await _modActionLogger.OnUserBannedAsync(user, guild);
+        _client.UserUnbanned += async (user, guild) => await _modActionLogger.OnUserUnbannedAsync(user, guild);
+        _client.UserLeft += async (user) => await _modActionLogger.OnUserLeftAsync(user as SocketGuildUser!);
+        _client.GuildMemberUpdated += async (before, after) => await _modActionLogger.OnGuildMemberUpdatedAsync(before, after);
 
         _commandHandler = new SlashCommandHandler(_config, _inviteTracker);
         
