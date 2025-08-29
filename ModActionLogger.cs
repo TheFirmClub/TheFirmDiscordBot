@@ -1,109 +1,119 @@
 ﻿using Discord;
+using Discord.Rest;
 using Discord.WebSocket;
-using System;
 using System.Linq;
 using System.Threading.Tasks;
 
 public class ModActionLogger
 {
     private readonly DiscordSocketClient _client;
-    private readonly ulong _modLogChannelId;
+    private readonly ulong _modNotesChannelId;
 
-    public ModActionLogger(DiscordSocketClient client, ulong modLogChannelId)
+    public ModActionLogger(DiscordSocketClient client, ulong modNotesChannelId)
     {
-        _client = client ?? throw new ArgumentNullException(nameof(client));
-        _modLogChannelId = modLogChannelId;
+        _client = client;
+        _modNotesChannelId = modNotesChannelId;
     }
 
-    private IMessageChannel? GetLogChannel()
+    private async Task<ITextChannel?> GetLogChannelAsync(SocketGuild guild)
     {
-        return _client.GetChannel(_modLogChannelId) as IMessageChannel;
+        return guild.GetTextChannel(_modNotesChannelId);
     }
 
-    // Ban event
     public async Task OnUserBannedAsync(SocketUser user, SocketGuild guild)
     {
-        var audit = await guild.GetAuditLogsAsync(1, actionType: ActionType.Ban).FlattenAsync();
-        var entry = audit.FirstOrDefault();
+        var logs = await guild.GetAuditLogsAsync(1).FlattenAsync();
+        var entry = logs.FirstOrDefault() as RestBanAuditLogEntry;
 
-        string moderator = entry?.User.ToString() ?? "Unknown";
+        var moderator = entry?.User;
+        var channel = await GetLogChannelAsync(guild);
+        if (channel == null) return;
 
         var embed = new EmbedBuilder()
-            .WithTitle($"🔨 User Banned")
-            .AddField("User", $"{user.Mention} ({user.Username}#{user.Discriminator})")
-            .AddField("Moderator", moderator)
-            .WithColor(Color.Red)
-            .WithTimestamp(DateTimeOffset.UtcNow)
-            .Build();
+            .WithTitle("[BAN]")
+            .AddField("User", user.Mention, true)
+            .AddField("Moderator", moderator?.Mention ?? "Unknown", true)
+            .WithColor(Color.DarkRed)
+            .WithCurrentTimestamp();
 
-        await GetLogChannel()?.SendMessageAsync(embed: embed);
+        await channel.SendMessageAsync(embed: embed.Build());
     }
 
-    // Unban event
     public async Task OnUserUnbannedAsync(SocketUser user, SocketGuild guild)
     {
-        var audit = await guild.GetAuditLogsAsync(1, actionType: ActionType.Unban).FlattenAsync();
-        var entry = audit.FirstOrDefault();
+        var logs = await guild.GetAuditLogsAsync(1).FlattenAsync();
+        var entry = logs.FirstOrDefault() as RestUnbanAuditLogEntry;
 
-        string moderator = entry?.User.ToString() ?? "Unknown";
+        var moderator = entry?.User;
+        var channel = await GetLogChannelAsync(guild);
+        if (channel == null) return;
 
         var embed = new EmbedBuilder()
-            .WithTitle($"✅ User Unbanned")
-            .AddField("User", $"{user.Mention} ({user.Username}#{user.Discriminator})")
-            .AddField("Moderator", moderator)
+            .WithTitle("[UNBAN]")
+            .AddField("User", user.Mention, true)
+            .AddField("Moderator", moderator?.Mention ?? "Unknown", true)
             .WithColor(Color.Green)
-            .WithTimestamp(DateTimeOffset.UtcNow)
-            .Build();
+            .WithCurrentTimestamp();
 
-        await GetLogChannel()?.SendMessageAsync(embed: embed);
+        await channel.SendMessageAsync(embed: embed.Build());
     }
 
-    // Kick or member left
     public async Task OnUserLeftAsync(SocketGuildUser user)
     {
-        var audit = await user.Guild.GetAuditLogsAsync(5, actionType: ActionType.Kick).FlattenAsync();
-        var entry = audit.FirstOrDefault(e => e.Target.Id == user.Id);
+        var guild = user.Guild;
+        var logs = await guild.GetAuditLogsAsync(1).FlattenAsync();
+        var entry = logs.FirstOrDefault();
 
-        string moderator = entry?.User.ToString() ?? "User Left";
+        string actionType = "";
+        SocketUser? moderator = null;
+
+        if (entry is RestKickAuditLogEntry kickEntry && kickEntry.Target.Id == user.Id)
+        {
+            actionType = "[KICK]";
+            moderator = kickEntry.User;
+        }
+        else
+        {
+            actionType = "[LEAVE]";
+        }
+
+        var channel = await GetLogChannelAsync(guild);
+        if (channel == null) return;
 
         var embed = new EmbedBuilder()
-            .WithTitle($"👢 User Left / Kicked")
-            .AddField("User", $"{user.Mention} ({user.Username}#{user.Discriminator})")
-            .AddField("Moderator", moderator)
-            .WithColor(Color.Orange)
-            .WithTimestamp(DateTimeOffset.UtcNow)
-            .Build();
+            .WithTitle(actionType)
+            .AddField("User", user.Mention, true);
 
-        await GetLogChannel()?.SendMessageAsync(embed: embed);
+        if (moderator != null)
+            embed.AddField("Moderator", moderator.Mention, true);
+
+        embed.WithColor(actionType == "[LEAVE]" ? Color.LightGrey : Color.DarkOrange)
+             .WithCurrentTimestamp();
+
+        await channel.SendMessageAsync(embed: embed.Build());
     }
 
-    // Member updates (mute, deafen, timeout)
     public async Task OnGuildMemberUpdatedAsync(SocketGuildUser before, SocketGuildUser after)
     {
-        if (before.IsMuted != after.IsMuted || before.IsDeafened != after.IsDeafened || before.TimedOutUntil != after.TimedOutUntil)
+        var channel = await GetLogChannelAsync(after.Guild);
+        if (channel == null) return;
+
+        if (before.TimedOutUntil != after.TimedOutUntil)
         {
-            string action = "";
-            if (before.IsMuted != after.IsMuted)
-                action = after.IsMuted ? "Muted" : "Unmuted";
-            else if (before.IsDeafened != after.IsDeafened)
-                action = after.IsDeafened ? "Deafened" : "Undeafened";
-            else if (before.TimedOutUntil != after.TimedOutUntil)
-                action = after.TimedOutUntil.HasValue ? $"Timed Out until {after.TimedOutUntil.Value.UtcDateTime}" : "Timeout Removed";
+            var logs = await after.Guild.GetAuditLogsAsync(1).FlattenAsync();
+            var entry = logs.FirstOrDefault() as RestMemberUpdateAuditLogEntry;
 
-            var audit = await after.Guild.GetAuditLogsAsync(5).FlattenAsync();
-            var entry = audit.FirstOrDefault(e => e.Target.Id == after.Id);
-
-            string moderator = entry?.User.ToString() ?? "Unknown";
+            var moderator = entry?.User;
 
             var embed = new EmbedBuilder()
-                .WithTitle($"🛡️ Member {action}")
-                .AddField("User", $"{after.Mention} ({after.Username}#{after.Discriminator})")
-                .AddField("Moderator", moderator)
-                .WithColor(Color.DarkBlue)
-                .WithTimestamp(DateTimeOffset.UtcNow)
-                .Build();
+                .WithTitle("[TIMEOUT]")
+                .AddField("User", after.Mention, true)
+                .AddField("Moderator", moderator?.Mention ?? "Unknown", true)
+                .AddField("Until", after.TimedOutUntil?.ToString("f") ?? "Removed", true)
+                .WithColor(Color.Blue)
+                .WithCurrentTimestamp();
 
-            await GetLogChannel()?.SendMessageAsync(embed: embed);
+            await channel.SendMessageAsync(embed: embed.Build());
         }
     }
 }
