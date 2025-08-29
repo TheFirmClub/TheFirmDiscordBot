@@ -1,5 +1,4 @@
 ﻿using Discord;
-using Discord.Rest;
 using Discord.WebSocket;
 using System.Linq;
 using System.Threading.Tasks;
@@ -23,7 +22,7 @@ public class ModActionLogger
     public async Task OnUserBannedAsync(SocketUser user, SocketGuild guild)
     {
         var logs = await guild.GetAuditLogsAsync(1).FlattenAsync();
-        var entry = logs.FirstOrDefault() as RestBanAuditLogEntry;
+        var entry = logs.FirstOrDefault();
 
         var moderator = entry?.User;
         var channel = await GetLogChannelAsync(guild);
@@ -42,7 +41,7 @@ public class ModActionLogger
     public async Task OnUserUnbannedAsync(SocketUser user, SocketGuild guild)
     {
         var logs = await guild.GetAuditLogsAsync(1).FlattenAsync();
-        var entry = logs.FirstOrDefault() as RestUnbanAuditLogEntry;
+        var entry = logs.FirstOrDefault();
 
         var moderator = entry?.User;
         var channel = await GetLogChannelAsync(guild);
@@ -64,13 +63,13 @@ public class ModActionLogger
         var logs = await guild.GetAuditLogsAsync(1).FlattenAsync();
         var entry = logs.FirstOrDefault();
 
-        string actionType = "";
-        SocketUser? moderator = null;
+        string actionType;
+        IUser? moderator = null;
 
-        if (entry is RestKickAuditLogEntry kickEntry && kickEntry.Target.Id == user.Id)
+        if (entry != null && entry.Action == ActionType.Kick && entry.Target.Id == user.Id)
         {
             actionType = "[KICK]";
-            moderator = kickEntry.User;
+            moderator = entry.User;
         }
         else
         {
@@ -101,7 +100,7 @@ public class ModActionLogger
         if (before.TimedOutUntil != after.TimedOutUntil)
         {
             var logs = await after.Guild.GetAuditLogsAsync(1).FlattenAsync();
-            var entry = logs.FirstOrDefault() as RestMemberUpdateAuditLogEntry;
+            var entry = logs.FirstOrDefault();
 
             var moderator = entry?.User;
 
