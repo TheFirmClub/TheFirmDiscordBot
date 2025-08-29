@@ -40,7 +40,7 @@ public class ChangelogTrackerService
 
     // Post/update controls
     private System.Timers.Timer? _debounceTimer;
-    private ulong? _lastStatsMessageId; // delete this before posting a fresh embed
+    private ulong? _lastStatsMessageId; // delete this before posting a fresh embed (persisted)
 
     public ChangelogTrackerService(DiscordSocketClient client)
     {
@@ -54,7 +54,7 @@ public class ChangelogTrackerService
     private async Task OnReady()
     {
         Load();
-        Console.WriteLine("ChangelogTrackerService ready (live updates only).");
+        Console.WriteLine($"ChangelogTrackerService ready. Last posted stats message id: {_lastStatsMessageId?.ToString() ?? "<none>"}");
 
         if (BackfillOnStartup && _byUser.IsEmpty)
         {
@@ -226,7 +226,7 @@ public class ChangelogTrackerService
         }
 
         var embed = new EmbedBuilder()
-            .WithTitle("📦 Changelog Stats")
+            .WithTitle("📦 Changelog Contribution Stats")
             .WithDescription(desc.Length > 0 ? desc.ToString() : "No data yet. Post some bullets in the changelog channel!")
             .WithColor(new Color(155, 100, 255))
             .WithThumbnailUrl("https://www.thefirm.club/Media/thefirm-thumb.png")
@@ -247,6 +247,7 @@ public class ChangelogTrackerService
 
             var newMsg = await statsChannel.SendMessageAsync(embed: embed);
             _lastStatsMessageId = newMsg.Id;
+            Save(); // persist the new message id so we can delete after restarts
         }
         catch (Exception ex)
         {
@@ -308,12 +309,29 @@ public class ChangelogTrackerService
         {
             if (!File.Exists(StatsPath)) return;
             var json = File.ReadAllText(StatsPath);
-            var data = JsonSerializer.Deserialize<Dictionary<ulong, UserStats>>(json, _jsonOptions);
-            if (data != null)
+
+            // Try new persisted-state format first
+            PersistedState? state = null;
+            try { state = JsonSerializer.Deserialize<PersistedState>(json, _jsonOptions); }
+            catch { /* fall back */ }
+
+            if (state != null && state.Users != null && state.Users.Count > 0)
             {
                 _byUser.Clear();
-                foreach (var kv in data)
+                foreach (var kv in state.Users)
                     _byUser[kv.Key] = kv.Value;
+                _lastStatsMessageId = state.LastMessageId;
+                return;
+            }
+
+            // Legacy format fallback: plain dictionary<userId, UserStats>
+            var legacy = JsonSerializer.Deserialize<Dictionary<ulong, UserStats>>(json, _jsonOptions);
+            if (legacy != null)
+            {
+                _byUser.Clear();
+                foreach (var kv in legacy)
+                    _byUser[kv.Key] = kv.Value;
+                _lastStatsMessageId = null; // not stored in legacy file
             }
         }
         catch (Exception ex)
@@ -326,7 +344,12 @@ public class ChangelogTrackerService
     {
         try
         {
-            var json = JsonSerializer.Serialize(_byUser.ToDictionary(k => k.Key, v => v.Value), _jsonOptions);
+            var state = new PersistedState
+            {
+                LastMessageId = _lastStatsMessageId,
+                Users = _byUser.ToDictionary(k => k.Key, v => v.Value)
+            };
+            var json = JsonSerializer.Serialize(state, _jsonOptions);
             File.WriteAllText(StatsPath, json);
         }
         catch (Exception ex)
@@ -365,5 +388,11 @@ public class ChangelogTrackerService
         public int Items { get; set; }
         public DateTimeOffset FirstAt { get; set; }
         public DateTimeOffset LastAt { get; set; }
+    }
+
+    public class PersistedState
+    {
+        [JsonPropertyName("lastMessageId")] public ulong? LastMessageId { get; set; }
+        [JsonPropertyName("users")] public Dictionary<ulong, UserStats> Users { get; set; } = new();
     }
 }
