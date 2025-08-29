@@ -69,10 +69,16 @@ class Program
         _modActionLogger = new ModActionLogger(_client, modNotesChannelId);
 
         // Subscribe ModActionLogger events
+        // Subscribe ModActionLogger events
         _client.UserBanned += async (user, guild) => await _modActionLogger.OnUserBannedAsync(user, guild);
         _client.UserUnbanned += async (user, guild) => await _modActionLogger.OnUserUnbannedAsync(user, guild);
-        _client.UserLeft += async (user) => await _modActionLogger.OnUserLeftAsync(user as SocketGuildUser!);
-        _client.GuildMemberUpdated += async (before, after) => await _modActionLogger.OnGuildMemberUpdatedAsync(before, after);
+        _client.UserLeft += async (user) =>
+        {
+            if (user is SocketGuildUser guildUser)
+                await _modActionLogger.OnUserLeftAsync(guildUser);
+        };
+        _client.GuildMemberUpdated += async (before, after) =>
+            await _modActionLogger.OnGuildMemberUpdatedAsync(before, after);
 
         _commandHandler = new SlashCommandHandler(_config, _inviteTracker);
         _ticketButtonHandler = new TicketButtonHandler(_config);
