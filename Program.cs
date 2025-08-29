@@ -21,8 +21,8 @@ class Program
     private FiveMChannelUpdater? _fivemUpdater;
 
     private Mee6LogForwarder? _mee6Forwarder;
+
     private ChangelogTrackerService? _changelogTracker;
-    private ModActionLogger? _modActionLogger;
 
     public static Task Main(string[] args) => new Program().MainAsync();
 
@@ -64,23 +64,8 @@ class Program
         // Changelog tracker (listens in changelog channel and posts stats)
         _changelogTracker = new ChangelogTrackerService(_client!);
 
-        // 🔹 Setup ModActionLogger
-        ulong modNotesChannelId = 1394451583709745273;
-        _modActionLogger = new ModActionLogger(_client, modNotesChannelId);
-
-        // Subscribe ModActionLogger events
-        // Subscribe ModActionLogger events
-        _client.UserBanned += async (user, guild) => await _modActionLogger.OnUserBannedAsync(user, guild);
-        _client.UserUnbanned += async (user, guild) => await _modActionLogger.OnUserUnbannedAsync(user, guild);
-        _client.UserLeft += async (user) =>
-        {
-            if (user is SocketGuildUser guildUser)
-                await _modActionLogger.OnUserLeftAsync(guildUser);
-        };
-        _client.GuildMemberUpdated += async (before, after) =>
-            await _modActionLogger.OnGuildMemberUpdatedAsync(before, after);
-
         _commandHandler = new SlashCommandHandler(_config, _inviteTracker);
+
         _ticketButtonHandler = new TicketButtonHandler(_config);
 
         _client.SlashCommandExecuted += SlashCommandExecuted;
@@ -158,6 +143,7 @@ class Program
                 builder.AddOption("user", ApplicationCommandOptionType.User, "Who to fake ban", true);
                 builder.AddOption("reason", ApplicationCommandOptionType.String, "Reason for the fake ban", false);
             }
+
             else if (command.Name == "screamer")
             {
                 // no options
@@ -193,9 +179,13 @@ class Program
             }
             else if (command.Name == "preban")
             {
+                // Only members with Ban Members can see/use it by default
                 builder.WithDefaultMemberPermissions(GuildPermission.BanMembers);
+
+                // Options
                 builder.AddOption("userid", ApplicationCommandOptionType.String, "Discord user ID to pre-ban", true);
                 builder.AddOption("reason", ApplicationCommandOptionType.String, "Reason for the ban", false);
+
             }
 
             await guild.CreateApplicationCommandAsync(builder.Build());
@@ -205,6 +195,7 @@ class Program
         Console.WriteLine("✅ Commands registered and support panel sent");
 
         await StartFiveMUpdater(guildId);
+
     }
 
     private async Task StartFiveMUpdater(ulong guildId)
