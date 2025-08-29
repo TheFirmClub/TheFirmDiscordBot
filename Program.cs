@@ -21,6 +21,8 @@ class Program
     private FiveMChannelUpdater? _fivemUpdater;
 
     private Mee6LogForwarder? _mee6Forwarder;
+    
+    private ChangelogTrackerService? _changelogTracker;
 
     public static Task Main(string[] args) => new Program().MainAsync();
 
@@ -58,6 +60,9 @@ class Program
         // after _client is created
         _inviteTracker = new InviteTrackerService(_client);
         await _inviteTracker.InitializeAsync();
+        
+        // Changelog tracker (listens in changelog channel and posts stats)
+        _changelogTracker = new ChangelogTrackerService(_client!);
 
         _commandHandler = new SlashCommandHandler(_config, _inviteTracker);
         
