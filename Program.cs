@@ -10,7 +10,6 @@ class Program
     private DiscordSocketClient? _client;
     private SlashCommandHandler? _commandHandler;
     private RoleLogger? _roleLogger;
-    private ModActionLogger? _modActionLogger;
     private IConfiguration? _config;
     private SupportMenuHandler _supportMenuHandler = new();
     private TicketButtonHandler _ticketButtonHandler;
@@ -83,9 +82,6 @@ class Program
 
         ulong roleLogChannelId = 1393726185804005497;
         _roleLogger = new RoleLogger(_client, roleLogChannelId);
-
-        ulong modNotesChannelId = 1394451583709745273;
-        _modActionLogger = new ModActionLogger(_client, modNotesChannelId);
 
         string? token = _config["Discord:Token"];
         if (string.IsNullOrEmpty(token))
