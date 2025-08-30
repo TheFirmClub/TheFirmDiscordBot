@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 public class ModActionLogger
@@ -15,16 +16,15 @@ public class ModActionLogger
 
         // Hook events
         _client.GuildMemberUpdated += OnGuildMemberUpdatedAsync;
-        _client.GuildMemberUpdated += TrackTimeoutAsync; // Optional separate handler for timeout
         _client.UserBanned += OnUserBannedAsync;
         _client.UserUnbanned += OnUserUnbannedAsync;
-        _client.UserLeft += IgnoreUserLeftAsync; // We'll ignore leaves
+        _client.UserLeft += IgnoreUserLeftAsync; // intentionally skip leave logging
         _client.UserVoiceStateUpdated += OnVoiceStateUpdatedAsync;
     }
 
     private Task IgnoreUserLeftAsync(SocketUser user)
     {
-        // Do nothing, intentionally skipping leave logging
+        // Skip logging leaves
         return Task.CompletedTask;
     }
 
@@ -33,22 +33,10 @@ public class ModActionLogger
         var before = await beforeCache.GetOrDownloadAsync();
         if (before == null) return;
 
-        // Example: role changes
-        if (before.Roles.Count != after.Roles.Count)
-        {
-            await LogActionAsync(after.Guild, $"Roles updated for {after.Mention}");
-        }
-    }
-
-    private async Task TrackTimeoutAsync(Cacheable<SocketGuildUser, ulong> beforeCache, SocketGuildUser after)
-    {
-        var before = await beforeCache.GetOrDownloadAsync();
-        if (before == null) return;
-
         // Timeout detected
         if (after.TimedOutUntil != null && (before.TimedOutUntil == null || before.TimedOutUntil < after.TimedOutUntil))
         {
-            var mod = await GetModeratorAsync(after.Guild); // You can implement a method to fetch the moderator responsible
+            var mod = await GetModeratorAsync(after.Guild, "MemberUpdate");
             await LogActionAsync(after.Guild, $"⏱️ {after.Mention} was timed out until {after.TimedOutUntil.Value.UtcDateTime} by {mod}");
         }
     }
@@ -59,24 +47,26 @@ public class ModActionLogger
 
         if (before.IsMuted != after.IsMuted)
         {
-            await LogActionAsync(guildUser.Guild, $"{guildUser.Mention} was {(after.IsMuted ? "server-muted" : "unmuted")}");
+            var mod = await GetModeratorAsync(guildUser.Guild, "MemberUpdate");
+            await LogActionAsync(guildUser.Guild, $"{guildUser.Mention} was {(after.IsMuted ? "server-muted" : "unmuted")} by {mod}");
         }
 
         if (before.IsDeafened != after.IsDeafened)
         {
-            await LogActionAsync(guildUser.Guild, $"{guildUser.Mention} was {(after.IsDeafened ? "server-deafened" : "undeafened")}");
+            var mod = await GetModeratorAsync(guildUser.Guild, "MemberUpdate");
+            await LogActionAsync(guildUser.Guild, $"{guildUser.Mention} was {(after.IsDeafened ? "server-deafened" : "undeafened")} by {mod}");
         }
     }
 
     private async Task OnUserBannedAsync(SocketUser user, SocketGuild guild)
     {
-        var mod = await GetModeratorAsync(guild);
+        var mod = await GetModeratorAsync(guild, "Ban");
         await LogActionAsync(guild, $"🚫 {user.Username} was banned by {mod}");
     }
 
     private async Task OnUserUnbannedAsync(SocketUser user, SocketGuild guild)
     {
-        var mod = await GetModeratorAsync(guild);
+        var mod = await GetModeratorAsync(guild, "Unban");
         await LogActionAsync(guild, $"✅ {user.Username} was unbanned by {mod}");
     }
 
@@ -85,26 +75,29 @@ public class ModActionLogger
         var channel = guild.GetTextChannel(_modNotesChannelId);
         if (channel != null)
         {
-            try
-            {
-                var embed = new EmbedBuilder()
-                    .WithTitle("🛡️ Moderation Action")
-                    .WithDescription(message)
-                    .WithColor(Color.DarkRed)
-                    .WithTimestamp(DateTimeOffset.UtcNow)
-                    .Build();
+            var embed = new EmbedBuilder()
+                .WithTitle("🛡️ Moderation Action")
+                .WithDescription(message)
+                .WithColor(Color.DarkRed)
+                .WithTimestamp(DateTimeOffset.UtcNow)
+                .Build();
 
-                await channel.SendMessageAsync(embed: embed);
-            }
-            catch { /* ignore errors */ }
+            await channel.SendMessageAsync(embed: embed);
         }
     }
 
-    private async Task<string> GetModeratorAsync(SocketGuild guild)
+    private async Task<string> GetModeratorAsync(SocketGuild guild, string actionType)
     {
-        // Optional: fetch the last audit log entry for action type and return the responsible moderator
-        var logs = await guild.GetAuditLogsAsync(1).FlattenAsync();
-        var entry = logs.FirstOrDefault();
+        // Get the most recent audit log entry matching actionType
+        var logs = await guild.GetAuditLogsAsync(5).FlattenAsync();
+        var entry = logs.FirstOrDefault(l => l.Action == actionType switch
+        {
+            "Ban" => ActionType.Ban,
+            "Unban" => ActionType.Unban,
+            "MemberUpdate" => ActionType.MemberUpdate,
+            _ => ActionType.Unknown
+        });
+
         return entry?.User?.Mention ?? "Unknown Moderator";
     }
 }
