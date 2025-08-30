@@ -14,17 +14,15 @@ public class ModActionLogger
         _client = client;
         _modNotesChannelId = modNotesChannelId;
 
-        // Hook events
         _client.GuildMemberUpdated += OnGuildMemberUpdatedAsync;
         _client.UserBanned += OnUserBannedAsync;
         _client.UserUnbanned += OnUserUnbannedAsync;
-        _client.UserLeft += IgnoreUserLeftAsync; // intentionally skip leave logging
+        _client.UserLeft += IgnoreUserLeftAsync;
         _client.UserVoiceStateUpdated += OnVoiceStateUpdatedAsync;
     }
 
-    private Task IgnoreUserLeftAsync(SocketUser user)
+    private Task IgnoreUserLeftAsync(SocketGuildUser user)
     {
-        // Skip logging leaves
         return Task.CompletedTask;
     }
 
@@ -36,8 +34,7 @@ public class ModActionLogger
         // Timeout detected
         if (after.TimedOutUntil != null && (before.TimedOutUntil == null || before.TimedOutUntil < after.TimedOutUntil))
         {
-            var mod = await GetModeratorAsync(after.Guild, "MemberUpdate");
-            await LogActionAsync(after.Guild, $"⏱️ {after.Mention} was timed out until {after.TimedOutUntil.Value.UtcDateTime} by {mod}");
+            await LogActionAsync(after.Guild, $"⏱️ {after.Mention} was timed out until {after.TimedOutUntil.Value.UtcDateTime}");
         }
     }
 
@@ -47,14 +44,12 @@ public class ModActionLogger
 
         if (before.IsMuted != after.IsMuted)
         {
-            var mod = await GetModeratorAsync(guildUser.Guild, "MemberUpdate");
-            await LogActionAsync(guildUser.Guild, $"{guildUser.Mention} was {(after.IsMuted ? "server-muted" : "unmuted")} by {mod}");
+            await LogActionAsync(guildUser.Guild, $"{guildUser.Mention} was {(after.IsMuted ? "server-muted" : "unmuted")}");
         }
 
         if (before.IsDeafened != after.IsDeafened)
         {
-            var mod = await GetModeratorAsync(guildUser.Guild, "MemberUpdate");
-            await LogActionAsync(guildUser.Guild, $"{guildUser.Mention} was {(after.IsDeafened ? "server-deafened" : "undeafened")} by {mod}");
+            await LogActionAsync(guildUser.Guild, $"{guildUser.Mention} was {(after.IsDeafened ? "server-deafened" : "undeafened")}");
         }
     }
 
@@ -88,16 +83,16 @@ public class ModActionLogger
 
     private async Task<string> GetModeratorAsync(SocketGuild guild, string actionType)
     {
-        // Get the most recent audit log entry matching actionType
         var logs = await guild.GetAuditLogsAsync(5).FlattenAsync();
-        var entry = logs.FirstOrDefault(l => l.Action == actionType switch
+
+        ActionType type = actionType switch
         {
             "Ban" => ActionType.Ban,
             "Unban" => ActionType.Unban,
-            "MemberUpdate" => ActionType.MemberUpdate,
-            _ => ActionType.Unknown
-        });
+            _ => ActionType.Ban
+        };
 
+        var entry = logs.FirstOrDefault(l => l.Action == type);
         return entry?.User?.Mention ?? "Unknown Moderator";
     }
 }
