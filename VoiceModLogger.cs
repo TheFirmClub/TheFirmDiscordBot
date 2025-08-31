@@ -18,11 +18,12 @@ public class VoiceModLogger
     private async Task OnUserVoiceStateUpdated(SocketUser user, SocketVoiceState before, SocketVoiceState after)
     {
         if (user is not SocketGuildUser guildUser) return;
+
         var guild = guildUser.Guild;
         var logChannel = guild.GetTextChannel(_logChannelId);
         if (logChannel == null) return;
 
-        // --- VOICE CHANNEL MOVE ---
+        // --- Voice Channel Move (ignore joins/leaves) ---
         if (before.VoiceChannel != after.VoiceChannel && before.VoiceChannel != null && after.VoiceChannel != null)
         {
             string from = before.VoiceChannel.Name;
@@ -38,7 +39,7 @@ public class VoiceModLogger
             await logChannel.SendMessageAsync(embed: embed);
         }
 
-        // --- SERVER MUTE/UNMUTE ---
+        // --- Server Mute/Unmute (ignore self-mutes) ---
         if (before.IsMuted != after.IsMuted && !after.IsSelfMuted)
         {
             string action = after.IsMuted ? "🔇 Muted" : "🔊 Unmuted";
@@ -53,7 +54,7 @@ public class VoiceModLogger
             await logChannel.SendMessageAsync(embed: embed);
         }
 
-        // --- SERVER DEAFEN/UNDEAFEN ---
+        // --- Server Deafen/Undeafen (ignore self-deafens) ---
         if (before.IsDeafened != after.IsDeafened && !after.IsSelfDeafened)
         {
             string action = after.IsDeafened ? "🔇 Deafened" : "🔊 Undeafened";
