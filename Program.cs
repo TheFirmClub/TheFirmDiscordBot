@@ -23,6 +23,8 @@ class Program
     private Mee6LogForwarder? _mee6Forwarder;
 
     private ChangelogTrackerService? _changelogTracker;
+    
+    private VoiceModLogger? _voiceLogger;
 
     public static Task Main(string[] args) => new Program().MainAsync();
 
@@ -83,6 +85,9 @@ class Program
         ulong roleLogChannelId = 1393726185804005497;
         _roleLogger = new RoleLogger(_client, roleLogChannelId);
 
+        ulong modNotesChannelId = 1394451583709745273; // your mod notes channel
+        _voiceLogger = new VoiceModLogger(_client, modNotesChannelId);
+        
         string? token = _config["Discord:Token"];
         if (string.IsNullOrEmpty(token))
         {
