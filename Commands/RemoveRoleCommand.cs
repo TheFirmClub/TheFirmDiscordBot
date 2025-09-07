@@ -12,7 +12,6 @@ public class RemoveRoleCommand : ISlashCommand
 
     private const ulong SeniorManagementRoleId = 1393590761953558608; // Senior Management
 
-    // Only removable by Assistant Head Mod / Head Mod via this command
     private static readonly HashSet<ulong> AllowedModeratorRoleIds = new()
     {
         1393729574537396355, // Game Moderator
@@ -24,6 +23,20 @@ public class RemoveRoleCommand : ISlashCommand
     {
         1405330877440983130, // Assistant Head Moderator
         1393728468608487594, // Head Moderator
+    };
+
+    private static readonly HashSet<ulong> MedicalLeadershipRoleIds = new()
+    {
+        1398308435795251302, // COO
+        1394460689338208296, // Medical Director
+        1394460400988454953, // CMO
+    };
+
+    private static readonly HashSet<ulong> AllowedMedicalRoleIds = new()
+    {
+        1394460780602196079, // Critical Medic
+        1394460919152771103, // Advance Paramedic
+        1394460987876446218, // Paramedic
     };
 
     public async Task ExecuteAsync(SocketSlashCommand command)
@@ -46,18 +59,18 @@ public class RemoveRoleCommand : ISlashCommand
             return;
         }
 
-        bool isSeniorManagement = caller.Roles.Any(r => r.Id == SeniorManagementRoleId);
+        bool isSeniorManagement   = caller.Roles.Any(r => r.Id == SeniorManagementRoleId);
         bool isAssistantOrHeadMod = caller.Roles.Any(r => AssistantOrHeadModRoleIds.Contains(r.Id));
+        bool isMedicalLeadership  = caller.Roles.Any(r => MedicalLeadershipRoleIds.Contains(r.Id));
 
-        // Only allow if they have one of the whitelisted roles
-        if (!isSeniorManagement && !isAssistantOrHeadMod)
+        if (!isSeniorManagement && !isAssistantOrHeadMod && !isMedicalLeadership)
         {
             await Reply(command, "❌ You are not allowed to use this command.");
             return;
         }
 
         var targetUser = command.Data.Options.FirstOrDefault(o => o.Name == "user")?.Value as SocketGuildUser;
-        var role = command.Data.Options.FirstOrDefault(o => o.Name == "role")?.Value as SocketRole;
+        var role       = command.Data.Options.FirstOrDefault(o => o.Name == "role")?.Value as SocketRole;
 
         if (targetUser == null)
         {
@@ -71,11 +84,19 @@ public class RemoveRoleCommand : ISlashCommand
             return;
         }
 
-        // Restrict Assistant/Head Mod to only the allowed moderator roles
-        if (isAssistantOrHeadMod && !AllowedModeratorRoleIds.Contains(role.Id))
+        if (!isSeniorManagement)
         {
-            await Reply(command, "❌ You can only remove the approved moderator roles.");
-            return;
+            if (isAssistantOrHeadMod && !AllowedModeratorRoleIds.Contains(role.Id))
+            {
+                await Reply(command, "❌ You can only remove the approved moderator roles.");
+                return;
+            }
+
+            if (isMedicalLeadership && !AllowedMedicalRoleIds.Contains(role.Id))
+            {
+                await Reply(command, "❌ You can only remove approved NHS roles (Critical Medic, Advance Paramedic, Paramedic).");
+                return;
+            }
         }
 
         if (!targetUser.Roles.Any(r => r.Id == role.Id))
@@ -84,7 +105,6 @@ public class RemoveRoleCommand : ISlashCommand
             return;
         }
 
-        // Keep hierarchy checks to avoid Discord API errors
         if (role.Position >= caller.Hierarchy)
         {
             await Reply(command, "❌ You cannot remove a role that is equal to or higher than your highest role.");
