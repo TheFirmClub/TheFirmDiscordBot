@@ -138,6 +138,13 @@ public class TicketButtonHandler
 
                     var closeCommand = new TicketCloseCommand(_config);
                     await closeCommand.CloseTicketAsync(channel, user);
+
+                    // Prefix the channel name with "closed-" if it doesn't already have it
+                    await channel.ModifyAsync(props =>
+                    {
+                        if (!channel.Name.StartsWith("closed-"))
+                            props.Name = $"closed-{channel.Name}";
+                    });
                 }
 
                 break;
@@ -175,8 +182,16 @@ public class TicketButtonHandler
                         new OverwritePermissions(viewChannel: PermValue.Deny));
 
                     // 🏷 Move to resolved category
-                    await channel.ModifyAsync(props => props.CategoryId = 1393610408706965656);
+                    ulong closedCategoryId = 1393610408706965656;
+                    await channel.ModifyAsync(props =>
+                    {
+                        props.CategoryId = closedCategoryId;
 
+                        // Prefix the name with "closed-" if it doesn’t already have it
+                        if (!channel.Name.StartsWith("closed-"))
+                            props.Name = $"closed-{channel.Name}";
+                    });
+                    
                     // 🧾 Resolved embed + close button
                     var embed = new EmbedBuilder()
                         .WithTitle("✅ Ticket Resolved")
