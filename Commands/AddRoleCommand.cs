@@ -18,11 +18,24 @@ public class AddRoleCommand : ISlashCommand
         1393623589122736238, // Discord Moderator
         1393638449709584434, // Senior Moderator
     };
-
     private static readonly HashSet<ulong> AssistantOrHeadModRoleIds = new()
     {
         1405330877440983130, // Assistant Head Moderator
         1393728468608487594, // Head Moderator
+    };
+
+    private static readonly HashSet<ulong> MedicalLeadershipRoleIds = new()
+    {
+        1398308435795251302, // COO
+        1394460689338208296, // Medical Director
+        1394460400988454953, // CMO
+    };
+
+    private static readonly HashSet<ulong> AllowedMedicalRoleIds = new()
+    {
+        1394460780602196079, // Critical Medic
+        1394460919152771103, // Advance Paramedic
+        1394460987876446218, // Paramedic
     };
 
     public async Task ExecuteAsync(SocketSlashCommand command)
@@ -45,10 +58,11 @@ public class AddRoleCommand : ISlashCommand
             return;
         }
 
-        bool isSeniorManagement = caller.Roles.Any(r => r.Id == SeniorManagementRoleId);
+        bool isSeniorManagement   = caller.Roles.Any(r => r.Id == SeniorManagementRoleId);
         bool isAssistantOrHeadMod = caller.Roles.Any(r => AssistantOrHeadModRoleIds.Contains(r.Id));
+        bool isMedicalLeadership  = caller.Roles.Any(r => MedicalLeadershipRoleIds.Contains(r.Id));
 
-        if (!isSeniorManagement && !isAssistantOrHeadMod)
+        if (!isSeniorManagement && !isAssistantOrHeadMod && !isMedicalLeadership)
         {
             await Reply(command, "❌ You are not allowed to use this command.");
             return;
@@ -69,10 +83,19 @@ public class AddRoleCommand : ISlashCommand
             return;
         }
 
-        if (isAssistantOrHeadMod && !AllowedModeratorRoleIds.Contains(role.Id))
+        if (!isSeniorManagement)
         {
-            await Reply(command, "❌ You can only assign the approved moderator roles.");
-            return;
+            if (isAssistantOrHeadMod && !AllowedModeratorRoleIds.Contains(role.Id))
+            {
+                await Reply(command, "❌ You can only assign the approved moderator roles.");
+                return;
+            }
+
+            if (isMedicalLeadership && !AllowedMedicalRoleIds.Contains(role.Id))
+            {
+                await Reply(command, "❌ You can only assign approved NHS roles (Critical Medic, Advance Paramedic, Paramedic).");
+                return;
+            }
         }
 
         if (targetUser.Roles.Any(r => r.Id == role.Id))
