@@ -122,6 +122,7 @@ public class RemoveRoleCommand : ISlashCommand
             await targetUser.RemoveRoleAsync(role);
             await Reply(command, $"✅ Removed role `{role.Name}` from {targetUser.Mention}.");
         }
+            
         catch (HttpException ex) when (ex.DiscordCode == DiscordErrorCode.MissingPermissions)
         {
             await Reply(command, "❌ I do not have permission to remove that role.");
