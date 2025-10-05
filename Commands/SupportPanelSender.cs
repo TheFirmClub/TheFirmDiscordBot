@@ -47,8 +47,8 @@ public class SupportPanelSender
             .WithPlaceholder("Choose support type")
             .AddOption("General Support", "general", "Questions or general help")
             .AddOption("Game Support", "game", "Issues with gameplay or features")
-            .AddOption("Ban Appeals", "ban", "Request to appeal a ban")
             .AddOption("Subscription Support", "sub", "Payment, perks, or upgrades")
+            .AddOption("Report a Player", "reportplayer", "Report a player")
             .AddOption("Report a Staff Member", "reportstaff", "Report a Moderator / Staff Member");
 
         var component = new ComponentBuilder().WithSelectMenu(menu);

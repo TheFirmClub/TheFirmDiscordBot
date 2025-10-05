@@ -14,8 +14,8 @@ public class SupportCommand : ISlashCommand
             .WithPlaceholder("Choose support type")
             .AddOption("General Support", "general")
             .AddOption("Game Support", "game")
-            .AddOption("Ban Appeals", "ban")
             .AddOption("Subscription Support", "sub")
+            .AddOption("Report a player", "reportplayer")
             .AddOption("Report a staff", "reportstaff");
         
 
