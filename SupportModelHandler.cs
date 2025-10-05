@@ -41,7 +41,7 @@ public class SupportModalHandler
         {
             "general" => "general",
             "game" => "game",
-            "reportplayer" => "reportplayer",
+            "reportplayer" => "report",
             "sub" => "sub",
             "reportstaff" => "staff",
             _ => "ticket"
