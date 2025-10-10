@@ -110,7 +110,7 @@ public class SupportModalHandler
             if (!string.IsNullOrWhiteSpace(mentions))
                 await channel.SendMessageAsync(mentions.Trim());
         }
-        else if (ticketType == "reportplayer")
+        else if (ticketType == "reportplayer" || ticketType == "game")
         {
             var gameMod = guild.GetRole(1393729574537396355);
             if (gameMod != null)
