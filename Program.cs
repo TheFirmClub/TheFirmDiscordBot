@@ -56,7 +56,7 @@ class Program
         _client.Log += Log;
         _client.Ready += async () => await ReadyAsync(guildId);
 
-        new StoreEmbed(_client);
+        // new StoreEmbed(_client);
         _mee6Forwarder = new Mee6LogForwarder(_client);
 
         // after _client is created
