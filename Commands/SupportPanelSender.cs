@@ -37,7 +37,7 @@ public class SupportPanelSender
         var embed = new EmbedBuilder()
             .WithTitle("🎟️ How Can We Help?")
             .WithDescription("Welcome to our tickets channel! If you have any questions, concerns, or need assistance, please use the dropdown below to get in touch with our staff.")
-            .WithImageUrl("https://live.staticflickr.com/65535/54683124276_7337ed1392_z.jpg") // 🔁 Replace with your image
+            .WithImageUrl("https://www.thefirm.club/Media/helpdesk.png") // 🔁 Replace with your image
             .WithColor(Color.Blue)
             .Build();
 
