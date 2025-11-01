@@ -112,6 +112,30 @@ public class StaffLoaCommand : ISlashCommand
         return user.Roles.Any(r => approverRoles.Contains(r.Id));
     }
 
+    // ---------- DM helper ----------
+    private async Task NotifyApplicantDm(ulong applicantId, bool approved, DateTime startUtc, DateTime endUtc, SocketUser approver)
+    {
+        try
+        {
+            var user = _client.GetUser(applicantId);
+            if (user == null) return;
+
+            var eb = new EmbedBuilder()
+                .WithTitle(approved ? "✅ LOA Approved" : "❌ LOA Declined")
+                .WithColor(approved ? Color.Green : Color.Red)
+                .AddField("LOA Period", $"**From:** {startUtc:yyyy-MM-dd}\n**To:** {endUtc:yyyy-MM-dd}", inline: true)
+                .AddField("Decision By", $"{approver.Username} (`{approver.Id}`)", inline: true)
+                .WithFooter("If this is unexpected or incorrect, contact Senior Management.")
+                .WithTimestamp(DateTimeOffset.UtcNow);
+
+            await user.SendMessageAsync(embed: eb.Build());
+        }
+        catch
+        {
+            // DMs may be closed; ignore silently
+        }
+    }
+
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
         // Route between /staffloa, /loaremove, /staffloalist
@@ -496,13 +520,13 @@ public class StaffLoaCommand : ISlashCommand
             return;
         }
 
-        // Load pending request
-        (ulong applicantId, string divisionKey, ulong channelId, ulong messageId) req;
+        // Load pending request (include dates for DM)
+        (ulong applicantId, string divisionKey, ulong channelId, ulong messageId, DateTime startUtc, DateTime endUtc) req;
         using (var conn = new MySqlConnection(_mysql))
         {
             await conn.OpenAsync();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = @"SELECT applicant_discord_id, division_key, target_channel_id, target_message_id
+            cmd.CommandText = @"SELECT applicant_discord_id, division_key, target_channel_id, target_message_id, start_date, end_date
                                 FROM loa_request WHERE id=@id AND status='PENDING' LIMIT 1";
             cmd.Parameters.AddWithValue("@id", requestId);
             using var r = await cmd.ExecuteReaderAsync();
@@ -515,6 +539,8 @@ public class StaffLoaCommand : ISlashCommand
             req.divisionKey = r.GetString(1);
             req.channelId   = (ulong)r.GetInt64(2);
             req.messageId   = (ulong)r.GetInt64(3);
+            req.startUtc    = DateTime.SpecifyKind(r.GetDateTime(4), DateTimeKind.Utc);
+            req.endUtc      = DateTime.SpecifyKind(r.GetDateTime(5), DateTimeKind.Utc);
         }
 
         // 🚫 Prevent approving own request
@@ -596,6 +622,9 @@ public class StaffLoaCommand : ISlashCommand
             }
         }
 
+        // DM applicant (best-effort)
+        await NotifyApplicantDm(req.applicantId, approved: true, startUtc: req.startUtc, endUtc: req.endUtc, approver: comp.User);
+
         await comp.RespondAsync("Approved. LOA role added and request updated.", ephemeral: true);
     }
 
@@ -609,13 +638,13 @@ public class StaffLoaCommand : ISlashCommand
             return;
         }
 
-        // Load pending request
-        (ulong applicantId, string divisionKey, ulong channelId, ulong messageId) req;
+        // Load pending request (include dates for DM)
+        (ulong applicantId, string divisionKey, ulong channelId, ulong messageId, DateTime startUtc, DateTime endUtc) req;
         using (var conn = new MySqlConnection(_mysql))
         {
             await conn.OpenAsync();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = @"SELECT applicant_discord_id, division_key, target_channel_id, target_message_id
+            cmd.CommandText = @"SELECT applicant_discord_id, division_key, target_channel_id, target_message_id, start_date, end_date
                                 FROM loa_request WHERE id=@id AND status='PENDING' LIMIT 1";
             cmd.Parameters.AddWithValue("@id", requestId);
             using var r = await cmd.ExecuteReaderAsync();
@@ -628,6 +657,8 @@ public class StaffLoaCommand : ISlashCommand
             req.divisionKey = r.GetString(1);
             req.channelId   = (ulong)r.GetInt64(2);
             req.messageId   = (ulong)r.GetInt64(3);
+            req.startUtc    = DateTime.SpecifyKind(r.GetDateTime(4), DateTimeKind.Utc);
+            req.endUtc      = DateTime.SpecifyKind(r.GetDateTime(5), DateTimeKind.Utc);
         }
 
         // 🚫 Prevent declining own request
@@ -693,6 +724,9 @@ public class StaffLoaCommand : ISlashCommand
                 });
             }
         }
+
+        // DM applicant (best-effort)
+        await NotifyApplicantDm(req.applicantId, approved: false, startUtc: req.startUtc, endUtc: req.endUtc, approver: comp.User);
 
         await comp.RespondAsync("Declined. Request updated.", ephemeral: true);
     }
