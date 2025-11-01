@@ -114,14 +114,15 @@ class Program
             return;
         }
 
-        // ✅ Register /staffloa once (handles its own component+modal events)
+        // ✅ Register LOA commands once (handles /staffloa, /loaremove, /staffloalist)
         if (!_staffLoaRegistered)
         {
             await _staffLoa.RegisterAsync(_client);
             _staffLoaRegistered = true;
-            Console.WriteLine("✅ Registered /staffloa");
+            Console.WriteLine("✅ Registered LOA commands (/staffloa, /loaremove, /staffloalist)");
         }
 
+        // Register your other existing commands from SlashCommandHandler
         foreach (var command in _commandHandler!.GetAllCommands())
         {
             var builder = new SlashCommandBuilder()
@@ -160,7 +161,6 @@ class Program
                 builder.AddOption("user", ApplicationCommandOptionType.User, "Who to fake ban", true);
                 builder.AddOption("reason", ApplicationCommandOptionType.String, "Reason for the fake ban", false);
             }
-
             else if (command.Name == "screamer")
             {
                 // no options
@@ -196,13 +196,9 @@ class Program
             }
             else if (command.Name == "preban")
             {
-                // Only members with Ban Members can see/use it by default
                 builder.WithDefaultMemberPermissions(GuildPermission.BanMembers);
-
-                // Options
                 builder.AddOption("userid", ApplicationCommandOptionType.String, "Discord user ID to pre-ban", true);
                 builder.AddOption("reason", ApplicationCommandOptionType.String, "Reason for the ban", false);
-
             }
 
             await guild.CreateApplicationCommandAsync(builder.Build());
@@ -212,7 +208,6 @@ class Program
         Console.WriteLine("✅ Commands registered and support panel sent");
 
         await StartFiveMUpdater(guildId);
-
     }
 
     private async Task StartFiveMUpdater(ulong guildId)
@@ -232,13 +227,16 @@ class Program
 
     private async Task SlashCommandExecuted(SocketSlashCommand command)
     {
-        // ✅ Route /staffloa directly
-        if (command.Data.Name.Equals(_staffLoa.Name, StringComparison.OrdinalIgnoreCase))
+        var name = command.Data.Name?.ToLowerInvariant();
+
+        // ✅ Route LOA commands directly to StaffLoaCommand
+        if (name == "staffloa" || name == "loaremove" || name == "staffloalist")
         {
             await _staffLoa.ExecuteAsync(command);
             return;
         }
 
+        // Everything else stays on your existing handler
         if (_commandHandler != null)
             await _commandHandler.HandleCommandAsync(command);
     }
