@@ -18,6 +18,21 @@ public class StaffLoaCommand : ISlashCommand
     private readonly string _mysql =
         "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore;User ID=thefirmprod;Password=edr6BYZqmq7eud0mwm;SslMode=Required;AllowPublicKeyRetrieval=True;Character Set=utf8mb4;";
 
+    // ✅ Allowed initiator roles (ONLY these can run /staffloa and use the UI)
+    private static readonly HashSet<ulong> AllowedInitiatorRoleIds = new()
+    {
+        1420512528395665569, // MET Command
+        1420512797191704616, // NHS Command
+        1420513009729802260, // Civil Command
+        1403466391499313263, // PR Team
+        1398306711311224862, // Media Team
+        1399174001275965520, // Area Command
+        1393623589122736238, // Discord Mod
+        1393729574537396355, // Game Mod
+        1393638449709584434, // Senior Mod
+        1393590761953558608  // Senior Management
+    };
+
     // Division map: key -> (targetChannelId, approverRoleId, label)
     private static readonly Dictionary<string, (ulong ChannelId, ulong ApproverRoleId, string Label)> DivisionRoutes =
         new()
@@ -46,7 +61,6 @@ public class StaffLoaCommand : ISlashCommand
     {
         _client = client;
 
-        // Wire interaction handlers (component + modal)
         _client.InteractionCreated -= OnInteractionCreated; // avoid double-subscribe
         _client.InteractionCreated += OnInteractionCreated;
 
@@ -63,8 +77,20 @@ public class StaffLoaCommand : ISlashCommand
         }
     }
 
+    // ---------- Role gate helper ----------
+    private static bool IsInitiatorAllowed(SocketGuildUser? guser)
+        => guser != null && guser.Roles.Any(r => AllowedInitiatorRoleIds.Contains(r.Id));
+
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
+        // ✅ Initiation role gate
+        var guser = command.User as SocketGuildUser;
+        if (!IsInitiatorAllowed(guser))
+        {
+            await command.RespondAsync("You don’t have permission to use this command.", ephemeral: true);
+            return;
+        }
+
         // Ephemeral UI with division select + open modal button
         var menu = new SelectMenuBuilder()
             .WithCustomId("loa:division_select")
@@ -123,6 +149,14 @@ public class StaffLoaCommand : ISlashCommand
     // ========= Division Select =========
     private async Task HandleDivisionSelect(SocketMessageComponent comp)
     {
+        // ✅ Role gate for continuing UI
+        var guser = comp.User as SocketGuildUser;
+        if (!IsInitiatorAllowed(guser))
+        {
+            await comp.RespondAsync("You don’t have permission to use this.", ephemeral: true);
+            return;
+        }
+
         var values = comp.Data.Values?.ToArray() ?? Array.Empty<string>();
         if (values.Length == 0 || !DivisionRoutes.ContainsKey(values[0]))
         {
@@ -137,6 +171,14 @@ public class StaffLoaCommand : ISlashCommand
     // ========= Open Modal =========
     private async Task HandleOpenModal(SocketMessageComponent comp)
     {
+        // ✅ Role gate for continuing UI
+        var guser = comp.User as SocketGuildUser;
+        if (!IsInitiatorAllowed(guser))
+        {
+            await comp.RespondAsync("You don’t have permission to use this.", ephemeral: true);
+            return;
+        }
+
         if (!_pendingDivisionByUser.TryGetValue(comp.User.Id, out var entry)
             || (DateTime.UtcNow - entry.StoredAtUtc) > TimeSpan.FromMinutes(5))
         {
@@ -158,6 +200,14 @@ public class StaffLoaCommand : ISlashCommand
     // ========= Modal Submit =========
     private async Task HandleModalSubmit(SocketModal modal)
     {
+        // ✅ Role gate for submit
+        var guser = modal.User as SocketGuildUser;
+        if (!IsInitiatorAllowed(guser))
+        {
+            await modal.RespondAsync("You don’t have permission to use this.", ephemeral: true);
+            return;
+        }
+
         if (!_pendingDivisionByUser.TryGetValue(modal.User.Id, out var entry)
             || (DateTime.UtcNow - entry.StoredAtUtc) > TimeSpan.FromMinutes(5)
             || !DivisionRoutes.ContainsKey(entry.DivKey))
@@ -253,11 +303,11 @@ public class StaffLoaCommand : ISlashCommand
             .WithButton("Approve", $"loa:approve:{requestId}", ButtonStyle.Success)
             .WithButton("Decline", $"loa:decline:{requestId}", ButtonStyle.Danger);
 
-        // Allowed mentions (only the approver role)
+        // Allowed mentions (role only)
         var allowedMentions = new AllowedMentions();
         allowedMentions.RoleIds.Add(approverRoleId);
 
-        // Send to target channel (positional parameters)
+        // Send to target channel (positional parameters, for older Discord.NET)
         var guild = _client.GetGuild(_guildId);
         var channel = guild?.GetTextChannel(channelId);
         if (channel == null)
@@ -267,13 +317,13 @@ public class StaffLoaCommand : ISlashCommand
         }
 
         var message = await channel.SendMessageAsync(
-            $"<@&{approverRoleId}> New LOA request pending review.", // text
-            false,                                                  // isTTS
-            eb.Build(),                                             // embed
-            null,                                                   // request options
-            allowedMentions,                                        // allowed mentions
-            null,                                                   // message reference
-            buttons.Build()                                         // components
+            $"<@&{approverRoleId}> New LOA request pending review.",
+            false,
+            eb.Build(),
+            null,
+            allowedMentions,
+            null,
+            buttons.Build()
         );
 
         // Save message id
@@ -327,7 +377,7 @@ public class StaffLoaCommand : ISlashCommand
             return;
         }
 
-        // Role gate
+        // ✅ Approver role gate (as before)
         if (comp.User is SocketGuildUser guser)
         {
             if (!guser.Roles.Any(x => x.Id == route.ApproverRoleId))
@@ -371,7 +421,7 @@ public class StaffLoaCommand : ISlashCommand
             await cmd.ExecuteNonQueryAsync();
         }
 
-        // Update message (green + decision note) with embed guard
+        // Update message (green + decision note)
         var channel = guild?.GetTextChannel(route.ChannelId);
         if (channel != null)
         {
@@ -431,7 +481,7 @@ public class StaffLoaCommand : ISlashCommand
             return;
         }
 
-        // Role gate
+        // ✅ Approver role gate (as before)
         if (comp.User is SocketGuildUser guser)
         {
             if (!guser.Roles.Any(x => x.Id == route.ApproverRoleId))
@@ -459,7 +509,7 @@ public class StaffLoaCommand : ISlashCommand
             await cmd.ExecuteNonQueryAsync();
         }
 
-        // Update message (red + decision note) with embed guard
+        // Update message (red + decision note)
         var guild = _client.GetGuild(_guildId);
         var channel = guild?.GetTextChannel(route.ChannelId);
         if (channel != null)
