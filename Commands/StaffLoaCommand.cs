@@ -14,11 +14,14 @@ public class StaffLoaCommand : ISlashCommand
     private readonly ulong _guildId   = 1393589436402634874;   // your guild
     private readonly ulong _loaRoleId = 1394453715250974771;   // LOA role
 
+    // Senior Management override role (can do everything incl. approve/decline across divisions)
+    private const ulong OverrideRoleId = 1393590761953558608;
+
     // OVH MySQL (converted from your URL)
     private readonly string _mysql =
         "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore;User ID=thefirmprod;Password=edr6BYZqmq7eud0mwm;SslMode=Required;AllowPublicKeyRetrieval=True;Character Set=utf8mb4;";
 
-    // ✅ Allowed initiator roles (ONLY these can run /staffloa, /loaremove, /staffloalist and use the UI)
+    // ✅ Allowed initiator roles (can run /staffloa, /loaremove)
     private static readonly HashSet<ulong> AllowedInitiatorRoleIds = new()
     {
         1420512528395665569, // MET Command
@@ -30,7 +33,7 @@ public class StaffLoaCommand : ISlashCommand
         1393623589122736238, // Discord Mod
         1393729574537396355, // Game Mod
         1393638449709584434, // Senior Mod
-        1393590761953558608  // Senior Management
+        1393590761953558608  // Senior Management (override)
     };
 
     // Division map: key -> (targetChannelId, approverRoleId, label)
@@ -86,7 +89,7 @@ public class StaffLoaCommand : ISlashCommand
             // Register /staffloalist (no options)
             var loalist = new SlashCommandBuilder()
                 .WithName(LoaListCommandName)
-                .WithDescription("List all active LOAs (Discord ID + Return Date).")
+                .WithDescription("List all active LOAs (Discord ID + Return Date). Only approvers.")
                 .Build();
             await client.Rest.CreateGuildCommand(loalist, _guildId);
         }
@@ -96,9 +99,18 @@ public class StaffLoaCommand : ISlashCommand
         }
     }
 
-    // ---------- Role gate helper ----------
-    private static bool IsInitiatorAllowed(SocketGuildUser? guser)
-        => guser != null && guser.Roles.Any(r => AllowedInitiatorRoleIds.Contains(r.Id));
+    // ---------- Role gate helpers ----------
+    private static bool IsInitiatorAllowed(SocketGuildUser? user)
+        => user != null && user.Roles.Any(r => AllowedInitiatorRoleIds.Contains(r.Id));
+
+    // ✅ Approver = has any division approver role OR override
+    private static bool IsApprover(SocketGuildUser? user)
+    {
+        if (user == null) return false;
+        if (user.Roles.Any(r => r.Id == OverrideRoleId)) return true;
+        var approverRoles = DivisionRoutes.Values.Select(v => v.ApproverRoleId).ToHashSet();
+        return user.Roles.Any(r => approverRoles.Contains(r.Id));
+    }
 
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
@@ -174,12 +186,12 @@ public class StaffLoaCommand : ISlashCommand
             }
             return;
         }
-        else if (cmdName == LoaListCommandName) // /staffloalist
+        else if (cmdName == LoaListCommandName) // /staffloalist (approvers only)
         {
             var guser = command.User as SocketGuildUser;
-            if (!IsInitiatorAllowed(guser))
+            if (!IsApprover(guser)) // ✅ Only approvers (or override) can see the list
             {
-                await command.RespondAsync("You don’t have permission to use this command.", ephemeral: true);
+                await command.RespondAsync("Only LOA approvers can view the active LOA list.", ephemeral: true);
                 return;
             }
 
@@ -219,18 +231,13 @@ public class StaffLoaCommand : ISlashCommand
                 return;
             }
 
-            // Build a compact list: "<@id> — returns YYYY-MM-DD"
-            // Keep under Discord limits; if very long, chunk (unlikely with <=200 lines).
             var lines = rows.Select(x => $"<@{x.ApplicantId}> — returns **{x.EndUtc:yyyy-MM-dd}**");
             var desc = string.Join("\n", lines);
 
-            // If it's too long, trim and indicate more
             if (desc.Length > 3900)
             {
-                // Rough trim
                 var reduced = new List<string>();
-                int total = 0;
-                int shown = 0;
+                int total = 0, shown = 0;
                 foreach (var line in lines)
                 {
                     var len = line.Length + 1;
@@ -523,10 +530,12 @@ public class StaffLoaCommand : ISlashCommand
             return;
         }
 
-        // Approver role gate
+        // Approver role gate (allow division approver OR override)
         if (comp.User is SocketGuildUser guser)
         {
-            if (!guser.Roles.Any(x => x.Id == route.ApproverRoleId))
+            bool hasDivisionApprover = guser.Roles.Any(x => x.Id == route.ApproverRoleId);
+            bool hasOverride = guser.Roles.Any(x => x.Id == OverrideRoleId);
+            if (!hasDivisionApprover && !hasOverride)
             {
                 await comp.RespondAsync("You don’t have permission to approve this.", ephemeral: true);
                 return;
@@ -634,10 +643,12 @@ public class StaffLoaCommand : ISlashCommand
             return;
         }
 
-        // Approver role gate
+        // Approver role gate (allow division approver OR override)
         if (comp.User is SocketGuildUser guser)
         {
-            if (!guser.Roles.Any(x => x.Id == route.ApproverRoleId))
+            bool hasDivisionApprover = guser.Roles.Any(x => x.Id == route.ApproverRoleId);
+            bool hasOverride = guser.Roles.Any(x => x.Id == OverrideRoleId);
+            if (!hasDivisionApprover && !hasOverride)
             {
                 await comp.RespondAsync("You don’t have permission to decline this.", ephemeral: true);
                 return;
