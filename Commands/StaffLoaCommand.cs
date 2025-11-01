@@ -17,6 +17,9 @@ public class StaffLoaCommand : ISlashCommand
     // Senior Management override role (can do everything incl. approve/decline across divisions)
     private const ulong OverrideRoleId = 1393590761953558608;
 
+    // 🔔 Log channel for LOA events
+    private const ulong LoaLogChannelId = 1434214545534226563;
+
     // OVH MySQL (converted from your URL)
     private readonly string _mysql =
         "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore;User ID=thefirmprod;Password=edr6BYZqmq7eud0mwm;SslMode=Required;AllowPublicKeyRetrieval=True;Character Set=utf8mb4;";
@@ -125,14 +128,42 @@ public class StaffLoaCommand : ISlashCommand
                 .WithColor(approved ? Color.Green : Color.Red)
                 .AddField("LOA Period", $"**From:** {startUtc:yyyy-MM-dd}\n**To:** {endUtc:yyyy-MM-dd}", inline: true)
                 .AddField("Decision By", $"{approver.Username} (`{approver.Id}`)", inline: true)
-                .WithFooter("If this is unexpected or incorrect, contact Senior Management.")
                 .WithTimestamp(DateTimeOffset.UtcNow);
+
+            if (approved)
+                eb.WithFooter("If this is unexpected or incorrect, contact Senior Management.");
+            else
+                eb.WithFooter("Contact your leadership team for more info.");
 
             await user.SendMessageAsync(embed: eb.Build());
         }
         catch
         {
             // DMs may be closed; ignore silently
+        }
+    }
+
+    // ---------- Log helper ----------
+    private async Task LogLoaEventAsync(string title, Color color, Action<EmbedBuilder> buildFields)
+    {
+        try
+        {
+            var guild = _client.GetGuild(_guildId);
+            var logChannel = guild?.GetTextChannel(LoaLogChannelId);
+            if (logChannel == null) return;
+
+            var eb = new EmbedBuilder()
+                .WithTitle(title)
+                .WithColor(color)
+                .WithTimestamp(DateTimeOffset.UtcNow);
+
+            buildFields(eb);
+
+            await logChannel.SendMessageAsync(embed: eb.Build());
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[StaffLoa] LogLoaEventAsync failed: {ex}");
         }
     }
 
@@ -202,6 +233,18 @@ public class StaffLoaCommand : ISlashCommand
             {
                 await guser.RemoveRoleAsync(loaRole);
                 await command.RespondAsync("✅ Removed the LOA role from you.", ephemeral: true);
+
+                // 🔔 Log: LOA role removed (division N/A for self-removal)
+                await LogLoaEventAsync(
+                    title: "LOA Role Removed",
+                    color: Color.LightGrey,
+                    buildFields: eb =>
+                    {
+                        eb.AddField("User", $"{guser.Username} (<@{guser.Id}>)", true)
+                          .AddField("User ID", $"{guser.Id}", true)
+                          .AddField("By", $"{guser.Username} (<@{guser.Id}>) — self-serve", true)
+                          .AddField("Division", "N/A", true);
+                    });
             }
             catch (Exception ex)
             {
@@ -387,6 +430,7 @@ public class StaffLoaCommand : ISlashCommand
         }
 
         var divKey = entry.DivKey;
+        var label = DivisionRoutes[divKey].Label;
 
         var dict = modal.Data.Components.ToDictionary(c => c.CustomId, c => (c.Value ?? "").Trim());
         dict.TryGetValue("discord_id", out var discordIdStr);
@@ -415,7 +459,7 @@ public class StaffLoaCommand : ISlashCommand
             return;
         }
 
-        var (channelId, approverRoleId, label) = DivisionRoutes[divKey];
+        var (channelId, approverRoleId, _) = DivisionRoutes[divKey];
 
         // Insert DB row (PENDING)
         long requestId;
@@ -460,7 +504,7 @@ public class StaffLoaCommand : ISlashCommand
         }
 
         // Build embed
-        var eb = new EmbedBuilder()
+        var reqEmbed = new EmbedBuilder()
             .WithTitle($"Staff LOA Request #{requestId}")
             .WithColor(Color.Orange)
             .AddField("Applicant", $"<@{applicantId}> (`{applicantId}`)", true)
@@ -489,7 +533,7 @@ public class StaffLoaCommand : ISlashCommand
         var message = await channel.SendMessageAsync(
             $"<@&{approverRoleId}> New LOA request pending review.",
             false,
-            eb.Build(),
+            reqEmbed.Build(),
             null,
             allowedMentions,
             null,
@@ -555,6 +599,7 @@ public class StaffLoaCommand : ISlashCommand
             await comp.RespondAsync("Division route not found.", ephemeral: true);
             return;
         }
+        var divisionLabel = route.Label;
 
         // Approver role gate (allow division approver OR override)
         if (comp.User is SocketGuildUser guser)
@@ -572,16 +617,19 @@ public class StaffLoaCommand : ISlashCommand
         var applicant = guild?.GetUser(req.applicantId);
         var loaRole = guild?.GetRole(_loaRoleId);
 
+        bool roleAssigned = false;
         try
         {
             if (applicant != null && loaRole != null && !applicant.Roles.Any(r => r.Id == _loaRoleId))
+            {
                 await applicant.AddRoleAsync(loaRole);
+                roleAssigned = true;
+            }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[StaffLoa] AddRole failed: {ex}");
-            await comp.RespondAsync("Approved, but I couldn't assign the LOA role (check permissions/role order).", ephemeral: true);
-            return;
+            // continue; we still mark as approved, but log outcome below
         }
 
         // Update DB
@@ -622,10 +670,50 @@ public class StaffLoaCommand : ISlashCommand
             }
         }
 
+        // 🔔 Log: LOA Approved (with Division)
+        await LogLoaEventAsync(
+            title: "LOA Approved",
+            color: Color.Green,
+            buildFields: eb =>
+            {
+                eb.AddField("Applicant", $"<@{req.applicantId}> ({req.applicantId})", true)
+                  .AddField("Approved By", $"<@{comp.User.Id}> ({comp.User.Id})", true)
+                  .AddField("Division", divisionLabel, true)
+                  .AddField("Period", $"**From:** {req.startUtc:yyyy-MM-dd}\n**To:** {req.endUtc:yyyy-MM-dd}", true);
+            });
+
+        // 🔔 Log: LOA Role Assigned / or failed (with Division)
+        if (roleAssigned)
+        {
+            await LogLoaEventAsync(
+                title: "LOA Role Assigned",
+                color: Color.Blue,
+                buildFields: eb =>
+                {
+                    eb.AddField("User", $"<@{req.applicantId}> ({req.applicantId})", true)
+                      .AddField("By", $"<@{comp.User.Id}> ({comp.User.Id})", true)
+                      .AddField("Division", divisionLabel, true)
+                      .AddField("Role", $"<@&{_loaRoleId}>", true);
+                });
+        }
+        else
+        {
+            await LogLoaEventAsync(
+                title: "LOA Role Assignment Failed",
+                color: Color.DarkRed,
+                buildFields: eb =>
+                {
+                    eb.AddField("User", $"<@{req.applicantId}> ({req.applicantId})", true)
+                      .AddField("Tried By", $"<@{comp.User.Id}> ({comp.User.Id})", true)
+                      .AddField("Division", divisionLabel, true)
+                      .AddField("Note", "Check bot permissions and role order.", true);
+                });
+        }
+
         // DM applicant (best-effort)
         await NotifyApplicantDm(req.applicantId, approved: true, startUtc: req.startUtc, endUtc: req.endUtc, approver: comp.User);
 
-        await comp.RespondAsync("Approved. LOA role added and request updated.", ephemeral: true);
+        await comp.RespondAsync("Approved. LOA role processed and request updated.", ephemeral: true);
     }
 
     // ========= Decline =========
@@ -673,6 +761,7 @@ public class StaffLoaCommand : ISlashCommand
             await comp.RespondAsync("Division route not found.", ephemeral: true);
             return;
         }
+        var divisionLabel = route.Label;
 
         // Approver role gate (allow division approver OR override)
         if (comp.User is SocketGuildUser guser)
@@ -725,7 +814,19 @@ public class StaffLoaCommand : ISlashCommand
             }
         }
 
-        // DM applicant (best-effort)
+        // 🔔 Log: LOA Declined (with Division)
+        await LogLoaEventAsync(
+            title: "LOA Declined",
+            color: Color.Red,
+            buildFields: eb =>
+            {
+                eb.AddField("Applicant", $"<@{req.applicantId}> ({req.applicantId})", true)
+                  .AddField("Declined By", $"<@{comp.User.Id}> ({comp.User.Id})", true)
+                  .AddField("Division", divisionLabel, true)
+                  .AddField("Requested Period", $"**From:** {req.startUtc:yyyy-MM-dd}\n**To:** {req.endUtc:yyyy-MM-dd}", true);
+            });
+
+        // DM applicant (best-effort) with leadership note
         await NotifyApplicantDm(req.applicantId, approved: false, startUtc: req.startUtc, endUtc: req.endUtc, approver: comp.User);
 
         await comp.RespondAsync("Declined. Request updated.", ephemeral: true);
