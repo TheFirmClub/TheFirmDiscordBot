@@ -45,7 +45,7 @@ public class StaffLoaCommand : ISlashCommand
             ["civilian_affairs"]      = (1406298760866172958, 1406295299311272006, "Civilian Affairs Staff"),
             ["creative_media_staff"]  = (1398309451697750106, 1394651533253017671, "Creative Media Staff"),
             ["media_team"]            = (1398309451697750106, 1394651533253017671, "Media Team"),
-            ["moderation"]            = (1393630781263315144, 768557889979678762,  "Moderation"),
+            ["moderation"]            = (1393630781263315144, 1393638449709584434, "Moderation"),
         };
 
     // Pending division (per-user) — include timestamp to expire stale selections
@@ -371,13 +371,20 @@ public class StaffLoaCommand : ISlashCommand
             req.messageId   = (ulong)r.GetInt64(3);
         }
 
+        // 🚫 Prevent approving own request
+        if (comp.User.Id == req.applicantId)
+        {
+            await comp.RespondAsync("You can’t approve your own LOA request.", ephemeral: true);
+            return;
+        }
+
         if (!DivisionRoutes.TryGetValue(req.divisionKey, out var route))
         {
             await comp.RespondAsync("Division route not found.", ephemeral: true);
             return;
         }
 
-        // ✅ Approver role gate (as before)
+        // Approver role gate
         if (comp.User is SocketGuildUser guser)
         {
             if (!guser.Roles.Any(x => x.Id == route.ApproverRoleId))
@@ -475,13 +482,20 @@ public class StaffLoaCommand : ISlashCommand
             req.messageId   = (ulong)r.GetInt64(3);
         }
 
+        // 🚫 Prevent declining own request
+        if (comp.User.Id == req.applicantId)
+        {
+            await comp.RespondAsync("You can’t decline your own LOA request.", ephemeral: true);
+            return;
+        }
+
         if (!DivisionRoutes.TryGetValue(req.divisionKey, out var route))
         {
             await comp.RespondAsync("Division route not found.", ephemeral: true);
             return;
         }
 
-        // ✅ Approver role gate (as before)
+        // Approver role gate
         if (comp.User is SocketGuildUser guser)
         {
             if (!guser.Roles.Any(x => x.Id == route.ApproverRoleId))
