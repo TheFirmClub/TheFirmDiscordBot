@@ -18,7 +18,7 @@ public class StaffLoaCommand : ISlashCommand
     private readonly string _mysql =
         "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore;User ID=thefirmprod;Password=edr6BYZqmq7eud0mwm;SslMode=Required;AllowPublicKeyRetrieval=True;Character Set=utf8mb4;";
 
-    // ✅ Allowed initiator roles (ONLY these can run /staffloa and use the UI)
+    // ✅ Allowed initiator roles (ONLY these can run /staffloa, /loaremove, /staffloalist and use the UI)
     private static readonly HashSet<ulong> AllowedInitiatorRoleIds = new()
     {
         1420512528395665569, // MET Command
@@ -54,8 +54,12 @@ public class StaffLoaCommand : ISlashCommand
     private DiscordSocketClient _client;
 
     // ========= ISlashCommand contract =========
-    public string Name => "staffloa";
+    public string Name => "staffloa"; // main command used by Program.cs
     public string Description => "Submit a Staff Leave Of Absence (LOA) request.";
+
+    // Sibling command names
+    private const string LoaRemoveCommandName = "loaremove";
+    private const string LoaListCommandName   = "staffloalist";
 
     public async Task RegisterAsync(DiscordSocketClient client)
     {
@@ -66,14 +70,29 @@ public class StaffLoaCommand : ISlashCommand
 
         try
         {
+            // Register /staffloa
             await client.Rest.CreateGuildCommand(new SlashCommandBuilder()
                 .WithName(Name)
                 .WithDescription(Description)
                 .Build(), _guildId);
+
+            // Register /loaremove (self-service, no options)
+            var loaremove = new SlashCommandBuilder()
+                .WithName(LoaRemoveCommandName)
+                .WithDescription("Remove the LOA role from yourself (requires senior/command roles).")
+                .Build();
+            await client.Rest.CreateGuildCommand(loaremove, _guildId);
+
+            // Register /staffloalist (no options)
+            var loalist = new SlashCommandBuilder()
+                .WithName(LoaListCommandName)
+                .WithDescription("List all active LOAs (Discord ID + Return Date).")
+                .Build();
+            await client.Rest.CreateGuildCommand(loalist, _guildId);
         }
         catch (HttpException e)
         {
-            Console.WriteLine($"Failed to register /{Name}: {e}");
+            Console.WriteLine($"Failed to register commands: {e}");
         }
     }
 
@@ -83,37 +102,160 @@ public class StaffLoaCommand : ISlashCommand
 
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
-        // ✅ Initiation role gate
-        var guser = command.User as SocketGuildUser;
-        if (!IsInitiatorAllowed(guser))
+        // Route between /staffloa, /loaremove, /staffloalist
+        var cmdName = command.Data.Name?.ToLowerInvariant();
+
+        if (cmdName == Name) // /staffloa
         {
-            await command.RespondAsync("You don’t have permission to use this command.", ephemeral: true);
+            var guser = command.User as SocketGuildUser;
+            if (!IsInitiatorAllowed(guser))
+            {
+                await command.RespondAsync("You don’t have permission to use this command.", ephemeral: true);
+                return;
+            }
+
+            // Ephemeral UI with division select + open modal button
+            var menu = new SelectMenuBuilder()
+                .WithCustomId("loa:division_select")
+                .WithPlaceholder("Select your primary division / department")
+                .WithMinValues(1).WithMaxValues(1);
+
+            foreach (var kv in DivisionRoutes)
+                menu.AddOption(kv.Value.Label, kv.Key);
+
+            var openButton = new ButtonBuilder()
+                .WithCustomId("loa:open_modal")
+                .WithLabel("Open LOA Form")
+                .WithStyle(ButtonStyle.Primary)
+                .WithEmote(new Emoji("📝"));
+
+            var comps = new ComponentBuilder()
+                .WithSelectMenu(menu)
+                .WithButton(openButton);
+
+            await command.RespondAsync(
+                text: "Pick your division, then click **Open LOA Form**.",
+                components: comps.Build(),
+                ephemeral: true);
             return;
         }
+        else if (cmdName == LoaRemoveCommandName) // /loaremove (self only)
+        {
+            var guser = command.User as SocketGuildUser;
+            if (!IsInitiatorAllowed(guser))
+            {
+                await command.RespondAsync("You don’t have permission to use this command.", ephemeral: true);
+                return;
+            }
 
-        // Ephemeral UI with division select + open modal button
-        var menu = new SelectMenuBuilder()
-            .WithCustomId("loa:division_select")
-            .WithPlaceholder("Select your primary division / department")
-            .WithMinValues(1).WithMaxValues(1);
+            var guild = _client.GetGuild(_guildId);
+            var loaRole = guild?.GetRole(_loaRoleId);
+            if (loaRole == null)
+            {
+                await command.RespondAsync("LOA role not found. Contact admins.", ephemeral: true);
+                return;
+            }
 
-        foreach (var kv in DivisionRoutes)
-            menu.AddOption(kv.Value.Label, kv.Key);
+            if (!guser.Roles.Any(r => r.Id == _loaRoleId))
+            {
+                await command.RespondAsync("You don’t currently have the LOA role.", ephemeral: true);
+                return;
+            }
 
-        var openButton = new ButtonBuilder()
-            .WithCustomId("loa:open_modal")
-            .WithLabel("Open LOA Form")
-            .WithStyle(ButtonStyle.Primary)
-            .WithEmote(new Emoji("📝"));
+            try
+            {
+                await guser.RemoveRoleAsync(loaRole);
+                await command.RespondAsync("✅ Removed the LOA role from you.", ephemeral: true);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[StaffLoa] Self RemoveRole failed: {ex}");
+                await command.RespondAsync("I couldn't remove your LOA role (check permissions/role order).", ephemeral: true);
+            }
+            return;
+        }
+        else if (cmdName == LoaListCommandName) // /staffloalist
+        {
+            var guser = command.User as SocketGuildUser;
+            if (!IsInitiatorAllowed(guser))
+            {
+                await command.RespondAsync("You don’t have permission to use this command.", ephemeral: true);
+                return;
+            }
 
-        var comps = new ComponentBuilder()
-            .WithSelectMenu(menu)
-            .WithButton(openButton);
+            List<(ulong ApplicantId, DateTime EndUtc)> rows = new();
 
-        await command.RespondAsync(
-            text: "Pick your division, then click **Open LOA Form**.",
-            components: comps.Build(),
-            ephemeral: true);
+            try
+            {
+                using var conn = new MySqlConnection(_mysql);
+                await conn.OpenAsync();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = @"
+                    SELECT applicant_discord_id, end_date
+                    FROM loa_request
+                    WHERE status = 'APPROVED'
+                      AND start_date <= UTC_TIMESTAMP()
+                      AND end_date   >= UTC_TIMESTAMP()
+                    ORDER BY end_date ASC
+                    LIMIT 200;";
+                using var r = await cmd.ExecuteReaderAsync();
+                while (await r.ReadAsync())
+                {
+                    var id = (ulong)r.GetInt64(0);
+                    var end = r.GetDateTime(1); // assumed UTC in DB
+                    rows.Add((id, DateTime.SpecifyKind(end, DateTimeKind.Utc)));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[StaffLoa] staffloalist query failed: {ex}");
+                await command.RespondAsync("Failed to fetch active LOAs. Try again later.", ephemeral: true);
+                return;
+            }
+
+            if (rows.Count == 0)
+            {
+                await command.RespondAsync("No active LOAs at the moment.", ephemeral: true);
+                return;
+            }
+
+            // Build a compact list: "<@id> — returns YYYY-MM-DD"
+            // Keep under Discord limits; if very long, chunk (unlikely with <=200 lines).
+            var lines = rows.Select(x => $"<@{x.ApplicantId}> — returns **{x.EndUtc:yyyy-MM-dd}**");
+            var desc = string.Join("\n", lines);
+
+            // If it's too long, trim and indicate more
+            if (desc.Length > 3900)
+            {
+                // Rough trim
+                var reduced = new List<string>();
+                int total = 0;
+                int shown = 0;
+                foreach (var line in lines)
+                {
+                    var len = line.Length + 1;
+                    if (total + len > 3800) break;
+                    reduced.Add(line);
+                    total += len;
+                    shown++;
+                }
+                desc = string.Join("\n", reduced) + $"\n…and {rows.Count - shown} more.";
+            }
+
+            var eb = new EmbedBuilder()
+                .WithTitle($"Active LOAs ({rows.Count})")
+                .WithDescription(desc)
+                .WithColor(Color.Blue)
+                .WithFooter("Dates shown in UTC (YYYY-MM-DD)")
+                .WithTimestamp(DateTimeOffset.UtcNow);
+
+            await command.RespondAsync(embed: eb.Build(), ephemeral: true);
+            return;
+        }
+        else
+        {
+            await command.RespondAsync("Unknown command.", ephemeral: true);
+        }
     }
 
     // ========= Interaction Router =========
@@ -149,7 +291,6 @@ public class StaffLoaCommand : ISlashCommand
     // ========= Division Select =========
     private async Task HandleDivisionSelect(SocketMessageComponent comp)
     {
-        // ✅ Role gate for continuing UI
         var guser = comp.User as SocketGuildUser;
         if (!IsInitiatorAllowed(guser))
         {
@@ -171,7 +312,6 @@ public class StaffLoaCommand : ISlashCommand
     // ========= Open Modal =========
     private async Task HandleOpenModal(SocketMessageComponent comp)
     {
-        // ✅ Role gate for continuing UI
         var guser = comp.User as SocketGuildUser;
         if (!IsInitiatorAllowed(guser))
         {
@@ -200,7 +340,6 @@ public class StaffLoaCommand : ISlashCommand
     // ========= Modal Submit =========
     private async Task HandleModalSubmit(SocketModal modal)
     {
-        // ✅ Role gate for submit
         var guser = modal.User as SocketGuildUser;
         if (!IsInitiatorAllowed(guser))
         {
