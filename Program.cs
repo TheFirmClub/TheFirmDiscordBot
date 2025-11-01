@@ -26,6 +26,10 @@ class Program
     
     private VoiceModLogger? _voiceLogger;
 
+    // ✅ LOA command integration
+    private StaffLoaCommand _staffLoa = new StaffLoaCommand();
+    private bool _staffLoaRegistered = false;
+
     public static Task Main(string[] args) => new Program().MainAsync();
 
     public async Task MainAsync()
@@ -108,6 +112,14 @@ class Program
         {
             Console.WriteLine($"❌ Could not find guild with ID {guildId}");
             return;
+        }
+
+        // ✅ Register /staffloa once (handles its own component+modal events)
+        if (!_staffLoaRegistered)
+        {
+            await _staffLoa.RegisterAsync(_client);
+            _staffLoaRegistered = true;
+            Console.WriteLine("✅ Registered /staffloa");
         }
 
         foreach (var command in _commandHandler!.GetAllCommands())
@@ -220,6 +232,13 @@ class Program
 
     private async Task SlashCommandExecuted(SocketSlashCommand command)
     {
+        // ✅ Route /staffloa directly
+        if (command.Data.Name.Equals(_staffLoa.Name, StringComparison.OrdinalIgnoreCase))
+        {
+            await _staffLoa.ExecuteAsync(command);
+            return;
+        }
+
         if (_commandHandler != null)
             await _commandHandler.HandleCommandAsync(command);
     }
