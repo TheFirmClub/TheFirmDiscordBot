@@ -122,27 +122,38 @@ class Program
             Console.WriteLine("✅ Registered LOA commands (/staffloa, /loaremove, /staffloalist)");
         }
         
-        // ✅ Register /playtime before other commands
-        var playtimeCmd = new SlashCommandBuilder()
-            .WithName("playtime")
-            .WithDescription("Check police or ambulance playtime")
-            .AddOption(new SlashCommandOptionBuilder()
-                .WithName("police")
-                .WithDescription("Check police playtime for a CID")
-                .WithType(ApplicationCommandOptionType.SubCommand)
-                .AddOption("cid", ApplicationCommandOptionType.String, "Citizen ID", true))
-            .AddOption(new SlashCommandOptionBuilder()
-                .WithName("ambulance")
-                .WithDescription("Check ambulance playtime for a CID")
-                .WithType(ApplicationCommandOptionType.SubCommand)
-                .AddOption("cid", ApplicationCommandOptionType.String, "Citizen ID", true));
+        // ✅ Register /playtime (with subcommands) BEFORE the foreach
+        try
+        {
+            var playtimeCmd = new SlashCommandBuilder()
+                .WithName("playtime")
+                .WithDescription("Check police or ambulance playtime")
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("police")
+                    .WithDescription("Check police playtime for a CID")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    .AddOption("cid", ApplicationCommandOptionType.String, "Citizen ID", true))
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("ambulance")
+                    .WithDescription("Check ambulance playtime for a CID")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    .AddOption("cid", ApplicationCommandOptionType.String, "Citizen ID", true));
 
-        await guild.CreateApplicationCommandAsync(playtimeCmd.Build());
-        Console.WriteLine("✅ /playtime registered");
+            await guild.CreateApplicationCommandAsync(playtimeCmd.Build());
+            Console.WriteLine("✅ /playtime registered");
+        }
+        catch (Discord.Net.HttpException ex)
+        {
+            Console.WriteLine($"❌ Failed to register /playtime: {ex}");
+        }
 
         // Register your other existing commands from SlashCommandHandler
         foreach (var command in _commandHandler!.GetAllCommands())
         {
+            // ⛔ Skip playtime here because it was registered manually as subcommands
+            if (command.Name.Equals("playtime", StringComparison.OrdinalIgnoreCase))
+                continue;
+            
             var builder = new SlashCommandBuilder()
                 .WithName(command.Name)
                 .WithDescription(command.Description);
