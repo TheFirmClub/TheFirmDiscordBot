@@ -37,6 +37,20 @@ public class AddRoleCommand : ISlashCommand
         1394460919152771103, // Advance Paramedic
         1394460987876446218, // Paramedic
     };
+    
+    private static readonly HashSet<ulong> PoliceLeadershipRoleIds = new()
+    {
+        1394649657644290078, // Chief Inspector
+        1394458024503935006, // Superintendent
+        1394457219298492527, // Commissioner
+    };
+
+    private static readonly HashSet<ulong> AllowedPoliceRoleIds = new()
+    {
+        1394459580649574480, // Response
+        1394459751688966184, // Roads Policing
+        1394460140891013161, // Tactical Firearms
+    };
 
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
@@ -61,8 +75,9 @@ public class AddRoleCommand : ISlashCommand
         bool isSeniorManagement   = caller.Roles.Any(r => r.Id == SeniorManagementRoleId);
         bool isAssistantOrHeadMod = caller.Roles.Any(r => AssistantOrHeadModRoleIds.Contains(r.Id));
         bool isMedicalLeadership  = caller.Roles.Any(r => MedicalLeadershipRoleIds.Contains(r.Id));
+        bool isPoliceLeadership   = caller.Roles.Any(r => PoliceLeadershipRoleIds.Contains(r.Id));
 
-        if (!isSeniorManagement && !isAssistantOrHeadMod && !isMedicalLeadership)
+        if (!isSeniorManagement && !isAssistantOrHeadMod && !isMedicalLeadership && !isPoliceLeadership)
         {
             await Reply(command, "❌ You are not allowed to use this command.");
             return;
@@ -94,6 +109,12 @@ public class AddRoleCommand : ISlashCommand
             if (isMedicalLeadership && !AllowedMedicalRoleIds.Contains(role.Id))
             {
                 await Reply(command, "❌ You can only assign approved NHS roles (Critical Medic, Advance Paramedic, Paramedic).");
+                return;
+            }
+            
+            if (isPoliceLeadership && !AllowedPoliceRoleIds.Contains(role.Id))
+            {
+                await Reply(command, "❌ You can only assign approved Police roles (Response, Roads Policing, Tactical Firearms).");
                 return;
             }
         }
