@@ -121,6 +121,24 @@ class Program
             _staffLoaRegistered = true;
             Console.WriteLine("✅ Registered LOA commands (/staffloa, /loaremove, /staffloalist)");
         }
+        
+        // ✅ Register /playtime before other commands
+        var playtimeCmd = new SlashCommandBuilder()
+            .WithName("playtime")
+            .WithDescription("Check police or ambulance playtime")
+            .AddOption(new SlashCommandOptionBuilder()
+                .WithName("police")
+                .WithDescription("Check police playtime for a CID")
+                .WithType(ApplicationCommandOptionType.SubCommand)
+                .AddOption("cid", ApplicationCommandOptionType.String, "Citizen ID", true))
+            .AddOption(new SlashCommandOptionBuilder()
+                .WithName("ambulance")
+                .WithDescription("Check ambulance playtime for a CID")
+                .WithType(ApplicationCommandOptionType.SubCommand)
+                .AddOption("cid", ApplicationCommandOptionType.String, "Citizen ID", true));
+
+        await guild.CreateApplicationCommandAsync(playtimeCmd.Build());
+        Console.WriteLine("✅ /playtime registered");
 
         // Register your other existing commands from SlashCommandHandler
         foreach (var command in _commandHandler!.GetAllCommands())
