@@ -8,7 +8,7 @@ using MySqlConnector; // MySqlConnector NuGet package
 
 public class GameModCommands : ISlashCommand
 {
-    public string Name => "game";  // ✅ Changed from "gamemod" to "game"
+    public string Name => "game";  // ✅ stays as /game
     public string Description => "Game moderation commands";
 
     // ✅ Only these roles can use it
@@ -18,7 +18,7 @@ public class GameModCommands : ISlashCommand
         1393590761953558608UL  // SM
     };
 
-    // ✅ Direct database connection (as you asked, no RCON)
+    // ✅ Direct database connection (no RCON)
     private const string MYSQL_CONN =
         "Server=nw26472-001.eu.clouddb.ovh.net;" +
         "Port=35666;" +
@@ -36,7 +36,7 @@ public class GameModCommands : ISlashCommand
             .WithDescription(Description)
             .AddOption(new SlashCommandOptionBuilder()
                 .WithName("returnvehicle")
-                .WithDescription("Return a vehicle to Legion Square by plate")
+                .WithDescription("Return a vehicle by plate")
                 .WithType(ApplicationCommandOptionType.SubCommand)
                 .AddOption("plate", ApplicationCommandOptionType.String, "Vehicle plate, e.g. AB12 ABC", isRequired: true))
             .Build();
@@ -86,13 +86,16 @@ public class GameModCommands : ISlashCommand
 
                 var sql = @"
                     UPDATE player_vehicles
-                    SET garage = @garage
+                    SET garage_id = @garageId,
+                        in_garage = 1,
+                        impound = 0
                     WHERE UPPER(plate) = UPPER(@plate)
                     LIMIT 1;
                 ";
 
                 using var cmd = new MySqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@garage", "Legion Square");
+                // 🔧 If your schema uses a numeric ID, change the value type accordingly.
+                cmd.Parameters.AddWithValue("@garageId", "Legion Square");
                 cmd.Parameters.AddWithValue("@plate", plate);
 
                 affected = await cmd.ExecuteNonQueryAsync();
@@ -101,7 +104,7 @@ public class GameModCommands : ISlashCommand
             if (affected == 0)
                 await command.FollowupAsync($"⚠️ No vehicle found with plate `{plate}`.", ephemeral: true);
             else
-                await command.FollowupAsync($"✅ Vehicle `{plate}` has been moved to **Legion Square** garage.", ephemeral: true);
+                await command.FollowupAsync($"✅ Vehicle `{plate}` updated: `garage_id`, `in_garage=1`, `impound=0`.", ephemeral: true);
         }
         catch (Exception ex)
         {

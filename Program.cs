@@ -113,6 +113,16 @@ class Program
             Console.WriteLine($"❌ Could not find guild with ID {guildId}");
             return;
         }
+        
+        var existingCommands = await guild.GetApplicationCommandsAsync();
+        foreach (var cmd in existingCommands)
+        {
+            if (cmd.Name == "gamemod")
+            {
+                await cmd.DeleteAsync();
+                Console.WriteLine("🗑️ Removed old /gamemod");
+            }
+        }
 
         // ✅ Register LOA commands once (handles /staffloa, /loaremove, /staffloalist)
         if (!_staffLoaRegistered)
