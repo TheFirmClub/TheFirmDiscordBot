@@ -1,30 +1,34 @@
 using System;
 using System.Linq;
-using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using CoreRCON;
 using Discord;
 using Discord.WebSocket;
+using MySqlConnector; // MySqlConnector NuGet package
 
 public class GameModCommands : ISlashCommand
 {
-    public string Name => "gamemod";
-    public string Description => "Game moderation commands (e.g., return a vehicle to a garage)";
+    public string Name => "game";  // ✅ Changed from "gamemod" to "game"
+    public string Description => "Game moderation commands";
 
-    // --- RCON CONFIG (hardcoded as requested) ---
-    private const string RCON_HOST = "127.0.0.1";         // ← change if your bot is remote
-    private const ushort RCON_PORT = 30120;               // ← your FiveM server port
-    private const string RCON_PASSWORD = "rc0nsmallp13test";      // ← set a strong password
-
-    // --- Allowed Discord roles ---
+    // ✅ Only these roles can use it
     private static readonly ulong[] AllowedRoleIds = new ulong[]
     {
         1393729574537396355UL, // Game Moderator
-        1393590761953558608UL, // SM
+        1393590761953558608UL  // SM
     };
 
-    // Build the /gamemod command with a single subcommand: /gamemod returnvehicle
+    // ✅ Direct database connection (as you asked, no RCON)
+    private const string MYSQL_CONN =
+        "Server=nw26472-001.eu.clouddb.ovh.net;" +
+        "Port=35666;" +
+        "Database=thefirm_qbcore;" +
+        "User ID=thefirmprod;" +
+        "Password=edr6BYZqmq7eud0mwm;" +
+        "Character Set=utf8mb4;" +
+        "SslMode=Required;";
+
+    // ✅ Build: /game returnvehicle
     public SlashCommandProperties Build()
     {
         return new SlashCommandBuilder()
@@ -32,74 +36,76 @@ public class GameModCommands : ISlashCommand
             .WithDescription(Description)
             .AddOption(new SlashCommandOptionBuilder()
                 .WithName("returnvehicle")
-                .WithDescription("Set a vehicle's garage by plate (server-side)")
+                .WithDescription("Return a vehicle to Legion Square by plate")
                 .WithType(ApplicationCommandOptionType.SubCommand)
                 .AddOption("plate", ApplicationCommandOptionType.String, "Vehicle plate, e.g. AB12 ABC", isRequired: true))
             .Build();
     }
 
-    // Required by your ISlashCommand interface
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
-        // Guild-only + role gate
         if (command.GuildId == null)
         {
             await command.RespondAsync("This command can only be used in a server.", ephemeral: true);
             return;
         }
 
-        var member = command.User as IGuildUser;
-        if (member == null || !member.RoleIds.Any(rid => AllowedRoleIds.Contains(rid)))
+        var user = command.User as SocketGuildUser;
+        if (user == null || !user.Roles.Any(r => AllowedRoleIds.Contains(r.Id)))
         {
-            await command.RespondAsync("You don't have permission to use this command.", ephemeral: true);
+            await command.RespondAsync("❌ You do not have permission to use this.", ephemeral: true);
             return;
         }
 
-        // We only have one subcommand: returnvehicle
-        var sub = command.Data.Options.First().Name.ToLowerInvariant();
-
         await command.DeferAsync(ephemeral: true);
 
-        switch (sub)
-        {
-            case "returnvehicle":
-                await HandleReturnVehicle(command, command.Data.Options.First().Options);
-                break;
-
-            default:
-                await command.FollowupAsync("Unknown subcommand.", ephemeral: true);
-                break;
-        }
+        var sub = command.Data.Options.First().Name.ToLower();
+        if (sub == "returnvehicle")
+            await HandleReturnVehicle(command, command.Data.Options.First().Options);
+        else
+            await command.FollowupAsync("Unknown subcommand.", ephemeral: true);
     }
 
-    // /gamemod returnvehicle plate:<text>
+    // ✅ Handles /game returnvehicle plate: XXX
     private async Task HandleReturnVehicle(SocketSlashCommand command, System.Collections.Generic.IReadOnlyCollection<SocketSlashCommandDataOption> options)
     {
-        var plate = options.First(o => o.Name == "plate").Value?.ToString()?.Trim() ?? string.Empty;
+        var plate = options.First(o => o.Name == "plate").Value?.ToString()?.Trim() ?? "";
 
-        // Basic input hardening: letters/numbers/spaces, up to 12 chars (tweak to your server’s plate rules)
         if (!Regex.IsMatch(plate, @"^[A-Za-z0-9 ]{1,12}$"))
         {
-            await command.FollowupAsync("❌ Invalid plate format. Use letters/numbers/spaces only (max 12).", ephemeral: true);
+            await command.FollowupAsync("❌ Invalid plate format.", ephemeral: true);
             return;
         }
 
         try
         {
-            using var rcon = new RCON(IPAddress.Parse(RCON_HOST), RCON_PORT, RCON_PASSWORD, timeout: 5000);
-            await rcon.ConnectAsync();
+            int affected;
+            using (var conn = new MySqlConnection(MYSQL_CONN))
+            {
+                await conn.OpenAsync();
 
-            // Call the FiveM console command you created in your Lua resource
-            var reply = await rcon.SendCommandAsync($"returnvehicle {plate}");
+                var sql = @"
+                    UPDATE player_vehicles
+                    SET garage = @garage
+                    WHERE UPPER(plate) = UPPER(@plate)
+                    LIMIT 1;
+                ";
 
-            if (string.IsNullOrWhiteSpace(reply))
-                reply = "Command sent. Check server console/logs for details.";
+                using var cmd = new MySqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@garage", "Legion Square");
+                cmd.Parameters.AddWithValue("@plate", plate);
 
-            await command.FollowupAsync($"✅ Sent `returnvehicle {plate}` to the server.\n```\n{reply}\n```", ephemeral: true);
+                affected = await cmd.ExecuteNonQueryAsync();
+            }
+
+            if (affected == 0)
+                await command.FollowupAsync($"⚠️ No vehicle found with plate `{plate}`.", ephemeral: true);
+            else
+                await command.FollowupAsync($"✅ Vehicle `{plate}` has been moved to **Legion Square** garage.", ephemeral: true);
         }
         catch (Exception ex)
         {
-            await command.FollowupAsync($"❌ RCON error: `{ex.Message}`", ephemeral: true);
+            await command.FollowupAsync($"❌ Database error: `{ex.Message}`", ephemeral: true);
         }
     }
 }

@@ -158,7 +158,7 @@ class Program
             if (command is GameModCommands gm)
             {
                 await guild.CreateApplicationCommandAsync(gm.Build());
-                Console.WriteLine("✅ /gamemod registered");
+                Console.WriteLine("✅ /game registered");
                 continue; // Skip normal registration below
             }
             
