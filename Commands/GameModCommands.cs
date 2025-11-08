@@ -104,7 +104,7 @@ public class GameModCommands : ISlashCommand
             if (affected == 0)
                 await command.FollowupAsync($"⚠️ No vehicle found with plate `{plate}`.", ephemeral: true);
             else
-                await command.FollowupAsync($"✅ Vehicle `{plate}` updated: `garage_id`, `in_garage=1`, `impound=0`.", ephemeral: true);
+                await command.FollowupAsync($"✅ Vehicle `{plate}` has been returned to **Legion Square**.", ephemeral: true);
         }
         catch (Exception ex)
         {
