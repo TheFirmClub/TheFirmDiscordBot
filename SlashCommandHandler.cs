@@ -59,6 +59,7 @@ public class SlashCommandHandler
         _commands.Add("hangman", new HangmanCommand());
         _commands.Add("socials", new SocialsCommand());
         _commands.Add("playtime", new PlaytimeCommand());
+        _commands.Add("gamemod", new GameModCommands());
 
         // --- NEW: invite tracker commands ---
         _commands.Add("myinvites",  new MyInvitesCommand(inviteTracker));

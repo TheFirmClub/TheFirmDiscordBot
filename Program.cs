@@ -154,6 +154,14 @@ class Program
             if (command.Name.Equals("playtime", StringComparison.OrdinalIgnoreCase))
                 continue;
             
+            // ✅ Special handling for gamemod because it uses subcommands
+            if (command is GameModCommands gm)
+            {
+                await guild.CreateApplicationCommandAsync(gm.Build());
+                Console.WriteLine("✅ /gamemod registered");
+                continue; // Skip normal registration below
+            }
+            
             var builder = new SlashCommandBuilder()
                 .WithName(command.Name)
                 .WithDescription(command.Description);
