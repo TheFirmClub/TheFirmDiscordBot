@@ -101,10 +101,37 @@ public class GameModCommands : ISlashCommand
                 affected = await cmd.ExecuteNonQueryAsync();
             }
 
+            // (existing)
             if (affected == 0)
+            {
                 await command.FollowupAsync($"⚠️ No vehicle found with plate `{plate}`.", ephemeral: true);
+            }
             else
+            {
                 await command.FollowupAsync($"✅ Vehicle `{plate}` has been returned to **Legion Square**.", ephemeral: true);
+
+                // 🔻 NEW: log to channel 1394451583709745273
+                try
+                {
+                    var guild = (command.User as SocketGuildUser)?.Guild;
+                    var logChannel = guild?.GetTextChannel(1394451583709745273UL);
+                    if (logChannel != null)
+                    {
+                        var embed = new EmbedBuilder()
+                            .WithTitle("🚗 Vehicle Returned")
+                            .WithDescription(
+                                $"**VRN:** `{plate}`\n" +
+                                $"**Initiated by:** {command.User.Mention}")
+                            .WithColor(Color.Green)
+                            .WithFooter(f => f.Text = "Command: /game returnvehicle")
+                            .WithTimestamp(DateTimeOffset.UtcNow)
+                            .Build();
+
+                        await logChannel.SendMessageAsync(embed: embed);
+                    }
+                }
+                catch { /* ignore logging errors */ }
+            }
         }
         catch (Exception ex)
         {
