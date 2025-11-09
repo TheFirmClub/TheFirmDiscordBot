@@ -48,7 +48,7 @@ public class CommandTicketCommand : ISlashCommand
 
         var guild = guildUser.Guild;
 
-        int rand = new Random().Next(100, 999);
+        int rand = new Random().Next(1000, 9990);
         string channelName = $"command-{rand}";
 
         // Permissions
@@ -88,11 +88,11 @@ public class CommandTicketCommand : ISlashCommand
                 $"**This ticket was opened by {staffUser.Mention}** to address a command-related matter involving {guildUser.Mention}.\n\n" +
                 $"Our goal is to resolve this efficiently and professionally. Please provide any relevant context or concerns.\n\n" +
                 $"**What to expect:**\n" +
-                $"• Staff may ask a follow-up questions.\n" +
+                $"• Staff may ask some follow-up questions.\n" +
                 $"• You’ll be able to explain your side or report issues.\n" +
                 $"• Ticket will be closed or archived when resolved.\n\n" +
-                $"🔒 *This channel is private.*\n" +
-                $"🗂️ *Messages may be logged for accountability.*")
+                $"🔒 *Please note: A copy of this conversation may be logged for audit, quality, and training purposes.*\n" +
+                $"🔐 *This ticket is confidential and should not be shared outside of this channel.*")
             .WithTimestamp(DateTimeOffset.UtcNow)
             .Build();
 
