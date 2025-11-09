@@ -9,7 +9,7 @@ public class CommandTicketCommand : ISlashCommand
     public string Name => "commandticket";
     public string Description => "Create a command ticket for a user.";
 
-    private readonly ulong _categoryId = 1393627644326838292; // Adjust if needed
+    private readonly ulong _categoryId = 1393627644326838292;
 
     private readonly ulong[] _allowedRoleIds = new ulong[]
     {
@@ -30,9 +30,7 @@ public class CommandTicketCommand : ISlashCommand
             return;
         }
 
-        // Permission check — only allow if user has one of the allowed roles
-        var hasAllowedRole = staffUser.Roles.Any(r => _allowedRoleIds.Contains(r.Id));
-        if (!hasAllowedRole)
+        if (!staffUser.Roles.Any(r => _allowedRoleIds.Contains(r.Id)))
         {
             await command.RespondAsync("❌ You do not have permission to use this command.", ephemeral: true);
             return;
@@ -52,27 +50,27 @@ public class CommandTicketCommand : ISlashCommand
         int rand = new Random().Next(100, 999);
         string channelName = $"command-{rand}";
 
-        // Setup base permissions
+        // Permissions
         var overwrites = new Overwrite[]
         {
             new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role,
                 new OverwritePermissions(viewChannel: PermValue.Deny)),
+
             new Overwrite(guildUser.Id, PermissionTarget.User,
                 new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
+
             new Overwrite(staffUser.Id, PermissionTarget.User,
                 new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
+
             new Overwrite(_seniorModeratorRoleId, PermissionTarget.Role,
                 new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow))
         }.ToList();
 
-        // Add visibility for the initiator's matching role group
-        var matchingRoles = staffUser.Roles.Where(r => _allowedRoleIds.Contains(r.Id));
-        foreach (var role in matchingRoles)
+        // Add initiator's matching roles
+        foreach (var role in staffUser.Roles.Where(r => _allowedRoleIds.Contains(r.Id)))
         {
-            overwrites = overwrites.Append(
-                new Overwrite(role.Id, PermissionTarget.Role,
-                    new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow))
-            ).ToList();
+            overwrites.Add(new Overwrite(role.Id, PermissionTarget.Role,
+                new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)));
         }
 
         var channel = await guild.CreateTextChannelAsync(channelName, props =>
@@ -81,28 +79,35 @@ public class CommandTicketCommand : ISlashCommand
             props.PermissionOverwrites = overwrites;
         });
 
-        // Build the embed message
+        // Build embed
         var embed = new EmbedBuilder()
             .WithTitle("📂 Command Ticket")
             .WithColor(Color.Blue)
             .WithDescription(
                 $"**This ticket was opened by {staffUser.Mention}** to address a command-related matter involving {guildUser.Mention}.\n\n" +
-        
-                $"Our goal is to resolve this efficiently and professionally. Please provide any relevant context, information, or concerns so we can assist you properly.\n\n" +
-
+                $"Our goal is to resolve this efficiently and professionally. Please provide any relevant context or concerns.\n\n" +
                 $"**What to expect:**\n" +
-                $"• A staff member from the command team may ask a few follow-up questions.\n" +
-                $"• You’ll be able to clarify your side or report any issues.\n" +
-                $"• Once resolved, the ticket will be closed or archived by staff.\n\n" +
-
-                $"🔒 *This channel is private and only visible to the relevant staff team, senior moderators, and the involved user.*\n" +
-                $"🗂️ *All messages in this ticket may be logged for accountability and training purposes.*")
+                $"• Staff may ask a follow-up questions.\n" +
+                $"• You’ll be able to explain your side or report issues.\n" +
+                $"• Ticket will be closed or archived when resolved.\n\n" +
+                $"🔒 *This channel is private.*\n" +
+                $"🗂️ *Messages may be logged for accountability.*")
             .WithTimestamp(DateTimeOffset.UtcNow)
-            .WithFooter("Command Support Ticket System")
             .Build();
 
+        // Ping only the target user in content, not embed
+        var allowed = new AllowedMentions
+        {
+            AllowedTypes = AllowedMentionTypes.Users
+        };
+        allowed.UserIds.Add(guildUser.Id);
 
-        await channel.SendMessageAsync(embed: embed, allowedMentions: AllowedMentions.All);
+        await channel.SendMessageAsync(
+            text: $"{guildUser.Mention}", // ✅ actual ping
+            embed: embed,
+            allowedMentions: allowed
+        );
+
         await command.RespondAsync($"✅ Command ticket created: {channel.Mention}", ephemeral: true);
     }
 }

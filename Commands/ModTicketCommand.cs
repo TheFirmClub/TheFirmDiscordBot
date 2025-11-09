@@ -9,7 +9,6 @@ public class ModTicketCommand : ISlashCommand
     public string Name => "modticket";
     public string Description => "Create a moderation ticket for a user";
 
-    // Same category as your temp ticket, per your note "everything works the same"
     private readonly ulong _categoryId = 1393610364511326259;
 
     // Access: Game Mod + Senior Management
@@ -61,8 +60,7 @@ public class ModTicketCommand : ISlashCommand
                 new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)));
         }
 
-        // (Optional) Ensure the command invoker has access even if they somehow lack the roles
-        // Comment out if you strictly want role-gated access.
+        // Ensure the invoker has access as well
         perms.Add(new Overwrite(staffUser.Id, PermissionTarget.User,
             new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)));
 
@@ -72,7 +70,7 @@ public class ModTicketCommand : ISlashCommand
             props.PermissionOverwrites = perms;
         });
 
-        // Moderation Ticket embed (different content from temp ticket)
+        // Build the embed (no mention needed here; we'll ping in content)
         var embed = new EmbedBuilder()
             .WithTitle("🛡️ Moderation Ticket")
             .WithColor(Color.DarkRed)
@@ -88,7 +86,19 @@ public class ModTicketCommand : ISlashCommand
             .WithTimestamp(DateTimeOffset.UtcNow)
             .Build();
 
-        await channel.SendMessageAsync(embed: embed, allowedMentions: AllowedMentions.All);
+        // Safely ping only the target user in message content
+        var allowed = new AllowedMentions
+        {
+            AllowedTypes = AllowedMentionTypes.Users
+        };
+        allowed.UserIds.Add(guildUser.Id);
+
+        await channel.SendMessageAsync(
+            text: $"{guildUser.Mention}",   // <-- reliable ping happens here
+            embed: embed,
+            allowedMentions: allowed
+        );
+
         await command.RespondAsync($"✅ Moderation ticket created: {channel.Mention}", ephemeral: true);
     }
 
