@@ -41,7 +41,7 @@ public class TempTicketCommand : ISlashCommand
             .Where(char.IsLetter)
             .ToArray());
 
-        int rand = new Random().Next(100, 999);
+        int rand = new Random().Next(1000, 9990);
         string channelName = $"temp-{rand}";
 
         var overwrites = new Overwrite[]

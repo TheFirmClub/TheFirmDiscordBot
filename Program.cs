@@ -186,6 +186,8 @@ class Program
                 builder.AddOption("user", ApplicationCommandOptionType.User, "Create a temporary ticket for", true);
             else if (command.Name == "modticket")
                 builder.AddOption("user", ApplicationCommandOptionType.User, "Create a Moderation Ticket for", true);
+            else if (command.Name == "commandticket")
+                builder.AddOption("user", ApplicationCommandOptionType.User, "Create a Command Team Ticket for", true);
             else if (command.Name == "addrole" || command.Name == "removerole")
             {
                 builder.AddOption("user", ApplicationCommandOptionType.User, "Target user", true);
