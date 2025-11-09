@@ -13,11 +13,11 @@ public class CommandTicketCommand : ISlashCommand
 
     private readonly ulong[] _allowedRoleIds = new ulong[]
     {
-        1420513009729802260,
-        1420512797191704616,
-        1420512528395665569,
-        1394651533253017671,
-        1393590761953558608
+        1394649657644290078, // Chief Inspector
+        1398308435795251302, // Chief Operations Officer
+        1406295587686453360, // Asst. Head of Civil
+        1394651533253017671, // Content Coordinator
+        1393590761953558608  // Senior Management
     };
 
     private readonly ulong _seniorModeratorRoleId = 1393638449709584434;
