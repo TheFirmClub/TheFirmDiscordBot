@@ -183,7 +183,9 @@ class Program
             else if (command.Name == "ticketrestrict")
                 builder.AddOption("role", ApplicationCommandOptionType.Role, "Role to restrict this ticket to", true);
             else if (command.Name == "tempticket")
-                builder.AddOption("user", ApplicationCommandOptionType.User, "User to open the temporary ticket for", true);
+                builder.AddOption("user", ApplicationCommandOptionType.User, "Create a temporary ticket for", true);
+            else if (command.Name == "modticket")
+                builder.AddOption("user", ApplicationCommandOptionType.User, "Create a Moderation Ticket for", true);
             else if (command.Name == "addrole" || command.Name == "removerole")
             {
                 builder.AddOption("user", ApplicationCommandOptionType.User, "Target user", true);

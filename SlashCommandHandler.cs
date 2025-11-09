@@ -36,6 +36,7 @@ public class SlashCommandHandler
         _commands.Add("ticketresolve", new TicketResolveCommand());
         _commands.Add("ticketrestrict", new TicketRestrictCommand());
         _commands.Add("tempticket", new TempTicketCommand());
+        _commands.Add("modticket", new ModTicketCommand());
         _commands.Add("addrole", new AddRoleCommand());
         _commands.Add("removerole", new RemoveRoleCommand());
         _commands.Add("checkrole", new CheckRoleCommand());
