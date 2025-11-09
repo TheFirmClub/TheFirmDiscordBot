@@ -139,12 +139,8 @@ public class TicketButtonHandler
                     var closeCommand = new TicketCloseCommand(_config);
                     await closeCommand.CloseTicketAsync(channel, user);
 
-                    // Prefix the channel name with "closed-" if it doesn't already have it
-                    await channel.ModifyAsync(props =>
-                    {
-                        if (!channel.Name.StartsWith("closed-"))
-                            props.Name = $"closed-{channel.Name}";
-                    });
+                    // ✅ Do NOT modify the channel after this if CloseTicketAsync might delete it.
+                    return;
                 }
 
                 break;
