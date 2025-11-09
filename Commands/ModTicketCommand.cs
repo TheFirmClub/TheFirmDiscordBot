@@ -77,15 +77,14 @@ public class ModTicketCommand : ISlashCommand
             .WithTitle("🛡️ Moderation Ticket")
             .WithColor(Color.DarkRed)
             .WithDescription(
-                $"Hi {guildUser.Mention},\n\n" +
-                $"This channel has been opened by the moderation team to discuss a moderation matter concerning recent activity. " +
-                $"Our goal is to understand what happened and clarify any guidelines that may apply. Please keep responses civil and on-topic.\n\n" +
-                $"**What you can expect:**\n" +
-                $"• A moderator will ask a few questions to better understand the situation.\n" +
-                $"• You’ll have a chance to share your perspective.\n" +
-                $"• We’ll outline any next steps or actions as needed.\n\n" +
-                $"🔒 *Note: A copy of the chat logs will be stored for audit, quality, and training purposes.*\n" +
-                $"🔐 *This ticket and its contents are confidential and should not be shared outside of this channel.*")
+                $"This ticket was opened by {staffUser.Mention}, a member of the moderation team, to address a moderation matter involving a recent incident.\n\n" +
+                $"Our goal is to understand what happened, hear your perspective, and clarify any relevant guidelines.\n\n" +
+                $"**What to expect:**\n" +
+                $"• The moderator above may ask questions to understand the situation clearly.\n" +
+                $"• You will have the opportunity to explain your side.\n" +
+                $"• Any outcomes or next steps will be explained once the discussion is complete.\n\n" +
+                $"🔒 *Please note: A copy of this conversation may be logged for audit, quality, and training purposes.*\n" +
+                $"🔐 *This ticket is confidential and should not be shared outside of this channel.*")
             .WithTimestamp(DateTimeOffset.UtcNow)
             .Build();
 
