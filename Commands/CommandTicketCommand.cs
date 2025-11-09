@@ -98,12 +98,12 @@ public class CommandTicketCommand : ISlashCommand
         // Ping only the target user in content, not embed
         var allowed = new AllowedMentions
         {
-            AllowedTypes = AllowedMentionTypes.Users
+            AllowedTypes = AllowedMentionTypes.None
         };
         allowed.UserIds.Add(guildUser.Id);
 
         await channel.SendMessageAsync(
-            text: $"{guildUser.Mention}", // ✅ actual ping
+            text: $"{guildUser.Mention}",
             embed: embed,
             allowedMentions: allowed
         );

@@ -89,12 +89,13 @@ public class ModTicketCommand : ISlashCommand
         // Safely ping only the target user in message content
         var allowed = new AllowedMentions
         {
-            AllowedTypes = AllowedMentionTypes.Users
+            // Do NOT include AllowedMentionTypes.Users here
+            AllowedTypes = AllowedMentionTypes.None
         };
-        allowed.UserIds.Add(guildUser.Id);
+        allowed.UserIds.Add(guildUser.Id); // only this user can be pinged
 
         await channel.SendMessageAsync(
-            text: $"{guildUser.Mention}",   // <-- reliable ping happens here
+            text: $"{guildUser.Mention}",   // this actually pings them
             embed: embed,
             allowedMentions: allowed
         );
