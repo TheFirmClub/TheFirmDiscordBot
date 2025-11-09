@@ -18,6 +18,9 @@ public class ModTicketCommand : ISlashCommand
         1393590761953558608  // Senior Management
     };
 
+    // ✅ Add Senior Moderator role
+    private readonly ulong _seniorModeratorRoleId = 1393638449709584434;
+
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
         var staffUser = command.User as SocketGuildUser;
@@ -37,32 +40,31 @@ public class ModTicketCommand : ISlashCommand
 
         var guild = guildUser.Guild;
 
-        // Channel name: mod-1234 (4 random digits)
         int rand = new Random().Next(1000, 9999);
         string channelName = $"mod-{rand}";
 
-        // Base overwrites: hide from everyone; allow target user
-        var overwrites = new Overwrite[]
+        var perms = new System.Collections.Generic.List<Overwrite>
         {
             new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role,
                 new OverwritePermissions(viewChannel: PermValue.Deny)),
 
             new Overwrite(guildUser.Id, PermissionTarget.User,
+                new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
+
+            new Overwrite(staffUser.Id, PermissionTarget.User,
+                new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
+
+            // ✅ Senior Moderator gets access
+            new Overwrite(_seniorModeratorRoleId, PermissionTarget.Role,
                 new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow))
         };
 
-        var perms = overwrites.ToList();
-
-        // Allow Game Mod + Senior Management roles
+        // Keep Game Mod + Senior Management access
         foreach (var roleId in _allowedRoleIds)
         {
             perms.Add(new Overwrite(roleId, PermissionTarget.Role,
                 new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)));
         }
-
-        // Ensure the invoker has access as well
-        perms.Add(new Overwrite(staffUser.Id, PermissionTarget.User,
-            new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)));
 
         var channel = await guild.CreateTextChannelAsync(channelName, props =>
         {
@@ -70,7 +72,6 @@ public class ModTicketCommand : ISlashCommand
             props.PermissionOverwrites = perms;
         });
 
-        // Build the embed (no mention needed here; we'll ping in content)
         var embed = new EmbedBuilder()
             .WithTitle("🛡️ Moderation Ticket")
             .WithColor(Color.DarkRed)
@@ -86,16 +87,16 @@ public class ModTicketCommand : ISlashCommand
             .WithTimestamp(DateTimeOffset.UtcNow)
             .Build();
 
-        // Safely ping only the target user in message content
+        // ✅ Mention only the target user (no ArgumentException)
         var allowed = new AllowedMentions
         {
-            // Do NOT include AllowedMentionTypes.Users here
+            // Do NOT include Users flag if you’re using UserIds; they’re mutually exclusive
             AllowedTypes = AllowedMentionTypes.None
         };
-        allowed.UserIds.Add(guildUser.Id); // only this user can be pinged
+        allowed.UserIds.Add(guildUser.Id);
 
         await channel.SendMessageAsync(
-            text: $"{guildUser.Mention}",   // this actually pings them
+            text: $"{guildUser.Mention}",
             embed: embed,
             allowedMentions: allowed
         );

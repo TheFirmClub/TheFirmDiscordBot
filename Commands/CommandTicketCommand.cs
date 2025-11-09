@@ -16,7 +16,8 @@ public class CommandTicketCommand : ISlashCommand
         1420513009729802260,
         1420512797191704616,
         1420512528395665569,
-        1394651533253017671
+        1394651533253017671,
+        1393590761953558608
     };
 
     private readonly ulong _seniorModeratorRoleId = 1393638449709584434;
