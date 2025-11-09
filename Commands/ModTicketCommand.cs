@@ -51,9 +51,6 @@ public class ModTicketCommand : ISlashCommand
             new Overwrite(guildUser.Id, PermissionTarget.User,
                 new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
 
-            new Overwrite(staffUser.Id, PermissionTarget.User,
-                new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
-
             // ✅ Senior Moderator gets access
             new Overwrite(_seniorModeratorRoleId, PermissionTarget.Role,
                 new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow))

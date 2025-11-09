@@ -60,9 +60,6 @@ public class CommandTicketCommand : ISlashCommand
             new Overwrite(guildUser.Id, PermissionTarget.User,
                 new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
 
-            new Overwrite(staffUser.Id, PermissionTarget.User,
-                new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
-
             new Overwrite(_seniorModeratorRoleId, PermissionTarget.Role,
                 new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow))
         }.ToList();
