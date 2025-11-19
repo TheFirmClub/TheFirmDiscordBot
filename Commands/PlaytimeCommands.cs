@@ -22,6 +22,9 @@ public class PlaytimeCommand : ISlashCommand
 
     private static readonly HashSet<ulong> PoliceLeadershipRoleIds = new()
     {
+        1394459419156418730, // Response Inspector
+        1394650413361533009, // Roads Inspector
+        1394465316817473646, // TFU Inspector
         1394649657644290078, // Chief Inspector
         1394458024503935006, // Superintendent
         1394457219298492527, // Commissioner
@@ -29,6 +32,7 @@ public class PlaytimeCommand : ISlashCommand
 
     private static readonly HashSet<ulong> MedicalLeadershipRoleIds = new()
     {
+        1398313269998911519, // Team Manager
         1398308435795251302, // COO
         1394460689338208296, // Medical Director
         1394460400988454953, // CMO
