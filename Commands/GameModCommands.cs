@@ -52,8 +52,8 @@ public class GameModCommands : ISlashCommand
                 .WithName("deletecharacter")
                 .WithDescription("Delete a character by citizen id (Senior Mod + SM only)")
                 .WithType(ApplicationCommandOptionType.SubCommand)
-                .AddOption("citizenid", ApplicationCommandOptionType.String, "Citizen ID, e.g. MUF58516",
-                    isRequired: true))
+                .AddOption("citizenid", ApplicationCommandOptionType.String, "Citizen ID, e.g. MUF58516", isRequired: true)
+                .AddOption("reason", ApplicationCommandOptionType.String, "Reason for deletion", isRequired: true))
             .Build();
     }
 
