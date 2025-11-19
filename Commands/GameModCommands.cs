@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Discord;
@@ -152,75 +153,144 @@ public class GameModCommands : ISlashCommand
         }
     }
 
-    // ✅ Handles /game deletecharacter citizenid: XXX
-    private async Task HandleDeleteCharacter(SocketSlashCommand command, System.Collections.Generic.IReadOnlyCollection<SocketSlashCommandDataOption> options)
+    // make sure to add: using System.Text.Json;
+    private async Task HandleDeleteCharacter(SocketSlashCommand command,
+        System.Collections.Generic.IReadOnlyCollection<SocketSlashCommandDataOption> options)
     {
-        // Only allow specific roles for this destructive action
         var invoker = command.User as SocketGuildUser;
         if (invoker == null || !invoker.Roles.Any(r => DeleteAllowedRoleIds.Contains(r.Id)))
         {
-            await command.FollowupAsync("❌ You do not have permission to use this subcommand. (Senior Mod or SM only)", ephemeral: true);
+            await command.FollowupAsync("❌ You do not have permission to use this subcommand. (Senior Mod or SM only)",
+                ephemeral: true);
             return;
         }
 
         var citizenId = options.First(o => o.Name == "citizenid").Value?.ToString()?.Trim() ?? "";
 
-        // basic validation: alphanumeric & length guard (adjust if your citizen IDs differ)
         if (!Regex.IsMatch(citizenId, @"^[A-Za-z0-9]{3,16}$"))
         {
             await command.FollowupAsync("❌ Invalid citizen ID format.", ephemeral: true);
             return;
         }
 
+        string playerName = null;
+        string charinfoJson = null;
+        string characterFullName = null; // firstname + lastname from charinfo
+        int affected = 0;
+
         try
         {
-            int affected;
             using (var conn = new MySqlConnection(MYSQL_CONN))
             {
                 await conn.OpenAsync();
 
-                // Delete the row from players where citizenid matches (case-insensitive)
-                var sql = @"
-                    DELETE FROM players
-                    WHERE UPPER(citizenid) = UPPER(@cid)
-                    LIMIT 1;
-                ";
+                // SELECT both name and charinfo (charinfo may be a JSON string)
+                var getSql = @"
+                SELECT name, charinfo
+                FROM players
+                WHERE UPPER(citizenid) = UPPER(@cid)
+                LIMIT 1;
+            ";
 
-                using var cmd = new MySqlCommand(sql, conn);
-                cmd.Parameters.AddWithValue("@cid", citizenId);
+                using (var getCmd = new MySqlCommand(getSql, conn))
+                {
+                    getCmd.Parameters.AddWithValue("@cid", citizenId);
+                    using var reader = await getCmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        // read name column (player name)
+                        playerName = reader["name"] == DBNull.Value ? null : reader["name"].ToString();
 
-                affected = await cmd.ExecuteNonQueryAsync();
+                        // read charinfo column (could be JSON stored as text)
+                        charinfoJson = reader["charinfo"] == DBNull.Value ? null : reader["charinfo"].ToString();
+                    }
+                    else
+                    {
+                        await command.FollowupAsync($"⚠️ No player found with citizen id `{citizenId}`.",
+                            ephemeral: true);
+                        return;
+                    }
+                }
+
+                // parse charinfo JSON safely to extract firstname + lastname (if present)
+                if (!string.IsNullOrWhiteSpace(charinfoJson))
+                {
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(charinfoJson);
+                        var root = doc.RootElement;
+
+                        string first = null, last = null;
+                        if (root.TryGetProperty("firstname", out var firstElem) &&
+                            firstElem.ValueKind == JsonValueKind.String)
+                            first = firstElem.GetString();
+
+                        if (root.TryGetProperty("lastname", out var lastElem) &&
+                            lastElem.ValueKind == JsonValueKind.String)
+                            last = lastElem.GetString();
+
+                        if (!string.IsNullOrWhiteSpace(first) || !string.IsNullOrWhiteSpace(last))
+                            characterFullName = $"{first ?? ""} {last ?? ""}".Trim();
+                    }
+                    catch
+                    {
+                        // ignore JSON parse errors — characterFullName stays null
+                    }
+                }
+
+                // Proceed to delete (after fetching the names)
+                var deleteSql = @"
+                DELETE FROM players
+                WHERE UPPER(citizenid) = UPPER(@cid)
+                LIMIT 1;
+            ";
+
+                using (var delCmd = new MySqlCommand(deleteSql, conn))
+                {
+                    delCmd.Parameters.AddWithValue("@cid", citizenId);
+                    affected = await delCmd.ExecuteNonQueryAsync();
+                }
             }
 
             if (affected == 0)
             {
-                await command.FollowupAsync($"⚠️ No character found with citizen id `{citizenId}`.", ephemeral: true);
+                await command.FollowupAsync(
+                    $"⚠️ Character/player `{playerName ?? characterFullName ?? citizenId}` was not deleted (not found or already removed).",
+                    ephemeral: true);
+                return;
             }
-            else
+
+            // reply to moderator
+            var replyText = $"🗑️ Deleted **player** `{playerName ?? "N/A"}` (`{citizenId}`).";
+            if (!string.IsNullOrWhiteSpace(characterFullName))
+                replyText += $"\n**Character:** {characterFullName}";
+
+            await command.FollowupAsync(replyText, ephemeral: true);
+
+            // log to staff channel
+            try
             {
-                await command.FollowupAsync($"✅ Character with citizen id `{citizenId}` has been deleted from `players`.", ephemeral: true);
-
-                // Log deletion to moderation/log channel
-                try
+                var guild = (command.User as SocketGuildUser)?.Guild;
+                var logChannel = guild?.GetTextChannel(1394451583709745273UL);
+                if (logChannel != null)
                 {
-                    var guild = (command.User as SocketGuildUser)?.Guild;
-                    var logChannel = guild?.GetTextChannel(1394451583709745273UL);
-                    if (logChannel != null)
-                    {
-                        var embed = new EmbedBuilder()
-                            .WithTitle("🗑️ Character Deleted")
-                            .WithDescription(
-                                $"**Citizen ID:** `{citizenId}`\n" +
-                                $"**Deleted by:** {command.User.Mention}")
-                            .WithColor(Color.DarkRed)
-                            .WithFooter(f => f.Text = "Command: /game deletecharacter")
-                            .WithTimestamp(DateTimeOffset.UtcNow)
-                            .Build();
+                    var embed = new EmbedBuilder()
+                        .WithTitle("🗑️ Player Deleted")
+                        .AddField("Citizen ID", citizenId, true)
+                        .AddField("Player Name", playerName ?? "N/A", true)
+                        .AddField("Character Name", characterFullName ?? "N/A", true)
+                        .AddField("Deleted By", command.User.Mention, false)
+                        .WithColor(Color.DarkRed)
+                        .WithFooter(f => f.Text = "Command: /game deletecharacter")
+                        .WithTimestamp(DateTimeOffset.UtcNow)
+                        .Build();
 
-                        await logChannel.SendMessageAsync(embed: embed);
-                    }
+                    await logChannel.SendMessageAsync(embed: embed);
                 }
-                catch { /* ignore logging errors */ }
+            }
+            catch
+            {
+                /* ignore logging errors */
             }
         }
         catch (Exception ex)
