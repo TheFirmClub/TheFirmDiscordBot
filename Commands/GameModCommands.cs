@@ -11,10 +11,17 @@ public class GameModCommands : ISlashCommand
     public string Name => "game";  // ✅ stays as /game
     public string Description => "Game moderation commands";
 
-    // ✅ Only these roles can use it
+    // ✅ Roles allowed to use /game general (keeps current roles)
     private static readonly ulong[] AllowedRoleIds = new ulong[]
     {
         1393729574537396355UL, // Game Moderator
+        1393590761953558608UL  // SM
+    };
+
+    // ✅ Roles allowed to use deletecharacter specifically (Senior Mod + SM)
+    private static readonly ulong[] DeleteAllowedRoleIds = new ulong[]
+    {
+        1393638449709584434UL, // Senior Moderator
         1393590761953558608UL  // SM
     };
 
@@ -28,7 +35,7 @@ public class GameModCommands : ISlashCommand
         "Character Set=utf8mb4;" +
         "SslMode=Required;";
 
-    // ✅ Build: /game returnvehicle
+    // ✅ Build: /game returnvehicle and /game deletecharacter
     public SlashCommandProperties Build()
     {
         return new SlashCommandBuilder()
@@ -39,6 +46,11 @@ public class GameModCommands : ISlashCommand
                 .WithDescription("Return a vehicle by plate")
                 .WithType(ApplicationCommandOptionType.SubCommand)
                 .AddOption("plate", ApplicationCommandOptionType.String, "Vehicle plate, e.g. AB12 ABC", isRequired: true))
+            .AddOption(new SlashCommandOptionBuilder()
+                .WithName("deletecharacter")
+                .WithDescription("Delete a character by citizen id (Senior Mod + SM only)")
+                .WithType(ApplicationCommandOptionType.SubCommand)
+                .AddOption("citizenid", ApplicationCommandOptionType.String, "Citizen ID, e.g. MUF58516", isRequired: true))
             .Build();
     }
 
@@ -62,6 +74,8 @@ public class GameModCommands : ISlashCommand
         var sub = command.Data.Options.First().Name.ToLower();
         if (sub == "returnvehicle")
             await HandleReturnVehicle(command, command.Data.Options.First().Options);
+        else if (sub == "deletecharacter")
+            await HandleDeleteCharacter(command, command.Data.Options.First().Options);
         else
             await command.FollowupAsync("Unknown subcommand.", ephemeral: true);
     }
@@ -101,7 +115,6 @@ public class GameModCommands : ISlashCommand
                 affected = await cmd.ExecuteNonQueryAsync();
             }
 
-            // (existing)
             if (affected == 0)
             {
                 await command.FollowupAsync($"⚠️ No vehicle found with plate `{plate}`.", ephemeral: true);
@@ -124,6 +137,83 @@ public class GameModCommands : ISlashCommand
                                 $"**Initiated by:** {command.User.Mention}")
                             .WithColor(Color.Green)
                             .WithFooter(f => f.Text = "Command: /game returnvehicle")
+                            .WithTimestamp(DateTimeOffset.UtcNow)
+                            .Build();
+
+                        await logChannel.SendMessageAsync(embed: embed);
+                    }
+                }
+                catch { /* ignore logging errors */ }
+            }
+        }
+        catch (Exception ex)
+        {
+            await command.FollowupAsync($"❌ Database error: `{ex.Message}`", ephemeral: true);
+        }
+    }
+
+    // ✅ Handles /game deletecharacter citizenid: XXX
+    private async Task HandleDeleteCharacter(SocketSlashCommand command, System.Collections.Generic.IReadOnlyCollection<SocketSlashCommandDataOption> options)
+    {
+        // Only allow specific roles for this destructive action
+        var invoker = command.User as SocketGuildUser;
+        if (invoker == null || !invoker.Roles.Any(r => DeleteAllowedRoleIds.Contains(r.Id)))
+        {
+            await command.FollowupAsync("❌ You do not have permission to use this subcommand. (Senior Mod or SM only)", ephemeral: true);
+            return;
+        }
+
+        var citizenId = options.First(o => o.Name == "citizenid").Value?.ToString()?.Trim() ?? "";
+
+        // basic validation: alphanumeric & length guard (adjust if your citizen IDs differ)
+        if (!Regex.IsMatch(citizenId, @"^[A-Za-z0-9]{3,16}$"))
+        {
+            await command.FollowupAsync("❌ Invalid citizen ID format.", ephemeral: true);
+            return;
+        }
+
+        try
+        {
+            int affected;
+            using (var conn = new MySqlConnection(MYSQL_CONN))
+            {
+                await conn.OpenAsync();
+
+                // Delete the row from players where citizenid matches (case-insensitive)
+                var sql = @"
+                    DELETE FROM players
+                    WHERE UPPER(citizenid) = UPPER(@cid)
+                    LIMIT 1;
+                ";
+
+                using var cmd = new MySqlCommand(sql, conn);
+                cmd.Parameters.AddWithValue("@cid", citizenId);
+
+                affected = await cmd.ExecuteNonQueryAsync();
+            }
+
+            if (affected == 0)
+            {
+                await command.FollowupAsync($"⚠️ No character found with citizen id `{citizenId}`.", ephemeral: true);
+            }
+            else
+            {
+                await command.FollowupAsync($"✅ Character with citizen id `{citizenId}` has been deleted from `players`.", ephemeral: true);
+
+                // Log deletion to moderation/log channel
+                try
+                {
+                    var guild = (command.User as SocketGuildUser)?.Guild;
+                    var logChannel = guild?.GetTextChannel(1394451583709745273UL);
+                    if (logChannel != null)
+                    {
+                        var embed = new EmbedBuilder()
+                            .WithTitle("🗑️ Character Deleted")
+                            .WithDescription(
+                                $"**Citizen ID:** `{citizenId}`\n" +
+                                $"**Deleted by:** {command.User.Mention}")
+                            .WithColor(Color.DarkRed)
+                            .WithFooter(f => f.Text = "Command: /game deletecharacter")
                             .WithTimestamp(DateTimeOffset.UtcNow)
                             .Build();
 
