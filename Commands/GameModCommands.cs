@@ -9,21 +9,21 @@ using MySqlConnector; // MySqlConnector NuGet package
 
 public class GameModCommands : ISlashCommand
 {
-    public string Name => "game";  // ✅ stays as /game
+    public string Name => "game"; // ✅ stays as /game
     public string Description => "Game moderation commands";
 
     // ✅ Roles allowed to use /game general (keeps current roles)
     private static readonly ulong[] AllowedRoleIds = new ulong[]
     {
         1393729574537396355UL, // Game Moderator
-        1393590761953558608UL  // SM
+        1393590761953558608UL // SM
     };
 
     // ✅ Roles allowed to use deletecharacter specifically (Senior Mod + SM)
     private static readonly ulong[] DeleteAllowedRoleIds = new ulong[]
     {
         1393638449709584434UL, // Senior Moderator
-        1393590761953558608UL  // SM
+        1393590761953558608UL // SM
     };
 
     // ✅ Direct database connection (no RCON)
@@ -46,12 +46,14 @@ public class GameModCommands : ISlashCommand
                 .WithName("returnvehicle")
                 .WithDescription("Return a vehicle by plate")
                 .WithType(ApplicationCommandOptionType.SubCommand)
-                .AddOption("plate", ApplicationCommandOptionType.String, "Vehicle plate, e.g. AB12 ABC", isRequired: true))
+                .AddOption("plate", ApplicationCommandOptionType.String, "Vehicle plate, e.g. AB12 ABC",
+                    isRequired: true))
             .AddOption(new SlashCommandOptionBuilder()
                 .WithName("deletecharacter")
                 .WithDescription("Delete a character by citizen id (Senior Mod + SM only)")
                 .WithType(ApplicationCommandOptionType.SubCommand)
-                .AddOption("citizenid", ApplicationCommandOptionType.String, "Citizen ID, e.g. MUF58516", isRequired: true))
+                .AddOption("citizenid", ApplicationCommandOptionType.String, "Citizen ID, e.g. MUF58516",
+                    isRequired: true))
             .Build();
     }
 
@@ -82,7 +84,8 @@ public class GameModCommands : ISlashCommand
     }
 
     // ✅ Handles /game returnvehicle plate: XXX
-    private async Task HandleReturnVehicle(SocketSlashCommand command, System.Collections.Generic.IReadOnlyCollection<SocketSlashCommandDataOption> options)
+    private async Task HandleReturnVehicle(SocketSlashCommand command,
+        System.Collections.Generic.IReadOnlyCollection<SocketSlashCommandDataOption> options)
     {
         var plate = options.First(o => o.Name == "plate").Value?.ToString()?.Trim() ?? "";
 
@@ -122,7 +125,8 @@ public class GameModCommands : ISlashCommand
             }
             else
             {
-                await command.FollowupAsync($"✅ Vehicle `{plate}` has been returned to **Legion Square**.", ephemeral: true);
+                await command.FollowupAsync($"✅ Vehicle `{plate}` has been returned to **Legion Square**.",
+                    ephemeral: true);
 
                 // 🔻 NEW: log to channel 1394451583709745273
                 try
@@ -144,7 +148,10 @@ public class GameModCommands : ISlashCommand
                         await logChannel.SendMessageAsync(embed: embed);
                     }
                 }
-                catch { /* ignore logging errors */ }
+                catch
+                {
+                    /* ignore logging errors */
+                }
             }
         }
         catch (Exception ex)
@@ -153,7 +160,6 @@ public class GameModCommands : ISlashCommand
         }
     }
 
-    // make sure to add: using System.Text.Json;
     private async Task HandleDeleteCharacter(SocketSlashCommand command,
         System.Collections.Generic.IReadOnlyCollection<SocketSlashCommandDataOption> options)
     {
@@ -166,6 +172,7 @@ public class GameModCommands : ISlashCommand
         }
 
         var citizenId = options.First(o => o.Name == "citizenid").Value?.ToString()?.Trim() ?? "";
+        var reason = options.First(o => o.Name == "reason").Value?.ToString()?.Trim() ?? "No reason provided";
 
         if (!Regex.IsMatch(citizenId, @"^[A-Za-z0-9]{3,16}$"))
         {
@@ -175,7 +182,7 @@ public class GameModCommands : ISlashCommand
 
         string playerName = null;
         string charinfoJson = null;
-        string characterFullName = null; // firstname + lastname from charinfo
+        string characterFullName = null;
         int affected = 0;
 
         try
@@ -184,7 +191,6 @@ public class GameModCommands : ISlashCommand
             {
                 await conn.OpenAsync();
 
-                // SELECT both name and charinfo (charinfo may be a JSON string)
                 var getSql = @"
                 SELECT name, charinfo
                 FROM players
@@ -198,10 +204,7 @@ public class GameModCommands : ISlashCommand
                     using var reader = await getCmd.ExecuteReaderAsync();
                     if (await reader.ReadAsync())
                     {
-                        // read name column (player name)
                         playerName = reader["name"] == DBNull.Value ? null : reader["name"].ToString();
-
-                        // read charinfo column (could be JSON stored as text)
                         charinfoJson = reader["charinfo"] == DBNull.Value ? null : reader["charinfo"].ToString();
                     }
                     else
@@ -212,33 +215,29 @@ public class GameModCommands : ISlashCommand
                     }
                 }
 
-                // parse charinfo JSON safely to extract firstname + lastname (if present)
+                // parse firstname / lastname from charinfo
                 if (!string.IsNullOrWhiteSpace(charinfoJson))
                 {
                     try
                     {
-                        using var doc = JsonDocument.Parse(charinfoJson);
+                        using var doc =  JsonDocument.Parse(charinfoJson);
                         var root = doc.RootElement;
 
                         string first = null, last = null;
-                        if (root.TryGetProperty("firstname", out var firstElem) &&
-                            firstElem.ValueKind == JsonValueKind.String)
-                            first = firstElem.GetString();
-
-                        if (root.TryGetProperty("lastname", out var lastElem) &&
-                            lastElem.ValueKind == JsonValueKind.String)
-                            last = lastElem.GetString();
+                        if (root.TryGetProperty("firstname", out var f) && f.ValueKind == JsonValueKind.String)
+                            first = f.GetString();
+                        if (root.TryGetProperty("lastname", out var l) && l.ValueKind == JsonValueKind.String)
+                            last = l.GetString();
 
                         if (!string.IsNullOrWhiteSpace(first) || !string.IsNullOrWhiteSpace(last))
                             characterFullName = $"{first ?? ""} {last ?? ""}".Trim();
                     }
                     catch
                     {
-                        // ignore JSON parse errors — characterFullName stays null
                     }
                 }
 
-                // Proceed to delete (after fetching the names)
+                // delete player
                 var deleteSql = @"
                 DELETE FROM players
                 WHERE UPPER(citizenid) = UPPER(@cid)
@@ -255,19 +254,20 @@ public class GameModCommands : ISlashCommand
             if (affected == 0)
             {
                 await command.FollowupAsync(
-                    $"⚠️ Character/player `{playerName ?? characterFullName ?? citizenId}` was not deleted (not found or already removed).",
+                    $"⚠️ Player `{playerName ?? characterFullName ?? citizenId}` not deleted (not found).",
                     ephemeral: true);
                 return;
             }
 
-            // reply to moderator
-            var replyText = $"🗑️ Deleted **player** `{playerName ?? "N/A"}` (`{citizenId}`).";
-            if (!string.IsNullOrWhiteSpace(characterFullName))
-                replyText += $"\n**Character:** {characterFullName}";
+            // Moderator response
+            var replyText =
+                $"🗑️ Deleted **player** `{playerName ?? "N/A"}` (`{citizenId}`)." +
+                (characterFullName != null ? $"\n**Character:** {characterFullName}" : "") +
+                $"\n📝 **Reason:** {reason}";
 
             await command.FollowupAsync(replyText, ephemeral: true);
 
-            // log to staff channel
+            // Log embed
             try
             {
                 var guild = (command.User as SocketGuildUser)?.Guild;
@@ -279,6 +279,7 @@ public class GameModCommands : ISlashCommand
                         .AddField("Citizen ID", citizenId, true)
                         .AddField("Player Name", playerName ?? "N/A", true)
                         .AddField("Character Name", characterFullName ?? "N/A", true)
+                        .AddField("Reason", reason, false)
                         .AddField("Deleted By", command.User.Mention, false)
                         .WithColor(Color.DarkRed)
                         .WithFooter(f => f.Text = "Command: /game deletecharacter")
@@ -290,7 +291,6 @@ public class GameModCommands : ISlashCommand
             }
             catch
             {
-                /* ignore logging errors */
             }
         }
         catch (Exception ex)
