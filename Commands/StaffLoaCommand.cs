@@ -38,6 +38,14 @@ public class StaffLoaCommand : ISlashCommand
         1393638449709584434, // Senior Mod
         1393590761953558608  // Senior Management (override)
     };
+    
+    // ✅ Extra roles that can *view* /staffloalist but NOT approve/decline
+    private static readonly HashSet<ulong> LoaListViewerRoleIds = new()
+    {
+        1394459419156418730, // Response Inspector
+        1394650413361533009, // RPU Inspector
+        1394465316817473646  // TFU Inspector
+    };
 
     // Division map: key -> (targetChannelId, approverRoleId, label)
     private static readonly Dictionary<string, (ulong ChannelId, ulong ApproverRoleId, string Label)> DivisionRoutes =
@@ -253,12 +261,20 @@ public class StaffLoaCommand : ISlashCommand
             }
             return;
         }
-        else if (cmdName == LoaListCommandName) // /staffloalist (approvers only)
+        else if (cmdName == LoaListCommandName) // /staffloalist
         {
             var guser = command.User as SocketGuildUser;
-            if (!IsApprover(guser)) // ✅ Only approvers (or override) can see the list
+
+            bool canViewList =
+                guser != null &&
+                (
+                    IsApprover(guser) || 
+                    guser.Roles.Any(r => LoaListViewerRoleIds.Contains(r.Id))
+                );
+
+            if (!canViewList)
             {
-                await command.RespondAsync("Only LOA approvers can view the active LOA list.", ephemeral: true);
+                await command.RespondAsync("You don’t have permission to view the active LOA list.", ephemeral: true);
                 return;
             }
 
