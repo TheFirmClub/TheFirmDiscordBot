@@ -34,7 +34,10 @@ public class TicketAddUserCommand : ISlashCommand
                 sendMessages: PermValue.Allow
             ));
 
-            await command.RespondAsync($"✅ Added {targetUser.Mention} to this ticket.");
+            await command.RespondAsync(
+                $"✅ Added {targetUser.Mention} to this ticket.",
+                allowedMentions: AllowedMentions.All
+            );
         }
         else
         {

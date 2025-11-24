@@ -33,7 +33,10 @@ public class TicketAddRoleCommand : ISlashCommand
                 sendMessages: PermValue.Allow
             ));
 
-            await command.RespondAsync($"✅ Added {role.Mention} to this ticket.");
+            await command.RespondAsync(
+                $"✅ Added {role.Mention} to this ticket.",
+                allowedMentions: AllowedMentions.All
+            );
         }
         else
         {
