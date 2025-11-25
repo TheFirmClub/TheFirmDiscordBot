@@ -50,7 +50,7 @@ public class CheckPlaytimeCommands : ISlashCommand
             return;
         }
 
-        var embed = BuildUnifiedEmbed(row, "🎮 Your Playtime", caller.DisplayName);
+        var embed = BuildUnifiedEmbed(row, "🎮 My Playtime", caller.DisplayName);
 
         await command.ModifyOriginalResponseAsync(m =>
         {
