@@ -64,7 +64,7 @@ public class CheckPlaytimeCommands : ISlashCommand
     // --------------------------------------------------------
     private async Task CheckPlaytime(SocketSlashCommand command)
     {
-        await command.DeferAsync(ephemeral: true); // STAFF ONLY
+        await command.DeferAsync(ephemeral: false); // STAFF ONLY
 
         if (command.User is not SocketGuildUser caller)
         {
