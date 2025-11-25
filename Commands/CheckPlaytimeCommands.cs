@@ -35,7 +35,7 @@ public class CheckPlaytimeCommands : ISlashCommand
     // --------------------------------------------------------
     private async Task MyPlaytime(SocketSlashCommand command)
     {
-        await command.DeferAsync(ephemeral: true);
+        await command.DeferAsync(ephemeral: false); // PUBLIC
 
         if (command.User is not SocketGuildUser caller)
         {
@@ -43,16 +43,14 @@ public class CheckPlaytimeCommands : ISlashCommand
             return;
         }
 
-        string discordId = caller.Id.ToString();
-        var row = await FetchAsync(discordId);
-
+        var row = await FetchAsync(caller.Id.ToString());
         if (row == null)
         {
             await Reply(command, "ℹ️ No playtime found for your account.");
             return;
         }
 
-        var embed = BuildEmbed(row, "🎮 Your Playtime", caller.DisplayName);
+        var embed = BuildUnifiedEmbed(row, "🎮 Your Playtime", caller.DisplayName);
 
         await command.ModifyOriginalResponseAsync(m =>
         {
@@ -66,7 +64,7 @@ public class CheckPlaytimeCommands : ISlashCommand
     // --------------------------------------------------------
     private async Task CheckPlaytime(SocketSlashCommand command)
     {
-        await command.DeferAsync(ephemeral: true);
+        await command.DeferAsync(ephemeral: true); // STAFF ONLY
 
         if (command.User is not SocketGuildUser caller)
         {
@@ -92,14 +90,13 @@ public class CheckPlaytimeCommands : ISlashCommand
         }
 
         var row = await FetchAsync(discordId);
-
         if (row == null)
         {
-            await Reply(command, $"ℹ️ No playtime data found for `{discordId}`.");
+            await Reply(command, $"ℹ️ No playtime found for `{discordId}`.");
             return;
         }
 
-        var embed = BuildEmbed(row, "🎮 Player Playtime Lookup", caller.DisplayName);
+        var embed = BuildUnifiedEmbed(row, "🎮 Player Playtime Lookup", caller.DisplayName);
 
         await command.ModifyOriginalResponseAsync(m =>
         {
@@ -146,19 +143,24 @@ public class CheckPlaytimeCommands : ISlashCommand
     // --------------------------------------------------------
     //  Shared Embed Builder
     // --------------------------------------------------------
-    private Embed BuildEmbed(PlayerData row, string title, string requestedBy)
+    private Embed BuildUnifiedEmbed(PlayerData row, string title, string requestedBy)
     {
-        var (hours, mins) = (row.PlayTimeMinutes / 60, row.PlayTimeMinutes % 60);
+        int minutes = row.PlayTimeMinutes;
+        int hours = minutes / 60;
+        int mins = minutes % 60;
+
+        int days = hours / 24;
+        int remHours = hours % 24;
 
         return new EmbedBuilder()
             .WithTitle(title)
             .WithDescription($"Stats for **{row.DisplayName}** (`{row.DiscordId}`)")
-            .AddField("Total Minutes", $"{row.PlayTimeMinutes:N0}", true)
-            .AddField("Approx Hours", $"{hours}h {mins}m", true)
+            .AddField("Total Minutes", $"{minutes:N0} minutes", true)
+            .AddField("Total Hours", $"{hours}h {mins}m", true)
+            .AddField("Total Days", $"{days}d {remHours}h {mins}m", true)
             .AddField("First Joined", Unix(row.TsJoined), true)
-            .AddField("Last Connect", Unix(row.TsLastConnection), true)
-            .AddField("License", $"`{row.License}`", false)
-            .AddField("Updated At", row.UpdatedAt.ToString("yyyy-MM-dd HH:mm:ss"), false)
+            .AddField("Last Connected", Unix(row.TsLastConnection), true)
+            .AddField("Updated On", row.UpdatedAt.ToString("yyyy-MM-dd HH:mm:ss"), true)
             .WithFooter($"Requested by {requestedBy}")
             .WithCurrentTimestamp()
             .WithColor(new Color(0x22C55E))
