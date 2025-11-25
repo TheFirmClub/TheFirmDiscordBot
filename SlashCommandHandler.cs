@@ -71,6 +71,11 @@ public class SlashCommandHandler
         // --- NEW: /preban ---
         var preban = new PrebanCommand();
         _commands.Add(preban.Name, preban);
+        
+        var playtimeCommands = new CheckPlaytimeCommands();
+        _commands.Add("myplaytime", playtimeCommands);
+        _commands.Add("checkplaytime", playtimeCommands);
+
     }
 
     public async Task HandleCommandAsync(SocketSlashCommand command)

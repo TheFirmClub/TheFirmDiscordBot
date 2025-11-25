@@ -156,7 +156,30 @@ class Program
         {
             Console.WriteLine($"❌ Failed to register /playtime: {ex}");
         }
+        
+        // ---------------------------------------------
+        // REGISTER STAFF + PUBLIC PLAYTIME COMMANDS
+        // ---------------------------------------------
+    
+        // /myplaytime
+        await guild.CreateApplicationCommandAsync(
+            new SlashCommandBuilder()
+                .WithName("myplaytime")
+                .WithDescription("Show your own playtime")
+                .Build()
+        );
 
+        // /checkplaytime <discordid>
+        await guild.CreateApplicationCommandAsync(
+            new SlashCommandBuilder()
+                .WithName("checkplaytime")
+                .WithDescription("Staff lookup of anyone's playtime")
+                .AddOption("discordid", ApplicationCommandOptionType.String, "Discord ID to look up", true)
+                .Build()
+        );
+
+        Console.WriteLine("✅ Registered /myplaytime + /checkplaytime");
+      
         // Register your other existing commands from SlashCommandHandler
         foreach (var command in _commandHandler!.GetAllCommands())
         {
