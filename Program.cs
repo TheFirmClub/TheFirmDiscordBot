@@ -132,6 +132,10 @@ class Program
             Console.WriteLine("✅ Registered LOA commands (/staffloa, /loaremove, /staffloalist)");
         }
         
+        // ✅ Register Suggestions
+        await new SuggestionsCommand().RegisterAsync(_client);
+        Console.WriteLine("✅ Registered /suggestions");
+        
         // ✅ Register /playtime (with subcommands) BEFORE the foreach
         try
         {
