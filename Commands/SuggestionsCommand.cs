@@ -115,8 +115,8 @@ public class SuggestionsCommand : ISlashCommand
             .WithFooter("Vote below or discuss in thread");
 
         var buttons = new ComponentBuilder()
-            .WithButton("Approve", "vote:up", ButtonStyle.Success)
-            .WithButton("Reject", "vote:down", ButtonStyle.Danger)
+            .WithButton("Upvote", "vote:up", ButtonStyle.Success)
+            .WithButton("Downvote", "vote:down", ButtonStyle.Danger)
             .WithButton("Accept", "staff:accept", ButtonStyle.Primary)
             .WithButton("Deny", "staff:reject", ButtonStyle.Secondary);
 
