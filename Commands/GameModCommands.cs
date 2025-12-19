@@ -19,10 +19,11 @@ public class GameModCommands : ISlashCommand
         1393590761953558608UL // SM
     };
 
-    // ✅ Roles allowed to use deletecharacter specifically (Senior Mod + SM)
+    // ✅ Roles allowed to use deletecharacter specifically (Senior Mod + SD + SM)
     private static readonly ulong[] DeleteAllowedRoleIds = new ulong[]
     {
         1393638449709584434UL, // Senior Moderator
+        1421177514189127840UL, // Senior Dev
         1393590761953558608UL // SM
     };
 
