@@ -41,7 +41,7 @@ public class GameStatsCommand : ISlashCommand
                 user.Roles.Any(r => r.Id == SeniorManagementRoleId);
 
             // ----------------------------
-            // Top N formatter for normal stats (Richest, Poorest, Fined, Vehicles, Arrested, Arrestinator)
+            // Top N formatter for normal stats
             // ----------------------------
             async Task<string> TopNAsync(string sql, string suffix, int limit = 3)
             {
@@ -162,21 +162,6 @@ public class GameStatsCommand : ISlashCommand
             // ----------------------------
             // Fetch all stats
             // ----------------------------
-            string arrestinator = await TopNAsync(@"
-                SELECT character_name, discordid, arrestscount AS val
-                FROM datadiscord
-                ORDER BY arrestscount DESC", " arrests given");
-
-            string arrested = await TopNAsync(@"
-                SELECT character_name, discordid, totalarrested AS val
-                FROM datadiscord
-                ORDER BY totalarrested DESC", " times");
-
-            string jailed = await Top3HoursAsync(@"
-                SELECT character_name, discordid, totaljailtime AS val
-                FROM datadiscord
-                ORDER BY totaljailtime DESC");
-
             string richest = await TopNAsync(@"
                 SELECT character_name, discordid, totalmoney AS val
                 FROM datadiscord
@@ -192,25 +177,40 @@ public class GameStatsCommand : ISlashCommand
                 FROM datadiscord
                 ORDER BY totalfines DESC", "£");
 
+            string arrestinator = await TopNAsync(@"
+                SELECT character_name, discordid, arrestscount AS val
+                FROM datadiscord
+                ORDER BY arrestscount DESC", " arrests given");
+
+            string arrested = await TopNAsync(@"
+                SELECT character_name, discordid, totalarrested AS val
+                FROM datadiscord
+                ORDER BY totalarrested DESC", " times");
+
+            string jailed = await Top3HoursAsync(@"
+                SELECT character_name, discordid, totaljailtime AS val
+                FROM datadiscord
+                ORDER BY totaljailtime DESC");
+
             string vehicles = await TopNAsync(@"
                 SELECT character_name, discordid, totalvehicles AS val
                 FROM datadiscord
                 ORDER BY totalvehicles DESC", " vehicles");
 
             // ----------------------------
-            // Build embed
+            // Build embed with exact labels
             // ----------------------------
             var embed = new EmbedBuilder()
                 .WithTitle("📊 Server Game Statistics")
                 .WithColor(new Color(0xF5, 0x9E, 0x0B))
-                .AddField("🕵️ Arrestinator 3000", arrestinator, false)
-                .AddField("✈️ Frequent Flyer", arrested, false)
-                .AddField("🚔 State Property", jailed, false)
-                .AddField("💰 Walking Economy", richest, false)
-                .AddField("🪙 Card Declined", poorest, false)
-                .AddField("💸 Radar Magnet", fined, false)
-                .AddField("🚗 Car Hoarder Disorder", vehicles, false)
-                .AddField("😇 Suspiciously Clean (Top 10)", clean, false)
+                .AddField("Walking Economy - Richest", richest, false)
+                .AddField("Card Declined - Poorest", poorest, false)
+                .AddField("Radar Magnet - Most Fined", fined, false)
+                .AddField("Arrestinator 3000 - Most Arrests Made", arrestinator, false)
+                .AddField("Frequent Flyer - Most Arrested", arrested, false)
+                .AddField("State Property - Most Jailed", jailed, false)
+                .AddField("Car Hoarder Disorder - Owned Most Vehicles", vehicles, false)
+                .AddField("Suspiciously Clean - No records / arrests", clean, false)
                 .WithFooter($"Requested by {caller.DisplayName}")
                 .WithCurrentTimestamp()
                 .Build();
