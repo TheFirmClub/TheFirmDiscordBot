@@ -41,7 +41,7 @@ public class GameStatsCommand : ISlashCommand
                 user.Roles.Any(r => r.Id == SeniorManagementRoleId);
 
             // ----------------------------
-            // Top N formatter for normal stats (Richest, Poorest, Fined, Vehicles)
+            // Top N formatter for normal stats (Richest, Poorest, Fined, Vehicles, Arrested)
             // ----------------------------
             async Task<string> TopNAsync(string sql, string suffix, int limit = 3)
             {
@@ -172,6 +172,11 @@ public class GameStatsCommand : ISlashCommand
                 FROM datadiscord
                 ORDER BY totalmoney ASC", "£");
 
+            string arrested = await TopNAsync(@"
+                SELECT character_name, discordid, totalarrested AS val
+                FROM datadiscord
+                ORDER BY totalarrested DESC", " arrests");
+
             string jailed = await Top3HoursAsync(@"
                 SELECT character_name, discordid, totaljailtime AS val
                 FROM datadiscord
@@ -195,6 +200,7 @@ public class GameStatsCommand : ISlashCommand
                 .WithColor(new Color(0xF5, 0x9E, 0x0B))
                 .AddField("💰 Walking Economy", richest, false)
                 .AddField("🪙 Card Declined", poorest, false)
+                .AddField("✈️ Frequent Flyer", arrested, false) // <- new field
                 .AddField("🚔 State Property", jailed, false)
                 .AddField("💸 Radar Magnet", fined, false)
                 .AddField("🚗 Car Hoarder Disorder", vehicles, false)
