@@ -161,6 +161,21 @@ class Program
             Console.WriteLine($"❌ Failed to register /playtime: {ex}");
         }
         
+        // Register /gamestats
+        try
+        {
+            var gamestatsCommand = new SlashCommandBuilder()
+                .WithName("gamestats")
+                .WithDescription("Shows server-wide game statistics (Senior Management only)");
+
+            await guild.CreateApplicationCommandAsync(gamestatsCommand.Build());
+            Console.WriteLine("✅ /gamestats registered");
+        }
+        catch (Discord.Net.HttpException ex)
+        {
+            Console.WriteLine($"❌ Failed to register /gamestats: {ex}");
+        }
+        
         // ---------------------------------------------
         // REGISTER STAFF + PUBLIC PLAYTIME COMMANDS
         // ---------------------------------------------
