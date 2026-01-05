@@ -41,7 +41,7 @@ public class GameStatsCommand : ISlashCommand
                 user.Roles.Any(r => r.Id == SeniorManagementRoleId);
 
             // ----------------------------
-            // Top N formatter for normal stats (Richest, Poorest, Fined, Vehicles, Arrested)
+            // Top N formatter for normal stats (Richest, Poorest, Fined, Vehicles, Arrested, Arrestinator)
             // ----------------------------
             async Task<string> TopNAsync(string sql, string suffix, int limit = 3)
             {
@@ -162,6 +162,21 @@ public class GameStatsCommand : ISlashCommand
             // ----------------------------
             // Fetch all stats
             // ----------------------------
+            string arrestinator = await TopNAsync(@"
+                SELECT character_name, discordid, arrestscount AS val
+                FROM datadiscord
+                ORDER BY arrestscount DESC", " arrests given");
+
+            string arrested = await TopNAsync(@"
+                SELECT character_name, discordid, totalarrested AS val
+                FROM datadiscord
+                ORDER BY totalarrested DESC", " times");
+
+            string jailed = await Top3HoursAsync(@"
+                SELECT character_name, discordid, totaljailtime AS val
+                FROM datadiscord
+                ORDER BY totaljailtime DESC");
+
             string richest = await TopNAsync(@"
                 SELECT character_name, discordid, totalmoney AS val
                 FROM datadiscord
@@ -171,16 +186,6 @@ public class GameStatsCommand : ISlashCommand
                 SELECT character_name, discordid, totalmoney AS val
                 FROM datadiscord
                 ORDER BY totalmoney ASC", "£");
-
-            string arrested = await TopNAsync(@"
-                SELECT character_name, discordid, totalarrested AS val
-                FROM datadiscord
-                ORDER BY totalarrested DESC", " times"); // <- "Arrested X times"
-
-            string jailed = await Top3HoursAsync(@"
-                SELECT character_name, discordid, totaljailtime AS val
-                FROM datadiscord
-                ORDER BY totaljailtime DESC");
 
             string fined = await TopNAsync(@"
                 SELECT character_name, discordid, totalfines AS val
@@ -198,10 +203,11 @@ public class GameStatsCommand : ISlashCommand
             var embed = new EmbedBuilder()
                 .WithTitle("📊 Server Game Statistics")
                 .WithColor(new Color(0xF5, 0x9E, 0x0B))
+                .AddField("🕵️ Arrestinator 3000", arrestinator, false)
+                .AddField("✈️ Frequent Flyer", arrested, false)
+                .AddField("🚔 State Property", jailed, false)
                 .AddField("💰 Walking Economy", richest, false)
                 .AddField("🪙 Card Declined", poorest, false)
-                .AddField("✈️ Frequent Flyer", arrested, false) // now says "Arrested X times"
-                .AddField("🚔 State Property", jailed, false)
                 .AddField("💸 Radar Magnet", fined, false)
                 .AddField("🚗 Car Hoarder Disorder", vehicles, false)
                 .AddField("😇 Suspiciously Clean (Top 10)", clean, false)
@@ -227,6 +233,8 @@ public class GameStatsCommand : ISlashCommand
             return $"£{value:N0}";
         if (suffix == " times")
             return $"Arrested {value} times";
+        if (suffix == " arrests given")
+            return $"{value} arrests";
 
         return $"{value:N0}{suffix}";
     }
