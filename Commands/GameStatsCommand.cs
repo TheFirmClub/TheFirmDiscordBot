@@ -57,16 +57,12 @@ public class GameStatsCommand : ISlashCommand
 
                 while (await reader.ReadAsync())
                 {
-                    // Skip invalid discord ID
                     if (reader.IsDBNull(discOrd)) continue;
                     ulong discordId = (ulong)reader.GetInt64(discOrd);
                     if (discordId == 0) continue;
 
-                    // Only include users in the guild
                     var guildUser = caller.Guild.GetUser(discordId);
                     if (guildUser == null) continue;
-
-                    // Skip Senior Management
                     if (IsSeniorManagement(guildUser)) continue;
 
                     if (rank > limit) break;
@@ -82,7 +78,7 @@ public class GameStatsCommand : ISlashCommand
             }
 
             // ----------------------------
-            // Top 3 jailed time (hours + minutes)
+            // Top 3 jailed time (seconds → days + hours + minutes)
             // ----------------------------
             async Task<string> Top3HoursAsync(string sql)
             {
@@ -109,11 +105,18 @@ public class GameStatsCommand : ISlashCommand
                     if (rank > 3) break;
 
                     string characterName = reader.IsDBNull(nameOrd) ? "Unknown" : reader.GetString(nameOrd);
-                    long minutes = reader.IsDBNull(valOrd) ? 0 : reader.GetInt64(valOrd);
-                    long hours = minutes / 60;
-                    long mins  = minutes % 60;
+                    long seconds = reader.IsDBNull(valOrd) ? 0 : reader.GetInt64(valOrd);
 
-                    sb.AppendLine($"**{rank}.** <@{discordId}> ({characterName}) — **{hours}h {mins}m**");
+                    long days  = seconds / 86400;
+                    long hours = (seconds % 86400) / 3600;
+                    long mins  = (seconds % 3600) / 60;
+
+                    var timeStr = "";
+                    if (days > 0) timeStr += $"{days}d ";
+                    if (hours > 0 || days > 0) timeStr += $"{hours}h ";
+                    timeStr += $"{mins}m";
+
+                    sb.AppendLine($"**{rank}.** <@{discordId}> ({characterName}) — **{timeStr}**");
                     rank++;
                 }
 
