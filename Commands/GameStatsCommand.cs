@@ -38,6 +38,12 @@ public class GameStatsCommand : ISlashCommand
             await conn.OpenAsync();
 
             // ----------------------------
+            // Helper: check if a guild user is Senior Management
+            // ----------------------------
+            bool IsSeniorManagement(SocketGuildUser user) =>
+                user.Roles.Any(r => r.Id == SeniorManagementRoleId);
+
+            // ----------------------------
             // Top N formatter for normal stats
             // ----------------------------
             async Task<string> TopNAsync(string sql, string suffix, int limit = 3)
@@ -57,13 +63,16 @@ public class GameStatsCommand : ISlashCommand
                     if (rank > limit) break;
 
                     string characterName = reader.IsDBNull(nameOrd) ? "Unknown" : reader.GetString(nameOrd);
-                    string discordId     = reader.IsDBNull(discOrd) ? "0" : reader.GetInt64(discOrd).ToString();
-                    long value           = reader.IsDBNull(valOrd) ? 0 : reader.GetInt64(valOrd);
+                    if (reader.IsDBNull(discOrd)) continue;
+                    ulong discordId = (ulong)reader.GetInt64(discOrd); // ✅ cast to ulong
 
-                    sb.AppendLine(
-                        $"**{rank}.** <@{discordId}> ({characterName}) — **{FormatValue(value, suffix)}**"
-                    );
+                    var guildUser = caller.Guild.GetUser(discordId);
+                    if (guildUser == null || IsSeniorManagement(guildUser)) 
+                        continue; // skip if not in guild OR is Senior Management
 
+                    long value = reader.IsDBNull(valOrd) ? 0 : reader.GetInt64(valOrd);
+
+                    sb.AppendLine($"**{rank}.** <@{discordId}> ({characterName}) — **{FormatValue(value, suffix)}**");
                     rank++;
                 }
 
@@ -87,19 +96,22 @@ public class GameStatsCommand : ISlashCommand
 
                 while (await reader.ReadAsync())
                 {
-                    string characterName = reader.IsDBNull(nameOrd) ? "Unknown" : reader.GetString(nameOrd);
-                    string discordId     = reader.IsDBNull(discOrd) ? "0" : reader.GetInt64(discOrd).ToString();
-                    long minutes         = reader.IsDBNull(valOrd) ? 0 : reader.GetInt64(valOrd);
+                    if (rank > 3) break;
 
+                    string characterName = reader.IsDBNull(nameOrd) ? "Unknown" : reader.GetString(nameOrd);
+                    if (reader.IsDBNull(discOrd)) continue;
+                    ulong discordId = (ulong)reader.GetInt64(discOrd); // ✅ cast to ulong
+
+                    var guildUser = caller.Guild.GetUser(discordId);
+                    if (guildUser == null || IsSeniorManagement(guildUser)) 
+                        continue; // skip if not in guild OR is Senior Management
+
+                    long minutes = reader.IsDBNull(valOrd) ? 0 : reader.GetInt64(valOrd);
                     long hours = minutes / 60;
                     long mins  = minutes % 60;
 
-                    sb.AppendLine(
-                        $"**{rank}.** <@{discordId}> ({characterName}) — **{hours}h {mins}m**"
-                    );
-
+                    sb.AppendLine($"**{rank}.** <@{discordId}> ({characterName}) — **{hours}h {mins}m**");
                     rank++;
-                    if (rank > 3) break; // Only top 3
                 }
 
                 return sb.Length > 0 ? sb.ToString() : "_No data_";
@@ -134,15 +146,15 @@ public class GameStatsCommand : ISlashCommand
                 ORDER BY totalvehicles DESC", " vehicles");
 
             // ----------------------------
-            // Suspiciously Clean — top 10 names only
+            // Suspiciously Clean — top 10 names only, must be in guild, must NOT be Senior Management
             // ----------------------------
             string clean;
             using (var cmd = new MySqlCommand(@"
                 SELECT character_name, discordid
                 FROM datadiscord
-                WHERE totaljailtime = 0 AND totalfines = 0
+                WHERE totaljailtime = 0 AND totalfines = 0 AND discordid IS NOT NULL AND discordid != 0
                 ORDER BY character_name ASC
-                LIMIT 10", conn))
+                LIMIT 50", conn))
             using (var reader = await cmd.ExecuteReaderAsync())
             {
                 var sb = new StringBuilder();
@@ -151,10 +163,15 @@ public class GameStatsCommand : ISlashCommand
                 int nameOrd = reader.GetOrdinal("character_name");
                 int discOrd = reader.GetOrdinal("discordid");
 
-                while (await reader.ReadAsync())
+                while (await reader.ReadAsync() && rank <= 10)
                 {
                     string characterName = reader.IsDBNull(nameOrd) ? "Unknown" : reader.GetString(nameOrd);
-                    string discordId     = reader.IsDBNull(discOrd) ? "0" : reader.GetInt64(discOrd).ToString();
+                    if (reader.IsDBNull(discOrd)) continue;
+                    ulong discordId = (ulong)reader.GetInt64(discOrd); // ✅ cast to ulong
+
+                    var guildUser = caller.Guild.GetUser(discordId);
+                    if (guildUser == null || IsSeniorManagement(guildUser))
+                        continue; // skip if not in guild OR is Senior Management
 
                     sb.AppendLine($"**{rank}.** <@{discordId}> ({characterName})");
                     rank++;
