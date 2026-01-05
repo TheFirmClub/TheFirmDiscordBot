@@ -70,7 +70,7 @@ public class GameStatsCommand : ISlashCommand
                     string characterName = reader.IsDBNull(nameOrd) ? "Unknown" : reader.GetString(nameOrd);
                     long value = reader.IsDBNull(valOrd) ? 0 : reader.GetInt64(valOrd);
 
-                    sb.AppendLine($"**{rank}.** <@{discordId}> ({characterName}) — **{FormatValue(value, suffix)}**");
+                    sb.AppendLine($"**{rank}.** <@{discordId}> ({characterName}) — {FormatValue(value, suffix)}");
                     rank++;
                 }
 
@@ -175,7 +175,7 @@ public class GameStatsCommand : ISlashCommand
             string arrested = await TopNAsync(@"
                 SELECT character_name, discordid, totalarrested AS val
                 FROM datadiscord
-                ORDER BY totalarrested DESC", " arrests");
+                ORDER BY totalarrested DESC", " times"); // <- "Arrested X times"
 
             string jailed = await Top3HoursAsync(@"
                 SELECT character_name, discordid, totaljailtime AS val
@@ -200,7 +200,7 @@ public class GameStatsCommand : ISlashCommand
                 .WithColor(new Color(0xF5, 0x9E, 0x0B))
                 .AddField("💰 Walking Economy", richest, false)
                 .AddField("🪙 Card Declined", poorest, false)
-                .AddField("✈️ Frequent Flyer", arrested, false) // <- new field
+                .AddField("✈️ Frequent Flyer", arrested, false) // now says "Arrested X times"
                 .AddField("🚔 State Property", jailed, false)
                 .AddField("💸 Radar Magnet", fined, false)
                 .AddField("🚗 Car Hoarder Disorder", vehicles, false)
@@ -225,6 +225,8 @@ public class GameStatsCommand : ISlashCommand
     {
         if (suffix == "£")
             return $"£{value:N0}";
+        if (suffix == " times")
+            return $"Arrested {value} times";
 
         return $"{value:N0}{suffix}";
     }
