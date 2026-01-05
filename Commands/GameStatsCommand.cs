@@ -37,7 +37,10 @@ public class GameStatsCommand : ISlashCommand
             using var conn = new MySqlConnection(ConnectionString);
             await conn.OpenAsync();
 
-            async Task<string> Top3Async(string sql, string suffix)
+            // ----------------------------
+            // Top N formatter for normal stats
+            // ----------------------------
+            async Task<string> TopNAsync(string sql, string suffix, int limit = 3)
             {
                 using var cmd = new MySqlCommand(sql, conn);
                 using var reader = await cmd.ExecuteReaderAsync();
@@ -45,24 +48,17 @@ public class GameStatsCommand : ISlashCommand
                 var sb = new StringBuilder();
                 int rank = 1;
 
-                // 🔑 Resolve ordinals ONCE
                 int nameOrd = reader.GetOrdinal("character_name");
                 int discOrd = reader.GetOrdinal("discordid");
                 int valOrd  = reader.GetOrdinal("val");
 
                 while (await reader.ReadAsync())
                 {
-                    string characterName = reader.IsDBNull(nameOrd)
-                        ? "Unknown"
-                        : reader.GetString(nameOrd);
+                    if (rank > limit) break;
 
-                    string discordId = reader.IsDBNull(discOrd)
-                        ? "0"
-                        : reader.GetInt64(discOrd).ToString();
-
-                    long value = reader.IsDBNull(valOrd)
-                        ? 0
-                        : reader.GetInt64(valOrd);
+                    string characterName = reader.IsDBNull(nameOrd) ? "Unknown" : reader.GetString(nameOrd);
+                    string discordId     = reader.IsDBNull(discOrd) ? "0" : reader.GetInt64(discOrd).ToString();
+                    long value           = reader.IsDBNull(valOrd) ? 0 : reader.GetInt64(valOrd);
 
                     sb.AppendLine(
                         $"**{rank}.** <@{discordId}> ({characterName}) — **{FormatValue(value, suffix)}**"
@@ -74,43 +70,102 @@ public class GameStatsCommand : ISlashCommand
                 return sb.Length > 0 ? sb.ToString() : "_No data_";
             }
 
-            string richest = await Top3Async(@"
+            // ----------------------------
+            // Special formatter for jailed time (hours + minutes)
+            // ----------------------------
+            async Task<string> Top3HoursAsync(string sql)
+            {
+                using var cmd = new MySqlCommand(sql, conn);
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                var sb = new StringBuilder();
+                int rank = 1;
+
+                int nameOrd = reader.GetOrdinal("character_name");
+                int discOrd = reader.GetOrdinal("discordid");
+                int valOrd  = reader.GetOrdinal("val");
+
+                while (await reader.ReadAsync())
+                {
+                    string characterName = reader.IsDBNull(nameOrd) ? "Unknown" : reader.GetString(nameOrd);
+                    string discordId     = reader.IsDBNull(discOrd) ? "0" : reader.GetInt64(discOrd).ToString();
+                    long minutes         = reader.IsDBNull(valOrd) ? 0 : reader.GetInt64(valOrd);
+
+                    long hours = minutes / 60;
+                    long mins  = minutes % 60;
+
+                    sb.AppendLine(
+                        $"**{rank}.** <@{discordId}> ({characterName}) — **{hours}h {mins}m**"
+                    );
+
+                    rank++;
+                    if (rank > 3) break; // Only top 3
+                }
+
+                return sb.Length > 0 ? sb.ToString() : "_No data_";
+            }
+
+            // ----------------------------
+            // Fetch all stats
+            // ----------------------------
+            string richest = await TopNAsync(@"
                 SELECT character_name, discordid, totalmoney AS val
                 FROM datadiscord
-                ORDER BY totalmoney DESC
-                LIMIT 3", "£");
+                ORDER BY totalmoney DESC", "£");
 
-            string poorest = await Top3Async(@"
+            string poorest = await TopNAsync(@"
                 SELECT character_name, discordid, totalmoney AS val
                 FROM datadiscord
-                ORDER BY totalmoney ASC
-                LIMIT 3", "£");
+                ORDER BY totalmoney ASC", "£");
 
-            string jailed = await Top3Async(@"
+            string jailed = await Top3HoursAsync(@"
                 SELECT character_name, discordid, totaljailtime AS val
                 FROM datadiscord
-                ORDER BY totaljailtime DESC
-                LIMIT 3", " mins");
+                ORDER BY totaljailtime DESC");
 
-            string fined = await Top3Async(@"
+            string fined = await TopNAsync(@"
                 SELECT character_name, discordid, totalfines AS val
                 FROM datadiscord
-                ORDER BY totalfines DESC
-                LIMIT 3", "£");
+                ORDER BY totalfines DESC", "£");
 
-            string vehicles = await Top3Async(@"
+            string vehicles = await TopNAsync(@"
                 SELECT character_name, discordid, totalvehicles AS val
                 FROM datadiscord
-                ORDER BY totalvehicles DESC
-                LIMIT 3", " vehicles");
+                ORDER BY totalvehicles DESC", " vehicles");
 
-            string clean = await Top3Async(@"
-                SELECT character_name, discordid, totalmoney AS val
+            // ----------------------------
+            // Suspiciously Clean — top 10 names only
+            // ----------------------------
+            string clean;
+            using (var cmd = new MySqlCommand(@"
+                SELECT character_name, discordid
                 FROM datadiscord
                 WHERE totaljailtime = 0 AND totalfines = 0
-                ORDER BY totalmoney DESC
-                LIMIT 3", "£");
+                ORDER BY character_name ASC
+                LIMIT 10", conn))
+            using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                var sb = new StringBuilder();
+                int rank = 1;
 
+                int nameOrd = reader.GetOrdinal("character_name");
+                int discOrd = reader.GetOrdinal("discordid");
+
+                while (await reader.ReadAsync())
+                {
+                    string characterName = reader.IsDBNull(nameOrd) ? "Unknown" : reader.GetString(nameOrd);
+                    string discordId     = reader.IsDBNull(discOrd) ? "0" : reader.GetInt64(discOrd).ToString();
+
+                    sb.AppendLine($"**{rank}.** <@{discordId}> ({characterName})");
+                    rank++;
+                }
+
+                clean = sb.Length > 0 ? sb.ToString() : "_No data_";
+            }
+
+            // ----------------------------
+            // Build embed
+            // ----------------------------
             var embed = new EmbedBuilder()
                 .WithTitle("📊 Server Game Statistics")
                 .WithColor(new Color(0xF5, 0x9E, 0x0B))
@@ -119,7 +174,7 @@ public class GameStatsCommand : ISlashCommand
                 .AddField("🚔 State Property", jailed, false)
                 .AddField("💸 Radar Magnet", fined, false)
                 .AddField("🚗 Car Hoarder Disorder", vehicles, false)
-                .AddField("😇 Suspiciously Clean", clean, false)
+                .AddField("😇 Suspiciously Clean (Top 10)", clean, false)
                 .WithFooter($"Requested by {caller.DisplayName}")
                 .WithCurrentTimestamp()
                 .Build();
