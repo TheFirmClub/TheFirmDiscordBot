@@ -252,28 +252,36 @@ public class MDTIncidentsCommand : ISlashCommand
         if (!PaginationStore.TryGet(component.Message.Id, out var state))
             return;
 
-        // Only original user can navigate
+        // Only original user
         if (component.User.Id != state.OriginalUserId)
         {
             await component.RespondAsync("❌ Only the command user can use these buttons.", ephemeral: true);
             return;
         }
 
-        // Update page
+        // Change page
         if (component.Data.CustomId == "mdt_next" && state.CurrentPage < state.Embeds.Count - 1)
             state.CurrentPage++;
         else if (component.Data.CustomId == "mdt_prev" && state.CurrentPage > 0)
             state.CurrentPage--;
 
         // Update buttons
-        state.Builder = new ComponentBuilder()
+        var newBuilder = new ComponentBuilder()
             .WithButton("⬅️ Prev", "mdt_prev", disabled: state.CurrentPage == 0)
             .WithButton("Next ➡️", "mdt_next", disabled: state.CurrentPage == state.Embeds.Count - 1);
 
-        await component.UpdateAsync(msg =>
+        try
         {
-            msg.Embed = state.Embeds[state.CurrentPage];
-            msg.Components = state.Builder.Build();
-        });
+            await component.UpdateAsync(msg =>
+            {
+                msg.Embed = state.Embeds[state.CurrentPage];
+                msg.Components = newBuilder.Build();
+            });
+        }
+        catch
+        {
+            // Fallback if UpdateAsync fails (rare)
+            await component.RespondAsync("❌ Failed to update page.", ephemeral: true);
+        }
     }
 }
