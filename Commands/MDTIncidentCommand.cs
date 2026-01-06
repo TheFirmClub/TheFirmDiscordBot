@@ -25,6 +25,7 @@ public class MDTIncidentsCommand : ISlashCommand
         1394649657644290078, // Chief Inspector
         1394458024503935006, // Superintendent
         1394457219298492527, // Commissioner
+        1393590761953558608, // SM
     };
 
     public async Task ExecuteAsync(SocketSlashCommand command)
