@@ -175,11 +175,37 @@ class Program
         {
             Console.WriteLine($"❌ Failed to register /gamestats: {ex}");
         }
-        
+
+        // -------------------------------
+        // Register /mdtincidents (Police Command only)
+        // -------------------------------
+        try
+        {
+            var mdtIncidentsCmd = new SlashCommandBuilder()
+                .WithName("mdtincidents")
+                .WithDescription("View MDT incidents by time range (Police Command only)")
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("range")
+                    .WithDescription("Time range to query")
+                    .WithType(ApplicationCommandOptionType.String)
+                    .WithRequired(true)
+                    .AddChoice("Day", "day")
+                    .AddChoice("Week", "week")
+                    .AddChoice("Month", "month")
+                );
+
+            await guild.CreateApplicationCommandAsync(mdtIncidentsCmd.Build());
+            Console.WriteLine("✅ /mdtincidents registered");
+        }
+        catch (Discord.Net.HttpException ex)
+        {
+            Console.WriteLine($"❌ Failed to register /mdtincidents: {ex}");
+        }
+
         // ---------------------------------------------
         // REGISTER STAFF + PUBLIC PLAYTIME COMMANDS
         // ---------------------------------------------
-    
+
         // /myplaytime
         await guild.CreateApplicationCommandAsync(
             new SlashCommandBuilder()
