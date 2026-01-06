@@ -79,6 +79,13 @@ class Program
         _client.ModalSubmitted += new SupportModalHandler().HandleModalAsync;
         _client.ButtonExecuted += async component =>
         {
+            if (component.Data.CustomId.StartsWith("mdt_"))
+            {
+                await MDTIncidentsCommand.HandleButton(component);
+                return;
+            }
+
+            // existing handlers
             await _ticketButtonHandler.HandleAsync(component);
             await TicTacToeCommand.HandleButton(component);
             await RpsCommand.HandleComponentAsync(component);
