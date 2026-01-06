@@ -58,7 +58,16 @@ public class MDTIncidentsCommand : ISlashCommand
         }
 
         // ✅ Public defer for successful embed only
-        await command.DeferAsync(ephemeral: false);
+        try
+        {
+            await command.DeferAsync(ephemeral: false);
+        }
+        catch
+        {
+            // fallback: respond immediately if defer fails
+            await command.RespondAsync("❌ Failed to defer command.", ephemeral: true);
+            return;
+        }
 
         DateTime fromDate = range switch
         {
@@ -139,6 +148,7 @@ public class MDTIncidentsCommand : ISlashCommand
                 );
             }
 
+            // ✅ Send public embed safely
             await command.ModifyOriginalResponseAsync(m =>
             {
                 m.Content = string.Empty;
@@ -197,12 +207,7 @@ public class MDTIncidentsCommand : ISlashCommand
         char.ToUpper(s[0]) + s[1..];
 
     private static Task ReplyEphemeral(SocketSlashCommand cmd, string text) =>
-        cmd.ModifyOriginalResponseAsync(m =>
-        {
-            m.Content = text;
-            m.Embeds = Array.Empty<Embed>();
-            m.Flags = MessageFlags.Ephemeral;
-        });
+        cmd.RespondAsync(text, ephemeral: true);
 
     private class IncidentRow
     {
