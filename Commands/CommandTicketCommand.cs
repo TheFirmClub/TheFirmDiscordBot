@@ -13,6 +13,9 @@ public class CommandTicketCommand : ISlashCommand
 
     private readonly ulong[] _allowedRoleIds = new ulong[]
     {
+        1394459419156418730, // Response Inspector
+        1394650413361533009, // Roads Inspector
+        1394465316817473646, // TFU Inspector
         1394649657644290078, // Chief Inspector
         1398308435795251302, // Chief Operations Officer
         1406295587686453360, // Asst. Head of Civil
