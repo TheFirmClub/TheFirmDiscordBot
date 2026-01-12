@@ -236,7 +236,8 @@ class Program
         foreach (var command in _commandHandler!.GetAllCommands())
         {
             // ⛔ Skip playtime here because it was registered manually as subcommands
-            if (command.Name.Equals("playtime", StringComparison.OrdinalIgnoreCase))
+            if (command.Name.Equals("playtime", StringComparison.OrdinalIgnoreCase) ||
+                command.Name.Equals("mdtincidents", StringComparison.OrdinalIgnoreCase))
                 continue;
             
             // ✅ Special handling for gamemod because it uses subcommands
