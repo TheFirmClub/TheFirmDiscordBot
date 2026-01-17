@@ -85,6 +85,12 @@ class Program
                 return;
             }
 
+            if (component.Data.CustomId.StartsWith("listinv_"))
+            {
+                await ListInventoryCommand.HandleButton(component);
+                return;
+            }
+
             // existing handlers
             await _ticketButtonHandler.HandleAsync(component);
             await TicTacToeCommand.HandleButton(component);
@@ -166,6 +172,29 @@ class Program
         catch (Discord.Net.HttpException ex)
         {
             Console.WriteLine($"❌ Failed to register /playtime: {ex}");
+        }
+        
+        // -------------------------------
+        // Register /listinv (Inventory Lookup)
+        // -------------------------------
+        try
+        {
+            var listInvCmd = new SlashCommandBuilder()
+                .WithName("listinv")
+                .WithDescription("List all players who have a specific inventory item")
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("item")
+                    .WithDescription("Item name (e.g. weapon_pistol, radio, ammo-9)")
+                    .WithType(ApplicationCommandOptionType.String)
+                    .WithRequired(true)
+                );
+
+            await guild.CreateApplicationCommandAsync(listInvCmd.Build());
+            Console.WriteLine("✅ /listinv registered");
+        }
+        catch (Discord.Net.HttpException ex)
+        {
+            Console.WriteLine($"❌ Failed to register /listinv: {ex}");
         }
         
         // Register /gamestats
