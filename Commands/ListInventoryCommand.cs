@@ -103,7 +103,13 @@ public class ListInventoryCommand : ISlashCommand
             List<InventoryItem>? inventory;
             try
             {
-                inventory = JsonSerializer.Deserialize<List<InventoryItem>>(inventoryJson);
+                inventory = JsonSerializer.Deserialize<List<InventoryItem>>(
+                    inventoryJson,
+                    new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    }
+                );
             }
             catch
             {
