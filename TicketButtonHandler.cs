@@ -25,6 +25,8 @@ public class TicketButtonHandler
     private readonly ulong[] _keepRoleIds = new ulong[]
     {
         1393638449709584434, // Senior Moderator
+        1393728468608487594, // HEAD Moderator
+        1405330877440983130, // Asst Head Moderator
         1393590761953558608 // Senior Management
     };
 
