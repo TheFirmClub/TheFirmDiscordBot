@@ -8,7 +8,11 @@ public class SlashCommandHandler
     private readonly Dictionary<string, ISlashCommand> _commands = new();
     private readonly IConfiguration _config;
 
-    public SlashCommandHandler(IConfiguration config, InviteTrackerService inviteTracker)
+    public SlashCommandHandler(
+        IConfiguration config,
+        InviteTrackerService inviteTracker,
+        SuggestionsCommand suggestionsCommand)
+
     {
         _config = config;
         
@@ -62,7 +66,7 @@ public class SlashCommandHandler
         _commands.Add("socials", new SocialsCommand());
         _commands.Add("playtime", new PlaytimeCommand());
         _commands.Add("game", new GameModCommands());
-        _commands.Add("suggestions", new SuggestionsCommand());
+        _commands.Add("suggestions", suggestionsCommand);
         _commands.Add("gamestats", new GameStatsCommand());
         _commands.Add("mdtincidents", new MDTIncidentsCommand());
         _commands.Add("listinv", new ListInventoryCommand());

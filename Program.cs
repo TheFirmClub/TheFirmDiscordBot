@@ -14,6 +14,7 @@ class Program
     private SupportMenuHandler _supportMenuHandler = new();
     private TicketButtonHandler _ticketButtonHandler;
     private InviteTrackerService? _inviteTracker;
+    private SuggestionsCommand _suggestionsCommand = new SuggestionsCommand();
 
     private ulong _logChannelId = 1394449608603603085;
 
@@ -70,7 +71,11 @@ class Program
         // Changelog tracker (listens in changelog channel and posts stats)
         _changelogTracker = new ChangelogTrackerService(_client!);
 
-        _commandHandler = new SlashCommandHandler(_config, _inviteTracker);
+        _commandHandler = new SlashCommandHandler(
+            _config,
+            _inviteTracker,
+            _suggestionsCommand
+        );
 
         _ticketButtonHandler = new TicketButtonHandler(_config);
 
@@ -146,7 +151,7 @@ class Program
         }
         
         // ✅ Register Suggestions
-        await new SuggestionsCommand().RegisterAsync(_client);
+        await _suggestionsCommand.RegisterAsync(_client);
         Console.WriteLine("✅ Registered /suggestions");
         
         // ✅ Register /playtime (with subcommands) BEFORE the foreach
