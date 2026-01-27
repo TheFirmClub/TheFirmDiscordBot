@@ -83,6 +83,11 @@ public class SlashCommandHandler
         var playtimeCommands = new CheckPlaytimeCommands();
         _commands.Add("myplaytime", playtimeCommands);
         _commands.Add("checkplaytime", playtimeCommands);
+        
+        // --- NEW: police blacklist ---
+        var policeBlacklist = new PoliceBlacklistCommand();
+        _commands.Add(policeBlacklist.Name, policeBlacklist);
+
 
     }
 
