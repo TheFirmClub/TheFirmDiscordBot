@@ -242,6 +242,32 @@ class Program
         {
             Console.WriteLine($"❌ Failed to register /mdtincidents: {ex}");
         }
+        
+        // -------------------------------
+        // Register /policeblacklist
+        // -------------------------------
+        try
+        {
+            var policeBlacklistCmd = new SlashCommandBuilder()
+                .WithName("policeblacklist")
+                .WithDescription("Blacklist a citizen from the police job")
+                .AddOption("citizenid",
+                    ApplicationCommandOptionType.String,
+                    "Citizen ID (e.g. HEV80184)",
+                    true)
+                .AddOption("days",
+                    ApplicationCommandOptionType.String,
+                    "Number of days or PERM",
+                    true);
+
+            await guild.CreateApplicationCommandAsync(policeBlacklistCmd.Build());
+            Console.WriteLine("✅ /policeblacklist registered");
+        }
+        catch (Discord.Net.HttpException ex)
+        {
+            Console.WriteLine($"❌ Failed to register /policeblacklist: {ex}");
+        }
+
 
         // ---------------------------------------------
         // REGISTER STAFF + PUBLIC PLAYTIME COMMANDS
