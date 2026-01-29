@@ -16,6 +16,7 @@ public class PoliceBlacklistCommand : ISlashCommand
 
     private const ulong SeniorManagementRoleId = 1393590761953558608;
     private const ulong SeniorModeratorRoleId  = 1393638449709584434;
+    private const ulong LogChannelId           = 1442668507786383511;
 
     private static readonly HashSet<ulong> PoliceLeadershipRoleIds = new()
     {
@@ -24,6 +25,19 @@ public class PoliceBlacklistCommand : ISlashCommand
         1394457219298492527,
     };
 
+    // =========================================================
+    // DATA MODELS
+    // =========================================================
+    private sealed class DiscordData
+    {
+        public string CitizenId { get; init; }
+        public string CharacterName { get; init; }
+        public ulong? DiscordId { get; init; }
+    }
+
+    // =========================================================
+    // MAIN COMMAND
+    // =========================================================
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
         await command.DeferAsync(ephemeral: true);
@@ -45,7 +59,6 @@ public class PoliceBlacklistCommand : ISlashCommand
             return;
         }
 
-        // 🔑 SUBCOMMAND HANDLING
         var sub = command.Data.Options.First();
         var subName = sub.Name;
         var opts = sub.Options.ToList();
@@ -113,16 +126,44 @@ public class PoliceBlacklistCommand : ISlashCommand
                     await insert.ExecuteNonQueryAsync();
                 }
 
-                string expiryText = expiresAt.HasValue
-                    ? $"until <t:{((DateTimeOffset)expiresAt.Value).ToUnixTimeSeconds()}:f>"
-                    : "permanently";
+                var data = await GetDiscordDataAsync(conn, citizenid);
 
-                string gradeText = maxGrade.HasValue
-                    ? $" (max grade **{maxGrade.Value}**)"
-                    : " (full ban)";
+                var embed = new EmbedBuilder()
+                    .WithTitle("🚨 Police Blacklist Issued")
+                    .WithColor(new Color(220, 38, 38))
+                    .WithTimestamp(DateTimeOffset.UtcNow)
+                    .AddField("CitizenID", $"`{citizenid}`", true)
+                    .AddField("Character Name", data?.CharacterName ?? "Unknown", true)
+                    .AddField("Discord",
+                        data?.DiscordId.HasValue == true
+                            ? $"<@{data.DiscordId}> (`{data.DiscordId}`)"
+                            : "Not linked",
+                        false)
+                    .AddField("Duration",
+                        expiresAt.HasValue
+                            ? $"Until <t:{((DateTimeOffset)expiresAt.Value).ToUnixTimeSeconds()}:f>"
+                            : "Permanent",
+                        true)
+                    .AddField("Restriction",
+                        maxGrade.HasValue
+                            ? $"Max grade **{maxGrade.Value}**"
+                            : "Full police ban",
+                        true)
+                    .AddField("Issued By", caller.DisplayName, true)
+                    .WithFooter("Police Blacklist System");
+
+                // ✅ CORRECT GUILD RESOLUTION (NO Client, NO Guild property)
+                var logChannel = (command.Channel as SocketGuildChannel)?
+                    .Guild
+                    .GetTextChannel(LogChannelId);
+
+                if (logChannel != null)
+                {
+                    await logChannel.SendMessageAsync(embed: embed.Build());
+                }
 
                 await Reply(command,
-                    $"✅ `{citizenid}` has been **police-blacklisted** {expiryText}{gradeText}.");
+                    $"✅ `{citizenid}` has been **police-blacklisted** successfully.");
                 return;
             }
             catch
@@ -169,6 +210,39 @@ public class PoliceBlacklistCommand : ISlashCommand
         }
 
         await Reply(command, "❌ Unknown subcommand.");
+    }
+
+    // =========================================================
+    // HELPERS
+    // =========================================================
+    private static async Task<DiscordData?> GetDiscordDataAsync(
+        MySqlConnection conn, string citizenid)
+    {
+        using var cmd = new MySqlCommand(
+            @"SELECT citizenid, character_name, discordid
+              FROM datadiscord
+              WHERE citizenid = @cid
+              LIMIT 1", conn);
+
+        cmd.Parameters.AddWithValue("@cid", citizenid);
+
+        using var reader = await cmd.ExecuteReaderAsync();
+        if (!await reader.ReadAsync())
+            return null;
+
+        ulong? discordId = null;
+        if (reader["discordid"] != DBNull.Value &&
+            ulong.TryParse(reader["discordid"].ToString(), out var did))
+        {
+            discordId = did;
+        }
+
+        return new DiscordData
+        {
+            CitizenId = reader["citizenid"].ToString(),
+            CharacterName = reader["character_name"].ToString(),
+            DiscordId = discordId
+        };
     }
 
     private static Task Reply(SocketSlashCommand cmd, string text) =>
