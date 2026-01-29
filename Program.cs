@@ -250,28 +250,46 @@ class Program
         }
         
         // -------------------------------
-        // Register /policeblacklist
+        // Register /policeblacklist (SUBCOMMANDS)
         // -------------------------------
         try
         {
             var policeBlacklistCmd = new SlashCommandBuilder()
                 .WithName("policeblacklist")
-                .WithDescription("Blacklist a citizen from the police job")
-                .AddOption("citizenid",
-                    ApplicationCommandOptionType.String,
-                    "Citizen ID (e.g. HEV80184)",
-                    true)
-                .AddOption("days",
-                    ApplicationCommandOptionType.String,
-                    "Number of days or PERM",
-                    true)
-                .AddOption("grade",
-                    ApplicationCommandOptionType.Integer,
-                    "Max police grade allowed (omit for full ban)",
-                    false);
+                .WithDescription("Manage police blacklist")
+
+                // /policeblacklist add <cid> <days|PERM> <grade?>
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("add")
+                    .WithDescription("Add a police blacklist")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    .AddOption("citizenid",
+                        ApplicationCommandOptionType.String,
+                        "Citizen ID (e.g. HEV80184)",
+                        true)
+                    .AddOption("days",
+                        ApplicationCommandOptionType.String,
+                        "Number of days or PERM",
+                        true)
+                    .AddOption("grade",
+                        ApplicationCommandOptionType.Integer,
+                        "Max police grade allowed (omit for full ban)",
+                        false)
+                )
+
+                // /policeblacklist remove <cid>
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("remove")
+                    .WithDescription("Remove a police blacklist")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    .AddOption("citizenid",
+                        ApplicationCommandOptionType.String,
+                        "Citizen ID",
+                        true)
+                );
 
             await guild.CreateApplicationCommandAsync(policeBlacklistCmd.Build());
-            Console.WriteLine("✅ /policeblacklist registered");
+            Console.WriteLine("✅ /policeblacklist (add/remove) registered");
         }
         catch (Discord.Net.HttpException ex)
         {

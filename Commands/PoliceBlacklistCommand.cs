@@ -9,12 +9,11 @@ using System.Collections.Generic;
 public class PoliceBlacklistCommand : ISlashCommand
 {
     public string Name => "policeblacklist";
-    public string Description => "Blacklist a citizen from the police job";
+    public string Description => "Manage police blacklist";
 
     private const string ConnectionString =
         "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore;Uid=thefirmprod;Pwd=edr6BYZqmq7eud0mwm;CharSet=utf8mb4;SslMode=Preferred;";
 
-    // Allowed roles
     private const ulong SeniorManagementRoleId = 1393590761953558608;
     private const ulong SeniorModeratorRoleId  = 1393638449709584434;
 
@@ -42,106 +41,134 @@ public class PoliceBlacklistCommand : ISlashCommand
 
         if (!allowed)
         {
-            await Reply(command, "❌ You are not authorised to police-blacklist.");
+            await Reply(command, "❌ You are not authorised to manage police blacklists.");
             return;
         }
 
-        var options = command.Data.Options.ToList();
-        if (options.Count < 2)
-        {
-            await Reply(command,
-                "❌ Usage: `/policeblacklist <CID> <days|PERM> <grade>`");
-            return;
-        }
+        // 🔑 SUBCOMMAND HANDLING
+        var sub = command.Data.Options.First();
+        var subName = sub.Name;
+        var opts = sub.Options.ToList();
 
-        string citizenid = options[0].Value?.ToString()?.Trim();
-        string duration  = options[1].Value?.ToString()?.Trim().ToUpperInvariant();
-
-        // NEW: optional grade
-        int? maxGrade = null;
-        if (options.Count >= 3 && options[2].Value != null)
+        // =========================================================
+        // /policeblacklist add <cid> <days|PERM> <grade?>
+        // =========================================================
+        if (subName == "add")
         {
-            if (!int.TryParse(options[2].Value.ToString(), out int parsedGrade) || parsedGrade < 0)
+            string citizenid = opts[0].Value.ToString().Trim();
+            string duration  = opts[1].Value.ToString().Trim().ToUpperInvariant();
+
+            int? maxGrade = null;
+            if (opts.Count >= 3 && opts[2].Value != null)
             {
-                await Reply(command, "❌ Grade must be a number ≥ 0.");
-                return;
-            }
-            maxGrade = parsedGrade;
-        }
-
-        if (string.IsNullOrWhiteSpace(citizenid))
-        {
-            await Reply(command, "❌ Invalid citizen ID.");
-            return;
-        }
-
-        DateTime? expiresAt = null;
-
-        if (duration != "PERM")
-        {
-            if (!int.TryParse(duration, out int days) || days <= 0)
-            {
-                await Reply(command, "❌ Duration must be a number of days or `PERM`.");
-                return;
-            }
-
-            expiresAt = DateTime.UtcNow.AddDays(days);
-        }
-
-        try
-        {
-            using var conn = new MySqlConnection(ConnectionString);
-            await conn.OpenAsync();
-
-            // Prevent duplicate active blacklist
-            using (var check = new MySqlCommand(
-                @"SELECT id FROM police_blacklist
-                  WHERE citizenid = @cid
-                  AND (expires_at IS NULL OR expires_at > NOW())
-                  LIMIT 1", conn))
-            {
-                check.Parameters.AddWithValue("@cid", citizenid);
-                var exists = await check.ExecuteScalarAsync();
-                if (exists != null)
+                if (!int.TryParse(opts[2].Value.ToString(), out int g) || g < 0)
                 {
-                    await Reply(command, $"⚠️ `{citizenid}` is already police-blacklisted.");
+                    await Reply(command, "❌ Grade must be a number ≥ 0.");
                     return;
                 }
+                maxGrade = g;
             }
 
-            // NEW: max_grade column added
-            using (var insert = new MySqlCommand(
-                @"INSERT INTO police_blacklist
-                  (citizenid, expires_at, banned_by, reason, max_grade)
-                  VALUES (@cid, @expires, @by, @reason, @maxGrade)", conn))
+            DateTime? expiresAt = null;
+            if (duration != "PERM")
             {
-                insert.Parameters.AddWithValue("@cid", citizenid);
-                insert.Parameters.AddWithValue("@expires",
-                    expiresAt.HasValue ? expiresAt : DBNull.Value);
-                insert.Parameters.AddWithValue("@by", caller.DisplayName);
-                insert.Parameters.AddWithValue("@reason",
-                    "Police blacklist issued via Discord.");
-                insert.Parameters.AddWithValue("@maxGrade",
-                    maxGrade.HasValue ? maxGrade : DBNull.Value);
-
-                await insert.ExecuteNonQueryAsync();
+                if (!int.TryParse(duration, out int days) || days <= 0)
+                {
+                    await Reply(command, "❌ Duration must be a number of days or `PERM`.");
+                    return;
+                }
+                expiresAt = DateTime.UtcNow.AddDays(days);
             }
 
-            string expiryText = expiresAt.HasValue
-                ? $"until <t:{((DateTimeOffset)expiresAt.Value).ToUnixTimeSeconds()}:f>"
-                : "permanently";
+            try
+            {
+                using var conn = new MySqlConnection(ConnectionString);
+                await conn.OpenAsync();
 
-            string gradeText = maxGrade.HasValue
-                ? $" (max grade **{maxGrade.Value}**)"
-                : " (full ban)";
+                using (var check = new MySqlCommand(
+                    @"SELECT id FROM police_blacklist
+                      WHERE citizenid = @cid
+                      AND (expires_at IS NULL OR expires_at > NOW())
+                      LIMIT 1", conn))
+                {
+                    check.Parameters.AddWithValue("@cid", citizenid);
+                    if (await check.ExecuteScalarAsync() != null)
+                    {
+                        await Reply(command, $"⚠️ `{citizenid}` is already police-blacklisted.");
+                        return;
+                    }
+                }
 
-            await Reply(command,
-                $"✅ `{citizenid}` has been **police-blacklisted** {expiryText}{gradeText}.");
+                using (var insert = new MySqlCommand(
+                    @"INSERT INTO police_blacklist
+                      (citizenid, expires_at, banned_by, reason, max_grade)
+                      VALUES (@cid, @expires, @by, @reason, @grade)", conn))
+                {
+                    insert.Parameters.AddWithValue("@cid", citizenid);
+                    insert.Parameters.AddWithValue("@expires", expiresAt ?? (object)DBNull.Value);
+                    insert.Parameters.AddWithValue("@by", caller.DisplayName);
+                    insert.Parameters.AddWithValue("@reason", "Police blacklist issued via Discord.");
+                    insert.Parameters.AddWithValue("@grade", maxGrade ?? (object)DBNull.Value);
+
+                    await insert.ExecuteNonQueryAsync();
+                }
+
+                string expiryText = expiresAt.HasValue
+                    ? $"until <t:{((DateTimeOffset)expiresAt.Value).ToUnixTimeSeconds()}:f>"
+                    : "permanently";
+
+                string gradeText = maxGrade.HasValue
+                    ? $" (max grade **{maxGrade.Value}**)"
+                    : " (full ban)";
+
+                await Reply(command,
+                    $"✅ `{citizenid}` has been **police-blacklisted** {expiryText}{gradeText}.");
+                return;
+            }
+            catch
+            {
+                await Reply(command, "❌ Database error while creating blacklist.");
+                return;
+            }
         }
-        catch (Exception)
+
+        // =========================================================
+        // /policeblacklist remove <cid>
+        // =========================================================
+        if (subName == "remove")
         {
-            await Reply(command, "❌ Database error while creating blacklist.");
+            string citizenid = opts[0].Value.ToString().Trim();
+
+            try
+            {
+                using var conn = new MySqlConnection(ConnectionString);
+                await conn.OpenAsync();
+
+                using var del = new MySqlCommand(
+                    "DELETE FROM police_blacklist WHERE citizenid = @cid",
+                    conn);
+
+                del.Parameters.AddWithValue("@cid", citizenid);
+                int affected = await del.ExecuteNonQueryAsync();
+
+                if (affected == 0)
+                {
+                    await Reply(command, $"⚠️ `{citizenid}` is not police-blacklisted.");
+                    return;
+                }
+
+                await Reply(command,
+                    $"✅ `{citizenid}` has been removed from the police blacklist.");
+                return;
+            }
+            catch
+            {
+                await Reply(command, "❌ Database error while removing blacklist.");
+                return;
+            }
         }
+
+        await Reply(command, "❌ Unknown subcommand.");
     }
 
     private static Task Reply(SocketSlashCommand cmd, string text) =>
