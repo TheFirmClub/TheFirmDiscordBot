@@ -140,6 +140,12 @@ class Program
                 await cmd.DeleteAsync();
                 Console.WriteLine("🗑️ Removed old /gamemod");
             }
+            
+            if (cmd.Name == "policeblacklist")
+            {
+                await cmd.DeleteAsync();
+                Console.WriteLine("🗑️ Removed old /policeblacklist");
+            }
         }
 
         // ✅ Register LOA commands once (handles /staffloa, /loaremove, /staffloalist)
@@ -258,7 +264,11 @@ class Program
                 .AddOption("days",
                     ApplicationCommandOptionType.String,
                     "Number of days or PERM",
-                    true);
+                    true)
+                .AddOption("grade",
+                    ApplicationCommandOptionType.Integer,
+                    "Max police grade allowed (omit for full ban)",
+                    false);
 
             await guild.CreateApplicationCommandAsync(policeBlacklistCmd.Build());
             Console.WriteLine("✅ /policeblacklist registered");
@@ -295,6 +305,9 @@ class Program
         // Register your other existing commands from SlashCommandHandler
         foreach (var command in _commandHandler!.GetAllCommands())
         {
+            if (command.Name.Equals("policeblacklist", StringComparison.OrdinalIgnoreCase))
+                continue;
+            
             // ⛔ Skip playtime here because it was registered manually as subcommands
             if (command.Name.Equals("playtime", StringComparison.OrdinalIgnoreCase) ||
                 command.Name.Equals("mdtincidents", StringComparison.OrdinalIgnoreCase) ||

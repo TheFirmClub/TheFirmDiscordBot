@@ -20,9 +20,9 @@ public class PoliceBlacklistCommand : ISlashCommand
 
     private static readonly HashSet<ulong> PoliceLeadershipRoleIds = new()
     {
-        1394649657644290078, // Chief Inspector
-        1394458024503935006, // Superintendent
-        1394457219298492527, // Commissioner
+        1394649657644290078,
+        1394458024503935006,
+        1394457219298492527,
     };
 
     public async Task ExecuteAsync(SocketSlashCommand command)
@@ -49,12 +49,25 @@ public class PoliceBlacklistCommand : ISlashCommand
         var options = command.Data.Options.ToList();
         if (options.Count < 2)
         {
-            await Reply(command, "❌ Usage: `/policeblacklist <CID> <days|PERM>`");
+            await Reply(command,
+                "❌ Usage: `/policeblacklist <CID> <days|PERM> <grade>`");
             return;
         }
 
         string citizenid = options[0].Value?.ToString()?.Trim();
         string duration  = options[1].Value?.ToString()?.Trim().ToUpperInvariant();
+
+        // NEW: optional grade
+        int? maxGrade = null;
+        if (options.Count >= 3 && options[2].Value != null)
+        {
+            if (!int.TryParse(options[2].Value.ToString(), out int parsedGrade) || parsedGrade < 0)
+            {
+                await Reply(command, "❌ Grade must be a number ≥ 0.");
+                return;
+            }
+            maxGrade = parsedGrade;
+        }
 
         if (string.IsNullOrWhiteSpace(citizenid))
         {
@@ -96,10 +109,11 @@ public class PoliceBlacklistCommand : ISlashCommand
                 }
             }
 
+            // NEW: max_grade column added
             using (var insert = new MySqlCommand(
                 @"INSERT INTO police_blacklist
-                  (citizenid, expires_at, banned_by, reason)
-                  VALUES (@cid, @expires, @by, @reason)", conn))
+                  (citizenid, expires_at, banned_by, reason, max_grade)
+                  VALUES (@cid, @expires, @by, @reason, @maxGrade)", conn))
             {
                 insert.Parameters.AddWithValue("@cid", citizenid);
                 insert.Parameters.AddWithValue("@expires",
@@ -107,6 +121,8 @@ public class PoliceBlacklistCommand : ISlashCommand
                 insert.Parameters.AddWithValue("@by", caller.DisplayName);
                 insert.Parameters.AddWithValue("@reason",
                     "Police blacklist issued via Discord.");
+                insert.Parameters.AddWithValue("@maxGrade",
+                    maxGrade.HasValue ? maxGrade : DBNull.Value);
 
                 await insert.ExecuteNonQueryAsync();
             }
@@ -115,8 +131,12 @@ public class PoliceBlacklistCommand : ISlashCommand
                 ? $"until <t:{((DateTimeOffset)expiresAt.Value).ToUnixTimeSeconds()}:f>"
                 : "permanently";
 
+            string gradeText = maxGrade.HasValue
+                ? $" (max grade **{maxGrade.Value}**)"
+                : " (full ban)";
+
             await Reply(command,
-                $"✅ `{citizenid}` has been **police-blacklisted** {expiryText}.");
+                $"✅ `{citizenid}` has been **police-blacklisted** {expiryText}{gradeText}.");
         }
         catch (Exception)
         {
