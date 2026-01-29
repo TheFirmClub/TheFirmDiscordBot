@@ -198,6 +198,33 @@ public class PoliceBlacklistCommand : ISlashCommand
                     return;
                 }
 
+                // 🔎 Fetch character / discord info for logging
+                var data = await GetDiscordDataAsync(conn, citizenid);
+
+                var embed = new EmbedBuilder()
+                    .WithTitle("✅ Police Blacklist Removed")
+                    .WithColor(new Color(34, 197, 94)) // green
+                    .WithTimestamp(DateTimeOffset.UtcNow)
+                    .AddField("CitizenID", $"`{citizenid}`", true)
+                    .AddField("Character Name", data?.CharacterName ?? "Unknown", true)
+                    .AddField("Discord",
+                        data?.DiscordId.HasValue == true
+                            ? $"<@{data.DiscordId}> (`{data.DiscordId}`)"
+                            : "Not linked",
+                        false)
+                    .AddField("Removed By", caller.DisplayName, true)
+                    .WithFooter("Police Blacklist System");
+
+                // ✅ Correct guild/channel resolution
+                var logChannel = (command.Channel as SocketGuildChannel)?
+                    .Guild
+                    .GetTextChannel(LogChannelId);
+
+                if (logChannel != null)
+                {
+                    await logChannel.SendMessageAsync(embed: embed.Build());
+                }
+
                 await Reply(command,
                     $"✅ `{citizenid}` has been removed from the police blacklist.");
                 return;
