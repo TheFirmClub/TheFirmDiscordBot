@@ -23,6 +23,7 @@ public class GameModCommands : ISlashCommand
     private static readonly ulong[] DeleteAllowedRoleIds = new ulong[]
     {
         1393638449709584434UL, // Senior Moderator
+        1393729574537396355UL, //Game Moderator
         1421177514189127840UL, // Senior Dev
         1393590761953558608UL // SM
     };
@@ -51,7 +52,7 @@ public class GameModCommands : ISlashCommand
                     isRequired: true))
             .AddOption(new SlashCommandOptionBuilder()
                 .WithName("deletecharacter")
-                .WithDescription("Delete a character by citizen id (Senior Mod + SM only)")
+                .WithDescription("Delete a character by citizen id (Mod + SM only)")
                 .WithType(ApplicationCommandOptionType.SubCommand)
                 .AddOption("citizenid", ApplicationCommandOptionType.String, "Citizen ID, e.g. MUF58516", isRequired: true)
                 .AddOption("reason", ApplicationCommandOptionType.String, "Reason for deletion", isRequired: true))
