@@ -29,7 +29,7 @@ public async Task ExecuteAsync(SocketSlashCommand command)
     await command.DeferAsync(ephemeral: true);
 
     var deletedNames = new List<string>();
-    var obsoleteNames = new List<string> { "embed", "oldcommand", "close", "tempticket", "ticketaddrole", "ticketadduser", "ticketclaim", "ticketpanel", "ticketrelease", "ticketresolve", "ticketrestrict" };
+    var obsoleteNames = new List<string> { "embed"};
 
     var existingCommands = await guild.GetApplicationCommandsAsync();
     foreach (var cmd in existingCommands)
