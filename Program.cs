@@ -25,6 +25,8 @@ class Program
 
     private ChangelogTrackerService? _changelogTracker;
     
+    private EvidenceRelayService? _evidenceRelay;
+    
     private VoiceModLogger? _voiceLogger;
 
     // ✅ LOA command integration
@@ -70,6 +72,8 @@ class Program
 
         // Changelog tracker (listens in changelog channel and posts stats)
         _changelogTracker = new ChangelogTrackerService(_client!);
+        
+        _evidenceRelay = new EvidenceRelayService(_client);
 
         _commandHandler = new SlashCommandHandler(
             _config,
