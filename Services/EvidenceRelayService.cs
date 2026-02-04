@@ -53,7 +53,7 @@ public class EvidenceRelayService
             if (msg.Embeds == null || msg.Embeds.Count == 0)
                 return;
 
-            // Check if any embed contains valid transfer text
+            // Check if any embed contains valid evidence transfer
             bool containsEvidenceTransfer =
                 msg.Embeds.Any(embed => EmbedContainsEvidenceTransfer(embed));
 
@@ -68,10 +68,20 @@ public class EvidenceRelayService
                 return;
             }
 
-            // Forward embeds and message content
+            // Build role mentions
+            string roleMentions = string.Join(
+                " ",
+                RolePingIds.Select(id => $"<@&{id}>")
+            );
+
+            // Send message with pings + embeds
             await targetChannel.SendMessageAsync(
-                text: msg.Content,
-                embeds: msg.Embeds.ToArray()
+                text: roleMentions + "\n" + msg.Content,
+                embeds: msg.Embeds.ToArray(),
+                allowedMentions: new AllowedMentions
+                {
+                    RoleIds = RolePingIds
+                }
             );
 
             Console.WriteLine($"Evidence relay forwarded message {msg.Id}");
