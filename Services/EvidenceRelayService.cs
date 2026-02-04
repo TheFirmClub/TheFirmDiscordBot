@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Discord;
 using Discord.WebSocket;
@@ -11,7 +12,10 @@ public class EvidenceRelayService
     private const ulong SourceChannelId = 1400632503915774082UL;
     private const ulong TargetChannelId = 1468006426151616686UL;
 
-    private const string EvidenceKeyword = "LSPD_evidence_";
+    // Matches: transferred from "LSPD_evidence_1"
+    private static readonly Regex EvidenceTransferRegex =
+        new(@"transferred\s+from\s+""LSPD_evidence_\d+""",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     public EvidenceRelayService(DiscordSocketClient client)
     {
@@ -30,16 +34,24 @@ public class EvidenceRelayService
     {
         try
         {
-            if (msg.Author.Id == _client.CurrentUser.Id) return;
-            if (msg.Channel.Id != SourceChannelId) return;
+            // Ignore self messages
+            if (msg.Author.Id == _client.CurrentUser.Id)
+                return;
+
+            // Only monitor source channel
+            if (msg.Channel.Id != SourceChannelId)
+                return;
 
             // Must contain embeds
-            if (msg.Embeds == null || msg.Embeds.Count == 0) return;
+            if (msg.Embeds == null || msg.Embeds.Count == 0)
+                return;
 
-            bool containsEvidence = msg.Embeds.Any(embed =>
-                EmbedContainsEvidence(embed));
+            // Check if any embed contains valid transfer text
+            bool containsEvidenceTransfer =
+                msg.Embeds.Any(embed => EmbedContainsEvidenceTransfer(embed));
 
-            if (!containsEvidence) return;
+            if (!containsEvidenceTransfer)
+                return;
 
             var targetChannel = _client.GetChannel(TargetChannelId) as IMessageChannel;
 
@@ -49,7 +61,7 @@ public class EvidenceRelayService
                 return;
             }
 
-            // Forward ALL embeds exactly as they are
+            // Forward embeds and message content
             await targetChannel.SendMessageAsync(
                 text: msg.Content,
                 embeds: msg.Embeds.ToArray()
@@ -63,13 +75,12 @@ public class EvidenceRelayService
         }
     }
 
-    private bool EmbedContainsEvidence(Embed embed)
+    private bool EmbedContainsEvidenceTransfer(Embed embed)
     {
         bool Check(string? s) =>
             !string.IsNullOrEmpty(s) &&
-            s.Contains(EvidenceKeyword, StringComparison.OrdinalIgnoreCase);
+            EvidenceTransferRegex.IsMatch(s);
 
-        // Check common embed locations
         if (Check(embed.Title)) return true;
         if (Check(embed.Description)) return true;
         if (Check(embed.Author?.Name)) return true;
