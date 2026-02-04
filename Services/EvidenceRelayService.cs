@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using Discord;
 using Discord.WebSocket;
 
@@ -41,7 +42,7 @@ public class EvidenceRelayService
     {
         try
         {
-            // Ignore self messages
+            // Ignore bot's own messages
             if (msg.Author.Id == _client.CurrentUser.Id)
                 return;
 
@@ -53,7 +54,7 @@ public class EvidenceRelayService
             if (msg.Embeds == null || msg.Embeds.Count == 0)
                 return;
 
-            // Check if any embed contains valid evidence transfer
+            // Check if embeds contain evidence transfer
             bool containsEvidenceTransfer =
                 msg.Embeds.Any(embed => EmbedContainsEvidenceTransfer(embed));
 
@@ -68,19 +69,19 @@ public class EvidenceRelayService
                 return;
             }
 
-            // Build role mentions
+            // Build role mention string
             string roleMentions = string.Join(
                 " ",
                 RolePingIds.Select(id => $"<@&{id}>")
             );
 
-            // Send message with pings + embeds
+            // Forward message with role pings
             await targetChannel.SendMessageAsync(
                 text: roleMentions + "\n" + msg.Content,
                 embeds: msg.Embeds.ToArray(),
                 allowedMentions: new AllowedMentions
                 {
-                    RoleIds = RolePingIds
+                    RoleIds = RolePingIds.ToList()
                 }
             );
 
