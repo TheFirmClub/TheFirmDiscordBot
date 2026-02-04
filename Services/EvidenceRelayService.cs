@@ -12,6 +12,13 @@ public class EvidenceRelayService
     private const ulong SourceChannelId = 1400632503915774082UL;
     private const ulong TargetChannelId = 1468006426151616686UL;
 
+    // Roles to ping
+    private static readonly ulong[] RolePingIds =
+    {
+        1394649657644290078UL,
+        1393638449709584434UL
+    };
+
     // Matches: transferred from "LSPD_evidence_1"
     private static readonly Regex EvidenceTransferRegex =
         new(@"transferred\s+from\s+""LSPD_evidence_\d+""",
