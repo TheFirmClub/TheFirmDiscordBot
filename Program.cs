@@ -358,6 +358,7 @@ class Program
             // ⛔ Skip playtime here because it was registered manually as subcommands
             if (command.Name.Equals("playtime", StringComparison.OrdinalIgnoreCase) ||
                 command.Name.Equals("mdtincidents", StringComparison.OrdinalIgnoreCase) ||
+                command.Name.Equals("resetplaytime", StringComparison.OrdinalIgnoreCase) ||
                 command.Name.Equals("listinv", StringComparison.OrdinalIgnoreCase))
                 continue;
             
