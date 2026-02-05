@@ -53,6 +53,23 @@ public class RemoveRoleCommand : ISlashCommand
         1394460140891013161, // Tactical Firearms
     };
 
+    private static readonly HashSet<ulong> CivilLeadershipRoleIds = new()
+    {
+        1394461361366368256, // Director of Civil Affairs
+        1406295299311272006, // Head of Civil Affairs
+        1406295587686453360, // Asst. Head of Civil Affairs
+    };
+
+    private static readonly HashSet<ulong> AllowedCivilRoleIds = new()
+    {
+        1466582702789754950, // Ferrari Crime Family
+        1468016850120999166, // E22
+        1462261699494285382, // The Black Oath
+        1427055886689632336, // Syndicate Gang
+        1446426904151457865, // The Section
+        1457933411565178932, // Diaz Family
+    };
+
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
         await command.DeferAsync(ephemeral: true);
@@ -77,8 +94,9 @@ public class RemoveRoleCommand : ISlashCommand
         bool isAssistantOrHeadMod = caller.Roles.Any(r => AssistantOrHeadModRoleIds.Contains(r.Id));
         bool isMedicalLeadership  = caller.Roles.Any(r => MedicalLeadershipRoleIds.Contains(r.Id));
         bool isPoliceLeadership   = caller.Roles.Any(r => PoliceLeadershipRoleIds.Contains(r.Id));
+        bool isCivilLeadership = caller.Roles.Any(r => CivilLeadershipRoleIds.Contains(r.Id));
 
-        if (!isSeniorManagement && !isAssistantOrHeadMod && !isMedicalLeadership && !isPoliceLeadership)
+        if (!isSeniorManagement && !isAssistantOrHeadMod && !isMedicalLeadership && !isPoliceLeadership && !isCivilLeadership)
         {
             await Reply(command, "❌ You are not allowed to use this command.");
             return;
@@ -116,6 +134,12 @@ public class RemoveRoleCommand : ISlashCommand
             if (isPoliceLeadership && !AllowedPoliceRoleIds.Contains(role.Id))
             {
                 await Reply(command, "❌ You can only remove approved Police roles (Response, Roads Policing, Tactical Firearms).");
+                return;
+            }
+
+            if (isCivilLeadership && !AllowedCivilRoleIds.Contains(role.Id))
+            {
+                await Reply(command, "❌ You can only remove approved Civil Affairs roles.");
                 return;
             }
         }
