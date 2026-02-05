@@ -1,5 +1,4 @@
-﻿// File: ResetPlaytimeCommand.cs
-using Discord;
+﻿using Discord;
 using Discord.WebSocket;
 using MySql.Data.MySqlClient;
 using System;
@@ -22,28 +21,25 @@ public class ResetPlaytimeCommand : ISlashCommand
 
     private static readonly HashSet<ulong> PoliceLeadershipRoleIds = new()
     {
-        1394459419156418730, // Response Inspector
-        1394650413361533009, // Roads Inspector
-        1394465316817473646, // TFU Inspector
-        1394649657644290078, // Chief Inspector
-        1394458024503935006, // Superintendent
-        1394457219298492527, // Commissioner
+        1394459419156418730, 1394650413361533009, 1394465316817473646,
+        1394649657644290078, 1394458024503935006, 1394457219298492527
     };
 
     private static readonly HashSet<ulong> MedicalLeadershipRoleIds = new()
     {
-        1398313269998911519, // Team Manager
-        1398308435795251302, // COO
-        1394460689338208296, // Medical Director
-        1394460400988454953, // CMO
+        1398313269998911519, 1398308435795251302, 1394460689338208296, 1394460400988454953
     };
+
+    // --- Logging channel IDs ---
+    private const ulong PoliceLogChannelId = 1442668507786383511;
+    private const ulong AmbulanceLogChannelId = 1404782091199053847;
 
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
         await command.DeferAsync(ephemeral: true);
 
         if (command.User is not SocketGuildUser caller ||
-            (command.Channel as SocketGuildChannel)?.Guild == null)
+            (command.Channel as SocketGuildChannel)?.Guild is not SocketGuild guild)
         {
             await Reply(command, "❌ This command must be used in a server.");
             return;
@@ -64,7 +60,7 @@ public class ResetPlaytimeCommand : ISlashCommand
             return;
         }
 
-        // --- Permission check (MATCHES PlaytimeCommand.cs) ---
+        // --- Permissions check ---
         bool isSeniorManagement = caller.Roles.Any(r => r.Id == SeniorManagementRoleId);
         bool isSeniorModerator = caller.Roles.Any(r => r.Id == SeniorModeratorRoleId);
         bool isPoliceLeader = caller.Roles.Any(r => PoliceLeadershipRoleIds.Contains(r.Id));
@@ -85,7 +81,7 @@ public class ResetPlaytimeCommand : ISlashCommand
         var cid = sub.Options?.FirstOrDefault()?.Value?.ToString();
         if (string.IsNullOrWhiteSpace(cid))
         {
-            await Reply(command, $"❌ Please provide a valid CID.");
+            await Reply(command, "❌ Please provide a valid CID.");
             return;
         }
 
@@ -122,6 +118,7 @@ public class ResetPlaytimeCommand : ISlashCommand
                 return;
             }
 
+            // --- Reply to the user ---
             var embed = new EmbedBuilder()
                 .WithTitle(title)
                 .WithDescription($"{emoji} Playtime has been successfully reset")
@@ -137,9 +134,27 @@ public class ResetPlaytimeCommand : ISlashCommand
                 m.Content = string.Empty;
                 m.Embed = embed;
             });
+
+            // --- Send log to the appropriate channel ---
+            ulong logChannelId = subName == "police" ? PoliceLogChannelId : AmbulanceLogChannelId;
+            if (guild.GetTextChannel(logChannelId) is ITextChannel logChannel)
+            {
+                var logEmbed = new EmbedBuilder()
+                    .WithTitle($"Playtime Reset: {subName.ToUpper()}")
+                    .AddField("CID", Escape(cid), true)
+                    .AddField("Job", subName, true)
+                    .AddField("Reset By", caller.Mention, true)
+                    .WithColor(new Color(0xFF, 0xA5, 0x00))
+                    .WithTimestamp(DateTimeOffset.UtcNow)
+                    .Build();
+
+                await logChannel.SendMessageAsync(embed: logEmbed);
+            }
+
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Console.WriteLine($"❌ ResetPlaytimeCommand Error: {ex}");
             await Reply(command, "❌ Database error while resetting playtime.");
         }
     }
