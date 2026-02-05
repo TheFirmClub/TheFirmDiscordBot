@@ -178,6 +178,15 @@ public class InviteTrackerService
         return new();
     }
 
+    // ---------- NEW: Clear Stats ----------
+
+    public void ClearGuildStats(ulong guildId)
+    {
+        _totalsByInviter.TryRemove(guildId, out _);
+        _byCode.TryRemove(guildId, out _);
+        SaveStatsToDisk();
+    }
+
     // -------- Persistence --------
 
     private void SaveStatsToDisk()
