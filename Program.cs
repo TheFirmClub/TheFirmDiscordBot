@@ -188,7 +188,32 @@ class Program
         {
             Console.WriteLine($"❌ Failed to register /playtime: {ex}");
         }
-        
+
+        // ✅ Register /resetplaytime (with subcommands)
+        try
+        {
+            var resetPlaytimeCmd = new SlashCommandBuilder()
+                .WithName("resetplaytime")
+                .WithDescription("Reset police or ambulance playtime by CID")
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("police")
+                    .WithDescription("Reset police playtime for a CID")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    .AddOption("cid", ApplicationCommandOptionType.String, "Citizen ID", true))
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("ambulance")
+                    .WithDescription("Reset ambulance playtime for a CID")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    .AddOption("cid", ApplicationCommandOptionType.String, "Citizen ID", true));
+
+            await guild.CreateApplicationCommandAsync(resetPlaytimeCmd.Build());
+            Console.WriteLine("✅ /resetplaytime registered");
+        }
+        catch (Discord.Net.HttpException ex)
+        {
+            Console.WriteLine($"❌ Failed to register /resetplaytime: {ex}");
+        }
+
         // -------------------------------
         // Register /listinv (Inventory Lookup)
         // -------------------------------

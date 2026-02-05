@@ -65,6 +65,7 @@ public class SlashCommandHandler
         _commands.Add("hangman", new HangmanCommand());
         _commands.Add("socials", new SocialsCommand());
         _commands.Add("playtime", new PlaytimeCommand());
+        _commands.Add("resetplaytime", new ResetPlaytimeCommand());
         _commands.Add("game", new GameModCommands());
         _commands.Add("suggestions", suggestionsCommand);
         _commands.Add("gamestats", new GameStatsCommand());
