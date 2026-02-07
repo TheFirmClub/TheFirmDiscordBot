@@ -86,7 +86,6 @@ class Program
         _ticketButtonHandler = new TicketButtonHandler(_config);
 
         _client.SlashCommandExecuted += SlashCommandExecuted;
-        _client.AutocompleteExecuted += HandleAutocompleteAsync;
         _client.SelectMenuExecuted += _supportMenuHandler.HandleAsync;
         _client.ModalSubmitted += new SupportModalHandler().HandleModalAsync;
         _client.ButtonExecuted += async component =>
@@ -247,18 +246,13 @@ class Program
             Console.WriteLine($"❌ Failed to register /listinv: {ex}");
         }
 
-        // ✅ Register /checkroleinfo (with autocomplete)
+        // ✅ Register /checkroleinfo
         try
         {
             var roleInfoCmd = new SlashCommandBuilder()
                 .WithName("checkroleinfo")
                 .WithDescription("View members of a specific role")
-                .AddOption(new SlashCommandOptionBuilder()
-                    .WithName("role")
-                    .WithDescription("Role name or ID to view")
-                    .WithType(ApplicationCommandOptionType.String)
-                    .WithRequired(true)
-                    .WithAutocomplete(true));
+                .AddOption("role", ApplicationCommandOptionType.String, "Role name or ID to view", true);
 
             await guild.CreateApplicationCommandAsync(roleInfoCmd.Build());
             Console.WriteLine("✅ /checkroleinfo registered");
