@@ -68,6 +68,8 @@ public class RemoveRoleCommand : ISlashCommand
         1427055886689632336, // Syndicate Gang
         1446426904151457865, // The Section
         1457933411565178932, // Diaz Family
+        1469355919510077470, // GSC
+        1469654367593566349, // Lost MC
     };
 
     public async Task ExecuteAsync(SocketSlashCommand command)
