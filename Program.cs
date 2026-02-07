@@ -15,6 +15,8 @@ class Program
     private TicketButtonHandler _ticketButtonHandler;
     private InviteTrackerService? _inviteTracker;
     private SuggestionsCommand _suggestionsCommand = new SuggestionsCommand();
+    private CheckRoleInfoCommand _checkRoleInfoCommand = new CheckRoleInfoCommand();
+
 
     private ulong _logChannelId = 1394449608603603085;
 
@@ -97,6 +99,13 @@ class Program
             if (component.Data.CustomId.StartsWith("listinv_"))
             {
                 await ListInventoryCommand.HandleButton(component);
+                return;
+            }
+
+            // ✅ CheckRoleInfo pagination buttons first
+            if (component.Data.CustomId.StartsWith("roleinfo_"))
+            {
+                await _checkRoleInfoCommand.HandleButton(component);
                 return;
             }
 
@@ -236,7 +245,23 @@ class Program
         {
             Console.WriteLine($"❌ Failed to register /listinv: {ex}");
         }
-        
+
+        // ✅ Register /checkroleinfo
+        try
+        {
+            var roleInfoCmd = new SlashCommandBuilder()
+                .WithName("checkroleinfo")
+                .WithDescription("View members of a specific role")
+                .AddOption("role", ApplicationCommandOptionType.String, "Role name or ID to view", true);
+
+            await guild.CreateApplicationCommandAsync(roleInfoCmd.Build());
+            Console.WriteLine("✅ /checkroleinfo registered");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Failed to register /checkroleinfo: {ex}");
+        }
+
         // Register /gamestats
         try
         {
@@ -482,6 +507,13 @@ class Program
         if (name == "staffloa" || name == "loaremove" || name == "staffloalist")
         {
             await _staffLoa.ExecuteAsync(command);
+            return;
+        }
+
+        // ✅ Route CheckRoleInfo command
+        if (name == "checkroleinfo")
+        {
+            await _checkRoleInfoCommand.ExecuteAsync(command);
             return;
         }
 
