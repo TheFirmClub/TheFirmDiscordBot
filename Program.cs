@@ -136,6 +136,79 @@ class Program
 
         await Task.Delay(-1);
     }
+        private async Task HandleAutocompleteAsync(SocketAutocompleteInteraction interaction)
+    {
+        try
+        {
+            // Only handle /checkroleinfo autocomplete
+            if (!string.Equals(interaction.Data.CommandName, "checkroleinfo", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            // The option currently being typed in
+            var focused = interaction.Data.Options.FirstOrDefault(o => o.Focused);
+            if (focused == null || !string.Equals(focused.Name, "role", StringComparison.OrdinalIgnoreCase))
+            {
+                await interaction.RespondAsync(Array.Empty<AutocompleteResult>());
+                return;
+            }
+
+            // Must be in a guild
+            if (interaction.User is not SocketGuildUser user)
+            {
+                await interaction.RespondAsync(Array.Empty<AutocompleteResult>());
+                return;
+            }
+
+            // 🔒 Same allowed roles list (who can use the command)
+            var allowedUserRoleIds = new HashSet<ulong>
+        {
+            1420512528395665569, // MET Command
+            1420513009729802260, // Civil Command
+            1420512797191704616, // NHS Command
+            1393623589122736238, // Discord Moderator
+            1393638449709584434, // Senior Moderator
+            1393590761953558608, // Senior Management
+            1399173940622135448, // Section Leadership
+            1463090510406225991, // Operational Command
+        };
+
+            // If user isn't allowed, return no suggestions
+            if (!user.Roles.Any(r => allowedUserRoleIds.Contains(r.Id)))
+            {
+                await interaction.RespondAsync(Array.Empty<AutocompleteResult>());
+                return;
+            }
+
+            var query = focused.Value?.ToString() ?? "";
+            var guild = user.Guild;
+
+            // Discord allows max 25 suggestions
+            var results = guild.Roles
+                .Where(r =>
+                    !r.IsEveryone &&
+                    (string.IsNullOrWhiteSpace(query) ||
+                     r.Name.StartsWith(query, StringComparison.OrdinalIgnoreCase) ||
+                     r.Name.Contains(query, StringComparison.OrdinalIgnoreCase)))
+                .OrderByDescending(r => r.Position)
+                .Take(25)
+                .Select(r =>
+                {
+                    // Label shown in the dropdown, value inserted into the option.
+                    // We insert ID to make your command resolution reliable.
+                    var label = $"{r.Name} ({r.Members.Count} members)";
+                    if (label.Length > 100) label = label[..100]; // safety
+                    return new AutocompleteResult(label, r.Id.ToString());
+                })
+                .ToArray();
+
+            await interaction.RespondAsync(results);
+        }
+        catch
+        {
+            // Always respond something (Discord expects it)
+            try { await interaction.RespondAsync(Array.Empty<AutocompleteResult>()); } catch { }
+        }
+    }
 
     private async Task ReadyAsync(ulong guildId)
     {
