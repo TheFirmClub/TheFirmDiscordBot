@@ -100,12 +100,6 @@ class Program
                 return;
             }
 
-            if (component.Data.CustomId.StartsWith("checkroleinfo_"))
-            {
-                await CheckRoleInfoCommand.HandleButton(component);
-                return;
-            }
-
             // existing handlers
             await _ticketButtonHandler.HandleAsync(component);
             await TicTacToeCommand.HandleButton(component);
@@ -283,28 +277,7 @@ class Program
         {
             Console.WriteLine($"❌ Failed to register /mdtincidents: {ex}");
         }
-
-        // -------------------------------
-        // Check Role Info (Command and Mods Only)
-        // -------------------------------
-        try
-        {
-            var checkRoleInfoCmd = new SlashCommandBuilder()
-                .WithName("checkroleinfo")
-                .WithDescription("View detailed information about a role")
-                .AddOption("role",
-                    ApplicationCommandOptionType.Role,
-                    "Role to inspect",
-                    true);
-
-            await guild.CreateApplicationCommandAsync(checkRoleInfoCmd.Build());
-            Console.WriteLine("✅ /checkroleinfo registered");
-        }
-        catch (Discord.Net.HttpException ex)
-        {
-            Console.WriteLine($"❌ Failed to register /checkroleinfo: {ex}");
-        }
-
+        
         // -------------------------------
         // Register /policeblacklist (SUBCOMMANDS)
         // -------------------------------
@@ -509,12 +482,6 @@ class Program
         if (name == "staffloa" || name == "loaremove" || name == "staffloalist")
         {
             await _staffLoa.ExecuteAsync(command);
-            return;
-        }
-
-        if (name == "checkroleinfo")
-        {
-            await CheckRoleInfoCommand.ExecuteAsync(command);
             return;
         }
 
