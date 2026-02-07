@@ -174,4 +174,32 @@ public class CheckRoleInfoCommand
                 break;
         }
     }
+
+    // 🔍 Autocomplete for /checkroleinfo role option
+    public async Task HandleAutocompleteAsync(SocketAutocompleteInteraction interaction)
+    {
+        // Must be in a guild
+        if (interaction.Channel is not SocketGuildChannel guildChannel)
+            return;
+
+        var guild = guildChannel.Guild;
+
+        // What the user has typed so far
+        var currentValue = interaction.Data.Current.Value?.ToString() ?? string.Empty;
+
+        // Match roles that START WITH what they typed (e.g. "Senior")
+        var results = guild.Roles
+            .Where(r => !r.IsEveryone)
+            .Where(r => r.Name.StartsWith(currentValue, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(r => r.Name)
+            .Take(25) // Discord limit
+            .Select(r => new AutocompleteResult(
+                name: r.Name,
+                value: r.Id.ToString()
+            ))
+            .ToList();
+
+        await interaction.RespondAsync(results);
+    }
+
 }
