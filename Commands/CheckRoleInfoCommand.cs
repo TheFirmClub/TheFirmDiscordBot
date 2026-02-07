@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 
 public class CheckRoleInfoCommand
 {
-    // 🔒 Only users with these roles can use this command
     private static readonly HashSet<ulong> AllowedUserRoleIds = new()
     {
         1420512528395665569, // MET Command
@@ -28,10 +27,9 @@ public class CheckRoleInfoCommand
 
     private class RolePaginationState
     {
-        public SocketRole Role;
-        public List<SocketGuildUser> Members;
+        public SocketRole? Role;
+        public List<SocketGuildUser>? Members;
         public int Page;
-        public ulong MessageId;
         public ulong ChannelId;
     }
 
@@ -60,7 +58,7 @@ public class CheckRoleInfoCommand
             return;
         }
 
-        SocketRole role = null;
+        SocketRole? role = null;
 
         // Try parse as ID
         if (ulong.TryParse(roleInput, out ulong roleId))
@@ -135,7 +133,7 @@ public class CheckRoleInfoCommand
         }
 
         var direction = parts[2];
-        int totalPages = (state.Members.Count + PageSize - 1) / PageSize;
+        int totalPages = (state.Members!.Count + PageSize - 1) / PageSize;
 
         if (direction == "next")
             state.Page = Math.Min(state.Page + 1, totalPages - 1);
@@ -147,25 +145,24 @@ public class CheckRoleInfoCommand
 
     private async Task SendRolePage(SocketInteraction interaction, RolePaginationState state)
     {
-        int totalPages = (state.Members.Count + PageSize - 1) / PageSize;
+        int totalPages = (state.Members!.Count + PageSize - 1) / PageSize;
         var pageMembers = state.Members.Skip(state.Page * PageSize).Take(PageSize);
 
         var embed = new EmbedBuilder()
-            .WithTitle($"Role Info: {state.Role.Name}")
+            .WithTitle($"Role Info: {state.Role!.Name}")
             .WithDescription(string.Join("\n", pageMembers.Select(m => $"{m.Mention} ({m.Id})")))
             .WithFooter($"Page {state.Page + 1}/{totalPages}")
             .WithColor(Color.Green)
             .Build();
 
         var componentBuilder = new ComponentBuilder()
-            .WithButton("Previous", $"roleinfo_{state.Role.Id}_prev", disabled: state.Page == 0)
-            .WithButton("Next", $"roleinfo_{state.Role.Id}_next", disabled: state.Page == totalPages - 1);
+            .WithButton("Previous", $"roleinfo_{state.Role!.Id}_prev", disabled: state.Page == 0)
+            .WithButton("Next", $"roleinfo_{state.Role!.Id}_next", disabled: state.Page == totalPages - 1);
 
         switch (interaction)
         {
             case SocketSlashCommand slash:
-                var response = await slash.RespondAsync(embed: embed, components: componentBuilder.Build(), ephemeral: true);
-                state.MessageId = response.Id;
+                await slash.RespondAsync(embed: embed, components: componentBuilder.Build(), ephemeral: true);
                 break;
 
             case SocketMessageComponent comp:
