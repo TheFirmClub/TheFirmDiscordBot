@@ -13,8 +13,16 @@ using System.Globalization;
 public class TurfInvasionService
 {
     private readonly DiscordSocketClient _client;
-    private readonly string _connectionString;
-    private readonly Func<LogMessage, Task>? _log;
+
+    // ✅ INLINE SQL (FOR DEBUGGING ONLY)
+    private readonly string _connectionString =
+        "Server=YOUR_NEW_PASSWORD_HERE;" +
+        "Port=35666;" +
+        "Database=thefirm_qbcore;" +
+        "Uid=thefirmprod;" +
+        "Pwd=edr6BYZqmq7eud0mwm;" +
+        "CharSet=utf8mb4;" +
+        "SslMode=Preferred;";
 
     private const ulong SourceChannelId = 1468993727946166313;
 
@@ -37,21 +45,14 @@ public class TurfInvasionService
         ["LOST MC"] = 1469654367593566349,
     };
 
-    public TurfInvasionService(
-        DiscordSocketClient client,
-        string connectionString,
-        Func<LogMessage, Task>? logFunc = null)
+    public TurfInvasionService(DiscordSocketClient client)
     {
         _client = client;
-        _connectionString = connectionString;
-        _log = logFunc;
 
-        Console.WriteLine("🔥 TurfInvasionService CONSTRUCTED");
+        Console.WriteLine("🔥 TurfInvasionService STARTED");
 
-        // Attach listener immediately (LIKE YOUR WORKING SERVICE)
+        // Attach immediately
         _client.MessageReceived += OnMessageReceived;
-
-        Console.WriteLine("🔥 Turf listener ATTACHED");
     }
 
     private string Normalize(string value)
@@ -63,12 +64,17 @@ public class TurfInvasionService
     }
 
     private async Task OnMessageReceived(SocketMessage message)
-    
     {
-        Console.WriteLine($"MESSAGE RECEIVED FROM: {message.Channel.Id}");
         try
         {
+            // ⭐ GLOBAL DEBUG
+            Console.WriteLine($"MSG → Channel:{message.Channel.Id}");
+
             if (message.Channel.Id != SourceChannelId)
+                return;
+
+            // Accept bots AND webhooks
+            if (!message.Author.IsBot && !message.Author.IsWebhook)
                 return;
 
             if (message.Embeds.Count == 0)
@@ -83,57 +89,34 @@ public class TurfInvasionService
             string citizenId = ExtractCitizenId(embed);
             string activity = ExtractActivity(embed);
 
-            await _logSafe(LogSeverity.Info,
-                $"📩 Turf event detected | Zone:{zoneId} | CID:{citizenId} | Activity:{activity}");
+            Console.WriteLine($"🔥 Turf Trigger → Zone:{zoneId} CID:{citizenId}");
 
             if (zoneId == 0 || citizenId == null)
-            {
-                await _logSafe(LogSeverity.Warning,
-                    "❌ Missing zoneId or citizenId — ignoring.");
                 return;
-            }
 
             // Cooldown
             if (_zoneCooldowns.TryGetValue(zoneId, out var last))
             {
-                var diff = DateTime.UtcNow - last;
-
-                if (diff.TotalMinutes < 5)
-                {
-                    await _logSafe(LogSeverity.Warning,
-                        $"⛔ Cooldown active for zone {zoneId} ({diff.TotalSeconds:F0}s)");
+                if ((DateTime.UtcNow - last).TotalMinutes < 5)
                     return;
-                }
             }
 
             var zoneData = await GetZoneData(zoneId);
 
             if (zoneData == null)
-            {
-                await _logSafe(LogSeverity.Warning,
-                    $"❌ No zone data found for zone {zoneId}");
                 return;
-            }
 
             var (ownerRaw, label) = zoneData.Value;
 
             string owner = Normalize(ownerRaw);
             string playerGang = Normalize(await GetPlayerGang(citizenId));
 
-            await _logSafe(LogSeverity.Info,
-                $"Owner:'{owner}' vs PlayerGang:'{playerGang}'");
+            Console.WriteLine($"OWNER:{owner} vs PLAYER:{playerGang}");
 
-            // Friendly fire
+            // Friendly activity
             if (!string.IsNullOrWhiteSpace(playerGang) &&
                 owner == playerGang)
-            {
-                await _logSafe(LogSeverity.Info,
-                    "✅ Friendly activity — ignored.");
                 return;
-            }
-
-            await _logSafe(LogSeverity.Info,
-                $"🚨 ALERT TRIGGERED for {label}");
 
             _zoneCooldowns[zoneId] = DateTime.UtcNow;
 
@@ -141,15 +124,8 @@ public class TurfInvasionService
         }
         catch (Exception ex)
         {
-            await _logSafe(LogSeverity.Error,
-                $"🔥 TurfInvasionService ERROR: {ex}");
+            Console.WriteLine($"Turf ERROR: {ex}");
         }
-    }
-
-    private async Task _logSafe(LogSeverity severity, string message)
-    {
-        if (_log != null)
-            await _log.Invoke(new LogMessage(severity, "Turf", message));
     }
 
     private int ExtractZoneId(Embed embed)
@@ -157,7 +133,7 @@ public class TurfInvasionService
         foreach (var field in embed.Fields)
         {
             if (field.Name.Contains("Zone", StringComparison.OrdinalIgnoreCase)
-                && int.TryParse(field.Value, out int zone))
+                && int.TryParse(field.Value.Trim(), out int zone))
                 return zone;
         }
 
@@ -173,7 +149,7 @@ public class TurfInvasionService
 
             var match = Regex.Match(field.Value, @"\[(.*?)\]");
             if (match.Success)
-                return match.Groups[1].Value;
+                return match.Groups[1].Value.Trim();
         }
 
         return null;
@@ -223,88 +199,62 @@ public class TurfInvasionService
         if (!await reader.ReadAsync())
             return null;
 
-        string loyaltyJson =
-            reader.IsDBNull(reader.GetOrdinal("loyalityList"))
-                ? null
-                : reader.GetString(reader.GetOrdinal("loyalityList"));
+        int loyaltyIndex = reader.GetOrdinal("loyalityList");
+        int labelIndex = reader.GetOrdinal("label");
 
-        string label =
-            reader.IsDBNull(reader.GetOrdinal("label"))
-                ? "Unknown"
-                : reader.GetString(reader.GetOrdinal("label"));
+        string loyaltyJson = reader.IsDBNull(loyaltyIndex)
+            ? null
+            : reader.GetString(loyaltyIndex);
 
-        try
-        {
-            var loyalties =
-                JsonSerializer.Deserialize<List<Loyalty>>(loyaltyJson);
+        string label = reader.IsDBNull(labelIndex)
+            ? "Unknown"
+            : reader.GetString(labelIndex);
 
-            var owner = loyalties?
-                .OrderByDescending(x => x.influencePoints)
-                .FirstOrDefault()?.gangName;
+        var loyalties =
+            JsonSerializer.Deserialize<List<Loyalty>>(loyaltyJson);
 
-            return (owner, label);
-        }
-        catch
-        {
-            await _logSafe(LogSeverity.Error,
-                "❌ Failed to parse loyalty JSON.");
-            return null;
-        }
+        var owner = loyalties?
+            .OrderByDescending(x => x.influencePoints)
+            .FirstOrDefault()?.gangName;
+
+        return (owner, label);
     }
 
     private async Task SendAlert(string owner, string zoneLabel, int zoneId, string activity)
     {
         if (!_gangChannels.TryGetValue(owner, out ulong channelId))
         {
-            await _logSafe(LogSeverity.Warning,
-                $"❌ No channel mapped for gang '{owner}'");
+            Console.WriteLine($"No channel for gang {owner}");
             return;
         }
 
         if (_client.GetChannel(channelId) is not IMessageChannel channel)
         {
-            await _logSafe(LogSeverity.Error,
-                $"❌ Discord channel not found for '{owner}'");
+            Console.WriteLine($"Channel missing for {owner}");
             return;
         }
 
-        Color color =
-            activity.Contains("Graffiti", StringComparison.OrdinalIgnoreCase)
-                ? new Color(255, 200, 0)
-            : activity.Contains("Drug", StringComparison.OrdinalIgnoreCase)
-                ? new Color(255, 140, 0)
-                : Color.DarkRed;
-
         var embed = new EmbedBuilder()
             .WithTitle("🚨 Territory Activity Detected")
-            .WithColor(color)
+            .WithColor(Color.DarkRed)
             .WithDescription($"**{activity}** detected inside **{zoneLabel}**.")
             .AddField("Zone ID", zoneId, true)
             .WithCurrentTimestamp()
             .Build();
 
-        try
+        if (_gangRoles.TryGetValue(owner, out ulong roleId))
         {
-            if (_gangRoles.TryGetValue(owner, out ulong roleId))
-            {
-                await channel.SendMessageAsync(
-                    $"<@&{roleId}>",
-                    embed: embed,
-                    allowedMentions: AllowedMentions.All);
-            }
-            else
-            {
-                await channel.SendMessageAsync(embed: embed);
-            }
+            await channel.SendMessageAsync(
+                $"<@&{roleId}>",
+                embed: embed,
+                allowedMentions: AllowedMentions.All);
+        }
+        else
+        {
+            await channel.SendMessageAsync(embed: embed);
+        }
 
-            await _logSafe(LogSeverity.Info,
-                $"✅ Alert sent to '{owner}' for zone {zoneLabel}");
-        }
-        catch (Exception ex)
-        {
-            await _logSafe(LogSeverity.Error,
-                $"🔥 Failed sending Discord alert: {ex}");
-        }
+        Console.WriteLine($"ALERT SENT → {owner}");
     }
 
     private class Loyalty

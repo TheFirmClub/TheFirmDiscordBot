@@ -89,18 +89,6 @@ class Program
 
         Console.WriteLine($"DB STRING LOADED: {dbConnection != null}");
 
-        if (string.IsNullOrWhiteSpace(dbConnection))
-        {
-            Console.WriteLine("❌ DB connection string missing for TurfInvasionService");
-        }
-        else
-        {
-            _turfInvasion = new TurfInvasionService(
-                _client,
-                dbConnection,
-                Log);
-        }
-
         _commandHandler = new SlashCommandHandler(
             _config,
             _inviteTracker,
