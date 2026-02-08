@@ -14,11 +14,10 @@ public class TerritoryAlertService
     private const string ConnectionString =
         "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore;Uid=thefirmprod;Pwd=edr6BYZqmq7eud0mwm;CharSet=utf8mb4;SslMode=Preferred;";
 
-    private readonly Dictionary<int, Gang> _gangCache = new();
-    private readonly Dictionary<int, TurfZone> _turfCache = new();
-
+    // Prevent spam alerts
     private readonly ConcurrentDictionary<int, DateTime> _zoneCooldown = new();
 
+    // Gang -> Discord channel
     private readonly Dictionary<int, ulong> _gangChannels = new()
     {
         {1, 1469357015426928718},
@@ -30,29 +29,14 @@ public class TerritoryAlertService
     public TerritoryAlertService(DiscordSocketClient client)
     {
         _client = client;
-        _client.Ready += OnReady;
         _client.MessageReceived += OnMessage;
-    }
-
-    // ================= STARTUP =================
-
-    private async Task OnReady()
-    {
-        Console.WriteLine("TerritoryAlertService starting...");
-
-        await LoadGangCache();
-        await LoadTurfCache();
-
-        Console.WriteLine($"Loaded {_gangCache.Count} gangs.");
-        Console.WriteLine($"Loaded {_turfCache.Count} turf zones.");
-        Console.WriteLine("TerritoryAlertService READY.");
     }
 
     // ================= MESSAGE HANDLER =================
 
     private async Task OnMessage(SocketMessage msg)
     {
-        // 🔥 FAST FILTER — prevents CPU waste
+        // FAST FILTER
         if (msg.Channel.Id != DrugChannelId || !msg.Author.IsWebhook)
             return;
 
@@ -63,7 +47,7 @@ public class TerritoryAlertService
 
         var embed = msg.Embeds.First();
 
-        // ⭐ BUILD RAW TEXT (title + desc = future proof)
+        // Build text safely (future proof)
         var rawText = $"{embed.Title}\n{embed.Description}";
         var text = CleanDiscordMarkdown(rawText);
 
@@ -81,12 +65,12 @@ public class TerritoryAlertService
             return;
         }
 
-        // Cooldown
+        // Cooldown (3 mins per zone)
         if (_zoneCooldown.TryGetValue(zoneId, out var last))
         {
             if ((DateTime.UtcNow - last).TotalMinutes < 3)
             {
-                Console.WriteLine("Cooldown active — skipping alert.");
+                Console.WriteLine("Cooldown active — skipping.");
                 return;
             }
         }
@@ -99,11 +83,10 @@ public class TerritoryAlertService
             return;
         }
 
-        if (!_turfCache.TryGetValue(zoneId, out var turf))
-        {
-            Console.WriteLine("❌ Turf zone not found.");
+        var turf = await GetTurfZone(zoneId);
+
+        if (turf == null)
             return;
-        }
 
         var owner = turf.LoyalityList
             .OrderByDescending(x => x.InfluencePoints)
@@ -126,7 +109,7 @@ public class TerritoryAlertService
         await SendAlert(turf, owner, playerGang, identifier);
     }
 
-    // ================= CLEANER =================
+    // ================= CLEAN MARKDOWN =================
 
     private string CleanDiscordMarkdown(string text)
     {
@@ -136,7 +119,7 @@ public class TerritoryAlertService
                    .Replace("`", "");
     }
 
-    // ================= DATABASE =================
+    // ================= PLAYER GANG =================
 
     private async Task<Gang?> GetPlayerGang(string identifier)
     {
@@ -159,57 +142,44 @@ public class TerritoryAlertService
 
         return new Gang
         {
-            Id = reader.GetInt32("id"),
-            Label = reader.GetString("label")
+            Id = Convert.ToInt32(reader["id"]),
+            Label = reader["label"].ToString()!
         };
     }
 
-    private async Task LoadGangCache()
+    // ================= TURF DIRECT QUERY =================
+
+    private async Task<TurfZone?> GetTurfZone(int zoneId)
     {
         await using var conn = new MySqlConnection(ConnectionString);
         await conn.OpenAsync();
 
-        var cmd = new MySqlCommand("SELECT id, label FROM opcrime_orgs;", conn);
+        var cmd = new MySqlCommand(@"
+            SELECT `index`, label, loyalityList
+            FROM opcrime_turfzones
+            WHERE `index` = @zone
+            LIMIT 1;", conn);
+
+        cmd.Parameters.AddWithValue("@zone", zoneId);
 
         await using var reader = await cmd.ExecuteReaderAsync();
 
-        while (await reader.ReadAsync())
+        if (!reader.Read())
         {
-            _gangCache[reader.GetInt32("id")] = new Gang
-            {
-                Id = reader.GetInt32("id"),
-                Label = reader.GetString("label")
-            };
+            Console.WriteLine($"❌ Turf {zoneId} not found in DB.");
+            return null;
         }
-    }
 
-    private async Task LoadTurfCache()
-    {
-        await using var conn = new MySqlConnection(ConnectionString);
-        await conn.OpenAsync();
+        Console.WriteLine($"Turf {zoneId} loaded from DB.");
 
-        var cmd = new MySqlCommand("SELECT `index`, label, loyalityList FROM opcrime_turfzones;", conn);
-
-        await using var reader = await cmd.ExecuteReaderAsync();
-
-        while (await reader.ReadAsync())
+        return new TurfZone
         {
-            var zone = new TurfZone
-            {
-                Index = reader.GetInt32("index"),
-                Label = reader.GetString("label")
-            };
-
-            var loyaltyJson = reader.GetString("loyalityList");
-
-            zone.LoyalityList =
-                JsonSerializer.Deserialize<List<Loyalty>>(loyaltyJson)
-                ?? new List<Loyalty>();
-
-            _turfCache[zone.Index] = zone;
-            Console.WriteLine($"Loaded turf index: {zone.Index}");
-
-        }
+            Index = Convert.ToInt32(reader["index"]),
+            Label = reader["label"].ToString()!,
+            LoyalityList = JsonSerializer.Deserialize<List<Loyalty>>(
+                reader["loyalityList"].ToString()!
+            ) ?? new List<Loyalty>()
+        };
     }
 
     // ================= ALERT =================
@@ -230,7 +200,7 @@ public class TerritoryAlertService
             return;
         }
 
-        Console.WriteLine($"Sending alert to {owner.GangName}");
+        Console.WriteLine($"🚨 Sending alert to {owner.GangName}");
 
         var embed = new EmbedBuilder()
             .WithColor(Color.DarkRed)
