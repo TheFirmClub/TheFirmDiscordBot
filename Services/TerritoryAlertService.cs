@@ -74,7 +74,7 @@ public class TerritoryAlertService
 
         if (_cooldowns.TryGetValue(cooldownKey, out var last))
         {
-            if ((DateTime.UtcNow - last).TotalMinutes < 10)
+            if ((DateTime.UtcNow - last).TotalMinutes < 30)
             {
                 Console.WriteLine("Cooldown active — skipping.");
                 return;
