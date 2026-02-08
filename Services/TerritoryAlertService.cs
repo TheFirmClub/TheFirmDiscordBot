@@ -186,6 +186,8 @@ public class TerritoryAlertService
 
     private async Task SendAlert(TurfZone turf, Loyalty owner, Gang intruder, string identifier)
     {
+        Console.WriteLine($"OWNER JOB ID: {owner.JobId}");
+
         if (!_gangChannels.TryGetValue(owner.JobId, out var channelId))
         {
             Console.WriteLine("❌ No gang channel configured.");
