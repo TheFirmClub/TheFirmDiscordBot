@@ -6,7 +6,6 @@ using System.Text.RegularExpressions;
 using System.Collections.Concurrent;
 using System.Text.Json.Serialization;
 
-
 public class TerritoryAlertService
 {
     private readonly DiscordSocketClient _client;
@@ -16,10 +15,8 @@ public class TerritoryAlertService
     private const string ConnectionString =
         "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore;Uid=thefirmprod;Pwd=edr6BYZqmq7eud0mwm;CharSet=utf8mb4;SslMode=Preferred;";
 
-    // Prevent spam alerts
-    private readonly ConcurrentDictionary<int, DateTime> _zoneCooldown = new();
+    private readonly ConcurrentDictionary<string, DateTime> _cooldowns = new();
 
-    // Gang -> Discord channel
     private readonly Dictionary<int, ulong> _gangChannels = new()
     {
         {1, 1469357015426928718},
@@ -38,7 +35,6 @@ public class TerritoryAlertService
 
     private async Task OnMessage(SocketMessage msg)
     {
-        // FAST FILTER
         if (msg.Channel.Id != DrugChannelId || !msg.Author.IsWebhook)
             return;
 
@@ -49,17 +45,11 @@ public class TerritoryAlertService
 
         var embed = msg.Embeds.First();
 
-        // Build text safely (future proof)
         var rawText = $"{embed.Title}\n{embed.Description}";
         var text = CleanDiscordMarkdown(rawText);
 
-        Console.WriteLine(text);
-
         int zoneId = ExtractZone(text);
         string? identifier = ExtractIdentifier(text);
-
-        Console.WriteLine($"ZONE: {zoneId}");
-        Console.WriteLine($"IDENTIFIER: {identifier}");
 
         if (zoneId == -1 || identifier == null)
         {
@@ -67,22 +57,28 @@ public class TerritoryAlertService
             return;
         }
 
-        // Cooldown (3 mins per zone)
-        if (_zoneCooldown.TryGetValue(zoneId, out var last))
-        {
-            if ((DateTime.UtcNow - last).TotalMinutes < 3)
-            {
-                Console.WriteLine("Cooldown active — skipping.");
-                return;
-            }
-        }
+        Console.WriteLine($"ZONE: {zoneId}");
+        Console.WriteLine($"IDENTIFIER: {identifier}");
 
+        // ✅ FIRST — load gang
         var playerGang = await GetPlayerGang(identifier);
 
         if (playerGang == null)
         {
             Console.WriteLine("❌ Player gang not found.");
             return;
+        }
+
+        // ✅ NOW cooldown is safe
+        var cooldownKey = $"zone:{zoneId}|gang:{playerGang.Id}";
+
+        if (_cooldowns.TryGetValue(cooldownKey, out var last))
+        {
+            if ((DateTime.UtcNow - last).TotalMinutes < 10)
+            {
+                Console.WriteLine("Cooldown active — skipping.");
+                return;
+            }
         }
 
         var turf = await GetTurfZone(zoneId);
@@ -106,9 +102,9 @@ public class TerritoryAlertService
             return;
         }
 
-        _zoneCooldown[zoneId] = DateTime.UtcNow;
+        _cooldowns[cooldownKey] = DateTime.UtcNow;
 
-        await SendAlert(turf, owner, playerGang, identifier);
+        await SendAlert(turf, owner, playerGang);
     }
 
     // ================= CLEAN MARKDOWN =================
@@ -149,7 +145,7 @@ public class TerritoryAlertService
         };
     }
 
-    // ================= TURF DIRECT QUERY =================
+    // ================= TURF =================
 
     private async Task<TurfZone?> GetTurfZone(int zoneId)
     {
@@ -168,31 +164,30 @@ public class TerritoryAlertService
 
         if (!reader.Read())
         {
-            Console.WriteLine($"❌ Turf {zoneId} not found in DB.");
+            Console.WriteLine($"❌ Turf {zoneId} not found.");
             return null;
         }
-
-        Console.WriteLine($"Turf {zoneId} loaded from DB.");
 
         return new TurfZone
         {
             Index = Convert.ToInt32(reader["index"]),
             Label = reader["label"].ToString()!,
             LoyalityList = JsonSerializer.Deserialize<List<Loyalty>>(
-                reader["loyalityList"].ToString()!
-            ) ?? new List<Loyalty>()
+                reader["loyalityList"].ToString()!,
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                }) ?? new List<Loyalty>()
         };
     }
 
     // ================= ALERT =================
 
-    private async Task SendAlert(TurfZone turf, Loyalty owner, Gang intruder, string identifier)
+    private async Task SendAlert(TurfZone turf, Loyalty owner, Gang intruder)
     {
-        Console.WriteLine($"OWNER JOB ID: {owner.JobId}");
-
         if (!_gangChannels.TryGetValue(owner.JobId, out var channelId))
         {
-            Console.WriteLine("❌ No gang channel configured.");
+            Console.WriteLine($"❌ No channel mapped for gang {owner.JobId}");
             return;
         }
 
@@ -204,15 +199,14 @@ public class TerritoryAlertService
             return;
         }
 
-        Console.WriteLine($"🚨 Sending alert to {owner.GangName}");
+        Console.WriteLine($"🚨 Alert sent to {owner.GangName}");
 
         var embed = new EmbedBuilder()
             .WithColor(Color.DarkRed)
-            .WithTitle("⚠️ Territory Violation Detected")
+            .WithTitle("⚠️ Hostile Territory Activity")
             .AddField("Zone", turf.Label, true)
             .AddField("Owner", owner.GangName, true)
             .AddField("Intruding Gang", intruder.Label, true)
-            .AddField("Player Identifier", identifier, false)
             .WithFooter("Gang Intelligence System")
             .WithCurrentTimestamp()
             .Build();
