@@ -76,8 +76,10 @@ public class TurfInvasionService
             if (message.Channel.Id != SourceChannelId)
                 return;
 
-            if (!message.Author.IsBot)
+            // Ignore real humans only
+            if (!message.Author.IsBot && !message.Author.IsWebhook)
                 return;
+
 
             if (message.Embeds.Count == 0)
                 return;
