@@ -64,6 +64,11 @@ class Program
             LogLevel = LogSeverity.Info
         });
         
+        // ✅ START TURF SERVICE
+        _turfInvasion = new TurfInvasionService(_client);
+
+        Console.WriteLine("✅ TurfInvasionService CREATED");
+        
         // ⭐ ADD THIS RIGHT HERE
         _client.MessageReceived += (msg) =>
         {

@@ -16,7 +16,7 @@ public class TurfInvasionService
 
     // ✅ INLINE SQL (FOR DEBUGGING ONLY)
     private readonly string _connectionString =
-        "Server=YOUR_NEW_PASSWORD_HERE;" +
+        "Server=nw26472-001.eu.clouddb.ovh.net;" +
         "Port=35666;" +
         "Database=thefirm_qbcore;" +
         "Uid=thefirmprod;" +
