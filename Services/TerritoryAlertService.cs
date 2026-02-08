@@ -58,7 +58,15 @@ public class TerritoryAlertService
     // ================= MESSAGE HANDLER =================
 
     private async Task OnMessage(SocketMessage msg)
+    
     {
+        Console.WriteLine("Territory service saw a message.");
+        Console.WriteLine($"Channel: {msg.Channel.Id}");
+        Console.WriteLine($"Author: {msg.Author}");
+        Console.WriteLine($"IsWebhook: {msg.Author.IsWebhook}");
+        Console.WriteLine($"Content: {msg.Content}");
+        Console.WriteLine($"Embeds Count: {msg.Embeds.Count}");
+
         if (msg.Channel.Id != DrugChannelId)
             return;
 
