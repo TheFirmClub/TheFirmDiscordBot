@@ -204,11 +204,12 @@ public class TerritoryAlertService
         var embed = new EmbedBuilder()
             .WithColor(Color.DarkRed)
             .WithTitle("⚠️ Hostile Territory Activity")
-            .AddField("Zone", turf.Label, true)
-            .AddField("Owner", owner.GangName, true)
-            .AddField("Intruding Gang", intruder.Label, true)
+
+            // ✅ ONLY THESE FIELDS
+            .AddField("📍 Zone", turf.Label, true)
+            .AddField("🕒 Time", DateTime.Now.ToString("HH:mm:ss"), false)
+
             .WithFooter("Gang Intelligence System")
-            .WithCurrentTimestamp()
             .Build();
 
         await channel.SendMessageAsync(embed: embed);
