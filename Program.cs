@@ -78,6 +78,21 @@ class Program
         _changelogTracker = new ChangelogTrackerService(_client!);
         
         _evidenceRelay = new EvidenceRelayService(_client);
+        
+        // ✅ Turf invasion detection
+        string? dbConnection = _config.GetConnectionString("Default");
+
+        if (string.IsNullOrWhiteSpace(dbConnection))
+        {
+            Console.WriteLine("❌ DB connection string missing for TurfInvasionService");
+        }
+        else
+        {
+            _turfInvasion = new TurfInvasionService(
+                _client,
+                dbConnection,
+                Log); // VERY IMPORTANT — pass your logger
+        }
 
         _commandHandler = new SlashCommandHandler(
             _config,
