@@ -76,6 +76,16 @@ public class TerritoryAlertService
             return;
 
         var embed = msg.Embeds.First();
+
+        Console.WriteLine($"TITLE: {embed.Title}");
+        Console.WriteLine($"DESC: {embed.Description}");
+
+        foreach (var field in embed.Fields)
+        {
+            Console.WriteLine($"FIELD -> {field.Name} = {field.Value}");
+        }
+
+        
         var text = embed.Description ?? embed.Title ?? "";
 
         if (!text.Contains("DRUG SOLD"))
