@@ -66,6 +66,7 @@ public class TerritoryAlertService
         Console.WriteLine($"IsWebhook: {msg.Author.IsWebhook}");
         Console.WriteLine($"Content: {msg.Content}");
         Console.WriteLine($"Embeds Count: {msg.Embeds.Count}");
+        
 
         if (msg.Channel.Id != DrugChannelId)
             return;
