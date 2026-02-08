@@ -207,6 +207,8 @@ public class TerritoryAlertService
                 ?? new List<Loyalty>();
 
             _turfCache[zone.Index] = zone;
+            Console.WriteLine($"Loaded turf index: {zone.Index}");
+
         }
     }
 
