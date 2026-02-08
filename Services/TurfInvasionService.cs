@@ -46,10 +46,12 @@ public class TurfInvasionService
         _connectionString = connectionString;
         _log = logFunc;
 
-        Console.WriteLine("✅ TurfInvasionService CONSTRUCTED");
+        Console.WriteLine("🔥 TurfInvasionService CONSTRUCTED");
 
-        // DO NOT hook message here
-        _client.Ready += OnReady;
+        // Attach listener immediately (LIKE YOUR WORKING SERVICE)
+        _client.MessageReceived += OnMessageReceived;
+
+        Console.WriteLine("🔥 Turf listener ATTACHED");
     }
 
     private string Normalize(string value)
@@ -59,27 +61,15 @@ public class TurfInvasionService
             .Replace("\u200B", "")
             .ToUpperInvariant();
     }
-    
-    private async Task OnReady()
-    {
-        _client.MessageReceived += OnMessageReceived;
-
-        await _logSafe(
-            LogSeverity.Info,
-            $"🔥 TurfInasionService ACTIVE — listening to channel {SourceChannelId}");
-    }
 
     private async Task OnMessageReceived(SocketMessage message)
+    
     {
+        Console.WriteLine($"MESSAGE RECEIVED FROM: {message.Channel.Id}");
         try
         {
             if (message.Channel.Id != SourceChannelId)
                 return;
-
-            // Ignore real humans only
-            if (!message.Author.IsBot && !message.Author.IsWebhook)
-                return;
-
 
             if (message.Embeds.Count == 0)
                 return;

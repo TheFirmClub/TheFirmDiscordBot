@@ -63,6 +63,13 @@ class Program
                              GatewayIntents.GuildMessageReactions,
             LogLevel = LogSeverity.Info
         });
+        
+        // ⭐ ADD THIS RIGHT HERE
+        _client.MessageReceived += (msg) =>
+        {
+            Console.WriteLine($"GLOBAL MESSAGE EVENT → Channel:{msg.Channel.Id} Author:{msg.Author}");
+            return Task.CompletedTask;
+        };
 
         _client.Log += Log;
         _client.Ready += async () => await ReadyAsync(guildId);
