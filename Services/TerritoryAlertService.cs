@@ -4,6 +4,8 @@ using MySqlConnector;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Collections.Concurrent;
+using System.Text.Json.Serialization;
+
 
 public class TerritoryAlertService
 {
@@ -249,8 +251,13 @@ public class TerritoryAlertService
 
     private class Loyalty
     {
+        [JsonPropertyName("jobId")]
         public int JobId { get; set; }
+
+        [JsonPropertyName("gangName")]
         public string GangName { get; set; } = "";
+
+        [JsonPropertyName("influencePoints")]
         public int InfluencePoints { get; set; }
     }
 }
