@@ -46,13 +46,10 @@ public class TurfInvasionService
         _connectionString = connectionString;
         _log = logFunc;
 
-        _client.MessageReceived += OnMessageReceived;
+        Console.WriteLine("✅ TurfInvasionService CONSTRUCTED");
 
-        _ = _log?.Invoke(new LogMessage(
-            LogSeverity.Info,
-            "Turf",
-            $"✅ TurfInvasionService started. Listening to channel {SourceChannelId}"
-        ));
+        // DO NOT hook message here
+        _client.Ready += OnReady;
     }
 
     private string Normalize(string value)
@@ -61,6 +58,15 @@ public class TurfInvasionService
             .Trim()
             .Replace("\u200B", "")
             .ToUpperInvariant();
+    }
+    
+    private async Task OnReady()
+    {
+        _client.MessageReceived += OnMessageReceived;
+
+        await _logSafe(
+            LogSeverity.Info,
+            $"🔥 TurfInasionService ACTIVE — listening to channel {SourceChannelId}");
     }
 
     private async Task OnMessageReceived(SocketMessage message)

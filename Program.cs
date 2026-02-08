@@ -77,10 +77,10 @@ class Program
         // Changelog tracker (listens in changelog channel and posts stats)
         _changelogTracker = new ChangelogTrackerService(_client!);
         
-        _evidenceRelay = new EvidenceRelayService(_client);
-        
         // ✅ Turf invasion detection
         string? dbConnection = _config.GetConnectionString("Default");
+
+        Console.WriteLine($"DB STRING LOADED: {dbConnection != null}");
 
         if (string.IsNullOrWhiteSpace(dbConnection))
         {
@@ -91,7 +91,7 @@ class Program
             _turfInvasion = new TurfInvasionService(
                 _client,
                 dbConnection,
-                Log); // VERY IMPORTANT — pass your logger
+                Log);
         }
 
         _commandHandler = new SlashCommandHandler(
