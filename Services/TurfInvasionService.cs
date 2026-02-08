@@ -17,16 +17,30 @@ public class TurfInvasionService
 
     private const ulong SourceChannelId = 1468993727946166313;
 
-    // Cooldown per zone (prevents spam during gang wars)
+    // Prevent spam per zone
     private readonly ConcurrentDictionary<int, DateTime> _zoneCooldowns = new();
 
+    // Prevent duplicate gateway events
+    private readonly ConcurrentDictionary<ulong, bool> _processedMessages = new();
+
+    // Gang -> Channel
     private readonly Dictionary<string, ulong> _gangChannels =
         new(StringComparer.OrdinalIgnoreCase)
     {
         ["E22"] = 1467204788138545264,
-        ["Ferarri Crime Family"] = 1466582372299575326,
-        ["GCS"] = 1469357015426928718,
+        ["Ferrari Crime Family"] = 1466582372299575326,
+        ["GSC"] = 1469357015426928718,
         ["LOST MC"] = 1469655420506341590,
+    };
+
+    // Gang -> Role
+    private readonly Dictionary<string, ulong> _gangRoles =
+        new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["E22"] = 1468016850120999166,
+        ["Ferrari Crime Family"] = 1466582702789754950,
+        ["GSC"] = 1469355919510077470,
+        ["LOST MC"] = 1469654367593566349,
     };
 
     public TurfInvasionService(DiscordSocketClient client, string connectionString)
@@ -44,6 +58,10 @@ public class TurfInvasionService
             if (message.Channel.Id != SourceChannelId) return;
             if (!message.Author.IsBot) return;
             if (message.Embeds.Count == 0) return;
+
+            // Prevent duplicate processing
+            if (!_processedMessages.TryAdd(message.Id, true))
+                return;
 
             var embed = message.Embeds.First();
 
@@ -68,7 +86,7 @@ public class TurfInvasionService
 
             string playerGang = await GetPlayerGang(citizenId);
 
-            // Ignore if same gang
+            // Ignore friendly activity
             if (playerGang != null &&
                 playerGang.Equals(owner, StringComparison.OrdinalIgnoreCase))
                 return;
@@ -165,7 +183,7 @@ public class TurfInvasionService
             ? "Unknown"
             : reader.GetString(labelIndex);
 
-        List<Loyalty>? loyalties = null;
+        List<Loyalty>? loyalties;
 
         try
         {
@@ -198,9 +216,9 @@ public class TurfInvasionService
         // Threat color logic
         Color color =
             activity.Contains("Graffiti", StringComparison.OrdinalIgnoreCase)
-                ? new Color(255, 200, 0)   // lighter warning
+                ? new Color(255, 200, 0)
             : activity.Contains("Drug", StringComparison.OrdinalIgnoreCase)
-                ? new Color(255, 140, 0)   // stronger warning
+                ? new Color(255, 140, 0)
                 : Color.DarkRed;
 
         var embed = new EmbedBuilder()
@@ -213,7 +231,20 @@ public class TurfInvasionService
             .WithCurrentTimestamp()
             .Build();
 
-        await channel.SendMessageAsync("@everyone", embed: embed);
+        // Role ping
+        if (_gangRoles.TryGetValue(owner, out ulong roleId))
+        {
+            await channel.SendMessageAsync(
+                text: $"<@&{roleId}>",
+                embed: embed,
+                allowedMentions: AllowedMentions.All
+            );
+        }
+        else
+        {
+            // fallback if role missing
+            await channel.SendMessageAsync(embed: embed);
+        }
     }
 
     private class Loyalty
