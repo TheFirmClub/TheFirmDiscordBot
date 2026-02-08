@@ -29,6 +29,8 @@ class Program
     
     private EvidenceRelayService? _evidenceRelay;
     
+    private TurfInvasionService? _turfInvasion;
+    
     private VoiceModLogger? _voiceLogger;
 
     // ✅ LOA command integration
