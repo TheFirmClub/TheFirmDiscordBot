@@ -17,28 +17,21 @@ public class TurfInvasionService
 
     private const ulong SourceChannelId = 1468993727946166313;
 
-    // Prevent spam per zone
     private readonly ConcurrentDictionary<int, DateTime> _zoneCooldowns = new();
-
-    // Prevent duplicate gateway events
     private readonly ConcurrentDictionary<ulong, bool> _processedMessages = new();
 
-    // Gang -> Channel
-    private readonly Dictionary<string, ulong> _gangChannels =
-        new(StringComparer.OrdinalIgnoreCase)
+    private readonly Dictionary<string, ulong> _gangChannels = new()
     {
         ["E22"] = 1467204788138545264,
-        ["Ferrari Crime Family"] = 1466582372299575326,
+        ["FERRARI CRIME FAMILY"] = 1466582372299575326,
         ["GSC"] = 1469357015426928718,
         ["LOST MC"] = 1469655420506341590,
     };
 
-    // Gang -> Role
-    private readonly Dictionary<string, ulong> _gangRoles =
-        new(StringComparer.OrdinalIgnoreCase)
+    private readonly Dictionary<string, ulong> _gangRoles = new()
     {
         ["E22"] = 1468016850120999166,
-        ["Ferrari Crime Family"] = 1466582702789754950,
+        ["FERRARI CRIME FAMILY"] = 1466582702789754950,
         ["GSC"] = 1469355919510077470,
         ["LOST MC"] = 1469654367593566349,
     };
@@ -48,20 +41,39 @@ public class TurfInvasionService
         _client = client;
         _connectionString = connectionString;
 
+        Console.WriteLine("✅ TurfInvasionService initialized");
+
         _client.MessageReceived += OnMessageReceived;
+    }
+
+    private string Normalize(string value)
+    {
+        return value?
+            .Trim()
+            .Replace("\u200B", "") // kills zero-width spaces
+            .ToUpperInvariant();
     }
 
     private async Task OnMessageReceived(SocketMessage message)
     {
         try
         {
-            if (message.Channel.Id != SourceChannelId) return;
-            if (!message.Author.IsBot) return;
-            if (message.Embeds.Count == 0) return;
+            Console.WriteLine("📩 Message received");
 
-            // Prevent duplicate processing
-            if (!_processedMessages.TryAdd(message.Id, true))
+            if (message.Channel.Id != SourceChannelId)
                 return;
+
+            if (!message.Author.IsBot)
+                return;
+
+            if (message.Embeds.Count == 0)
+                return;
+
+            if (!_processedMessages.TryAdd(message.Id, true))
+            {
+                Console.WriteLine("⚠️ Duplicate message ignored.");
+                return;
+            }
 
             var embed = message.Embeds.First();
 
@@ -69,27 +81,58 @@ public class TurfInvasionService
             string citizenId = ExtractCitizenId(embed);
             string activity = ExtractActivity(embed);
 
-            if (zoneId == 0 || citizenId == null)
-                return;
+            Console.WriteLine($"ZONE: {zoneId}");
+            Console.WriteLine($"CitizenID: {citizenId}");
+            Console.WriteLine($"Activity: {activity}");
 
-            // Cooldown check (5 minutes recommended)
+            if (zoneId == 0 || citizenId == null)
+            {
+                Console.WriteLine("❌ Missing zone or citizenId.");
+                return;
+            }
+
+            // Cooldown check
             if (_zoneCooldowns.TryGetValue(zoneId, out var last))
             {
-                if ((DateTime.UtcNow - last).TotalMinutes < 5)
+                var diff = DateTime.UtcNow - last;
+
+                if (diff.TotalMinutes < 1)
+                {
+                    Console.WriteLine($"⛔ Cooldown active ({diff.TotalSeconds:F0}s ago)");
                     return;
+                }
             }
 
             var zoneData = await GetZoneData(zoneId);
-            if (zoneData == null) return;
 
-            var (owner, label) = zoneData.Value;
-
-            string playerGang = await GetPlayerGang(citizenId);
-
-            // Ignore friendly activity
-            if (playerGang != null &&
-                playerGang.Equals(owner, StringComparison.OrdinalIgnoreCase))
+            if (zoneData == null)
+            {
+                Console.WriteLine("❌ Zone data returned null.");
                 return;
+            }
+
+            var (ownerRaw, label) = zoneData.Value;
+
+            string owner = Normalize(ownerRaw);
+
+            Console.WriteLine($"Owner RAW:'{ownerRaw}' Length:{ownerRaw?.Length}");
+            Console.WriteLine($"Owner NORMALIZED:'{owner}'");
+
+            string playerGangRaw = await GetPlayerGang(citizenId);
+            string playerGang = Normalize(playerGangRaw);
+
+            Console.WriteLine($"PlayerGang RAW:'{playerGangRaw}'");
+            Console.WriteLine($"PlayerGang NORMALIZED:'{playerGang}'");
+
+            // Friendly fire check
+            if (!string.IsNullOrWhiteSpace(playerGang) &&
+                playerGang == owner)
+            {
+                Console.WriteLine("✅ Friendly activity detected — ignoring.");
+                return;
+            }
+
+            Console.WriteLine("🚨 ALERT TRIGGERED");
 
             _zoneCooldowns[zoneId] = DateTime.UtcNow;
 
@@ -97,7 +140,7 @@ public class TurfInvasionService
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[TurfInvasionService] Error: {ex}");
+            Console.WriteLine($"🔥 TurfInvasionService ERROR: {ex}");
         }
     }
 
@@ -191,7 +234,7 @@ public class TurfInvasionService
         }
         catch
         {
-            Console.WriteLine("Failed to parse loyalty JSON.");
+            Console.WriteLine("❌ Failed to parse loyalty JSON.");
             return null;
         }
 
@@ -199,21 +242,25 @@ public class TurfInvasionService
             .OrderByDescending(x => x.influencePoints)
             .FirstOrDefault()?.gangName;
 
-        if (owner == null)
-            return null;
-
         return (owner, label);
     }
 
     private async Task SendAlert(string owner, string zoneLabel, int zoneId, string activity)
     {
+        Console.WriteLine($"Sending alert to gang: '{owner}'");
+
         if (!_gangChannels.TryGetValue(owner, out ulong channelId))
+        {
+            Console.WriteLine($"❌ No channel mapped for gang '{owner}'");
             return;
+        }
 
         if (_client.GetChannel(channelId) is not IMessageChannel channel)
+        {
+            Console.WriteLine("❌ Channel not found.");
             return;
+        }
 
-        // Threat color logic
         Color color =
             activity.Contains("Graffiti", StringComparison.OrdinalIgnoreCase)
                 ? new Color(255, 200, 0)
@@ -227,23 +274,32 @@ public class TurfInvasionService
             .WithDescription($"**{activity}** detected inside **{zoneLabel}**.")
             .AddField("Zone ID", zoneId, true)
             .AddField("Activity", activity, true)
-            .WithFooter("Secure your territory immediately.")
             .WithCurrentTimestamp()
             .Build();
 
-        // Role ping
-        if (_gangRoles.TryGetValue(owner, out ulong roleId))
+        try
         {
-            await channel.SendMessageAsync(
-                text: $"<@&{roleId}>",
-                embed: embed,
-                allowedMentions: AllowedMentions.All
-            );
+            if (_gangRoles.TryGetValue(owner, out ulong roleId))
+            {
+                Console.WriteLine($"Pinging role {roleId}");
+
+                await channel.SendMessageAsync(
+                    text: $"<@&{roleId}>",
+                    embed: embed,
+                    allowedMentions: AllowedMentions.All
+                );
+            }
+            else
+            {
+                Console.WriteLine("⚠️ No role mapped — sending embed only.");
+                await channel.SendMessageAsync(embed: embed);
+            }
+
+            Console.WriteLine("✅ Alert sent successfully.");
         }
-        else
+        catch (Exception ex)
         {
-            // fallback if role missing
-            await channel.SendMessageAsync(embed: embed);
+            Console.WriteLine($"🔥 Failed to send alert: {ex}");
         }
     }
 
