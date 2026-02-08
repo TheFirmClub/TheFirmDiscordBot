@@ -9,29 +9,22 @@ public class TerritoryAlertService
 {
     private readonly DiscordSocketClient _client;
 
-    // LISTEN HERE
     private const ulong DrugChannelId = 1468993727946166313UL;
 
-    // ⚠️ TEST DB ONLY — rotate before production
     private const string ConnectionString =
         "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore;Uid=thefirmprod;Pwd=edr6BYZqmq7eud0mwm;CharSet=utf8mb4;SslMode=Preferred;";
 
-    // ===== CACHES =====
     private readonly Dictionary<int, Gang> _gangCache = new();
     private readonly Dictionary<int, TurfZone> _turfCache = new();
 
-    // Prevent spam alerts
     private readonly ConcurrentDictionary<int, DateTime> _zoneCooldown = new();
 
-    // Map gang -> discord channel
-    // CHANGE THESE
     private readonly Dictionary<int, ulong> _gangChannels = new()
     {
-        {1, 1469357015426928718}, // GSC channel
-        {2, 1466582372299575326},  // Ferrari channel
-        {3, 1467204788138545264},  // E22 channel
-        {4, 1469655420506341590},  // LostMC channel
-        
+        {1, 1469357015426928718},
+        {2, 1466582372299575326},
+        {3, 1467204788138545264},
+        {4, 1469655420506341590},
     };
 
     public TerritoryAlertService(DiscordSocketClient client)
@@ -58,73 +51,89 @@ public class TerritoryAlertService
     // ================= MESSAGE HANDLER =================
 
     private async Task OnMessage(SocketMessage msg)
-    
     {
-        Console.WriteLine("Territory service saw a message.");
-        Console.WriteLine($"Channel: {msg.Channel.Id}");
-        Console.WriteLine($"Author: {msg.Author}");
-        Console.WriteLine($"IsWebhook: {msg.Author.IsWebhook}");
-        Console.WriteLine($"Content: {msg.Content}");
-        Console.WriteLine($"Embeds Count: {msg.Embeds.Count}");
-        
-
-        if (msg.Channel.Id != DrugChannelId)
+        // 🔥 FAST FILTER — prevents CPU waste
+        if (msg.Channel.Id != DrugChannelId || !msg.Author.IsWebhook)
             return;
-        Console.WriteLine("🔥 DRUG CHANNEL HIT 🔥");
 
         if (msg.Embeds.Count == 0)
             return;
 
+        Console.WriteLine("🔥 DRUG SALE DETECTED");
+
         var embed = msg.Embeds.First();
 
-        Console.WriteLine($"TITLE: {embed.Title}");
-        Console.WriteLine($"DESC: {embed.Description}");
+        // ⭐ BUILD RAW TEXT (title + desc = future proof)
+        var rawText = $"{embed.Title}\n{embed.Description}";
+        var text = CleanDiscordMarkdown(rawText);
 
-        foreach (var field in embed.Fields)
-        {
-            Console.WriteLine($"FIELD -> {field.Name} = {field.Value}");
-        }
-
-        
-        var text = embed.Description ?? embed.Title ?? "";
-
-        if (!text.Contains("DRUG SOLD"))
-            return;
+        Console.WriteLine(text);
 
         int zoneId = ExtractZone(text);
         string? identifier = ExtractIdentifier(text);
 
-        if (zoneId == -1 || identifier == null)
-            return;
+        Console.WriteLine($"ZONE: {zoneId}");
+        Console.WriteLine($"IDENTIFIER: {identifier}");
 
-        // Cooldown (3 minutes per zone)
+        if (zoneId == -1 || identifier == null)
+        {
+            Console.WriteLine("❌ Failed to parse embed.");
+            return;
+        }
+
+        // Cooldown
         if (_zoneCooldown.TryGetValue(zoneId, out var last))
         {
             if ((DateTime.UtcNow - last).TotalMinutes < 3)
+            {
+                Console.WriteLine("Cooldown active — skipping alert.");
                 return;
+            }
         }
 
         var playerGang = await GetPlayerGang(identifier);
+
         if (playerGang == null)
+        {
+            Console.WriteLine("❌ Player gang not found.");
             return;
+        }
 
         if (!_turfCache.TryGetValue(zoneId, out var turf))
+        {
+            Console.WriteLine("❌ Turf zone not found.");
             return;
+        }
 
         var owner = turf.LoyalityList
             .OrderByDescending(x => x.InfluencePoints)
             .FirstOrDefault();
 
         if (owner == null)
+        {
+            Console.WriteLine("❌ Turf owner not found.");
             return;
+        }
 
-        // Same gang -> allowed
         if (owner.JobId == playerGang.Id)
+        {
+            Console.WriteLine("Selling inside own turf — ignoring.");
             return;
+        }
 
         _zoneCooldown[zoneId] = DateTime.UtcNow;
 
         await SendAlert(turf, owner, playerGang, identifier);
+    }
+
+    // ================= CLEANER =================
+
+    private string CleanDiscordMarkdown(string text)
+    {
+        return text.Replace("**", "")
+                   .Replace("__", "")
+                   .Replace("*", "")
+                   .Replace("`", "");
     }
 
     // ================= DATABASE =================
@@ -166,13 +175,11 @@ public class TerritoryAlertService
 
         while (await reader.ReadAsync())
         {
-            var gang = new Gang
+            _gangCache[reader.GetInt32("id")] = new Gang
             {
                 Id = reader.GetInt32("id"),
                 Label = reader.GetString("label")
             };
-
-            _gangCache[gang.Id] = gang;
         }
     }
 
@@ -208,10 +215,20 @@ public class TerritoryAlertService
     private async Task SendAlert(TurfZone turf, Loyalty owner, Gang intruder, string identifier)
     {
         if (!_gangChannels.TryGetValue(owner.JobId, out var channelId))
+        {
+            Console.WriteLine("❌ No gang channel configured.");
             return;
+        }
 
         var channel = _client.GetChannel(channelId) as IMessageChannel;
-        if (channel == null) return;
+
+        if (channel == null)
+        {
+            Console.WriteLine("❌ Gang channel not found.");
+            return;
+        }
+
+        Console.WriteLine($"Sending alert to {owner.GangName}");
 
         var embed = new EmbedBuilder()
             .WithColor(Color.DarkRed)
@@ -231,7 +248,7 @@ public class TerritoryAlertService
 
     private int ExtractZone(string text)
     {
-        var match = Regex.Match(text, @"Zone Id:\s*(\d+)");
+        var match = Regex.Match(text, @"Zone Id:\s*(\d+)", RegexOptions.IgnoreCase);
         return match.Success ? int.Parse(match.Groups[1].Value) : -1;
     }
 
