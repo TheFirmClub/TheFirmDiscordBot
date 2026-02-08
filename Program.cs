@@ -27,6 +27,8 @@ class Program
 
     private ChangelogTrackerService? _changelogTracker;
     
+    private TerritoryAlertService? _territoryAlert;
+    
     private EvidenceRelayService? _evidenceRelay;
     
     private VoiceModLogger? _voiceLogger;
@@ -83,10 +85,8 @@ class Program
         _changelogTracker = new ChangelogTrackerService(_client!);
         
         // ✅ Turf invasion detection
-        string? dbConnection = _config.GetConnectionString("Default");
-
-        Console.WriteLine($"DB STRING LOADED: {dbConnection != null}");
-
+        _territoryAlert = new TerritoryAlertService(_client!);
+        
         _commandHandler = new SlashCommandHandler(
             _config,
             _inviteTracker,
