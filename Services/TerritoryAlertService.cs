@@ -70,6 +70,7 @@ public class TerritoryAlertService
 
         if (msg.Channel.Id != DrugChannelId)
             return;
+        Console.WriteLine("🔥 DRUG CHANNEL HIT 🔥");
 
         if (msg.Embeds.Count == 0)
             return;
