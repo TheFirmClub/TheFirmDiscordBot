@@ -56,16 +56,43 @@ public class TicketActivityService
             return;
 
         var embed = msg.Embeds.First();
-        var text = $"{embed.Title}\n{embed.Description}";
 
-        var action = DetectAction(text);
+        // 🔹 Action is ALWAYS in the title
+        var action = DetectAction(embed.Title ?? "");
         if (action == null)
             return;
 
-        var moderatorId = ExtractDiscordId(text);
-        var moderatorName = GetUsername(moderatorId);
+        string moderatorName = "Unknown";
+        string moderatorId = "Unknown";
+        string channelName = "Unknown";
+        string channelId = "Unknown";
 
-        var (channelName, channelId) = ExtractChannel(text);
+        // 🔹 Ticket bots store data in embed FIELDS
+        foreach (var field in embed.Fields)
+        {
+            var value = field.Value ?? "";
+
+            // -------- MODERATOR (Ping format <@123>) --------
+            var userMatch = Regex.Match(value, @"<@!?(\d{17,20})>");
+            if (userMatch.Success)
+            {
+                moderatorId = userMatch.Groups[1].Value;
+
+                if (ulong.TryParse(moderatorId, out var uid))
+                {
+                    var user = _client.GetUser(uid);
+                    moderatorName = user?.Username ?? "Unknown";
+                }
+            }
+
+            // -------- CHANNEL (general-1234 (id)) --------
+            var channelMatch = Regex.Match(value, @"([a-zA-Z\-]+-\d+)\s*\((\d{17,20})\)");
+            if (channelMatch.Success)
+            {
+                channelName = channelMatch.Groups[1].Value;
+                channelId = channelMatch.Groups[2].Value;
+            }
+        }
 
         await AppendRow(new List<object>
         {
@@ -79,6 +106,7 @@ public class TicketActivityService
 
         Console.WriteLine($"✅ Logged {action} by {moderatorName}");
     }
+
 
     // ================= GOOGLE SHEETS =================
 
