@@ -36,6 +36,8 @@ class Program
     private VoiceModLogger? _voiceLogger;
     
     private AiSupportService? _aiSupport;
+    
+    private SupportModalHandler? _supportModalHandler;
 
     // ✅ LOA command integration
     private StaffLoaCommand _staffLoa = new StaffLoaCommand();
@@ -102,10 +104,10 @@ class Program
         );
 
         _ticketButtonHandler = new TicketButtonHandler(_config, _aiSupport);
-
+        _supportModalHandler = new SupportModalHandler(_config, _aiSupport);
+        _client.ModalSubmitted += _supportModalHandler.HandleModalAsync;
         _client.SlashCommandExecuted += SlashCommandExecuted;
         _client.SelectMenuExecuted += _supportMenuHandler.HandleAsync;
-        _client.ModalSubmitted += new SupportModalHandler().HandleModalAsync;
         _client.AutocompleteExecuted += _checkRoleInfoCommand.HandleAutocompleteAsync;
         _client.ButtonExecuted += async component =>
         {

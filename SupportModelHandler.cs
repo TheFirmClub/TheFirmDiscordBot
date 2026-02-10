@@ -4,9 +4,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 
 public class SupportModalHandler
 {
+    private readonly IConfiguration _config;
+    private readonly AiSupportService _aiSupport;
+
     private readonly ulong _supportCategoryId = 1393610364511326259;
 
     private readonly ulong[] _moderatorRoleIds = new ulong[]
@@ -16,6 +20,12 @@ public class SupportModalHandler
         1393590761953558608,
         1393638449709584434
     };
+    
+    public SupportModalHandler(IConfiguration config, AiSupportService aiSupport)
+    {
+        _config = config;
+        _aiSupport = aiSupport;
+    }
 
     public async Task HandleModalAsync(SocketModal modal)
     {
