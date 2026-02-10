@@ -56,8 +56,29 @@ public class TicketActivityService
         return;
 
     var embed = msg.Embeds.First();
+    
+    // ================= DEBUG (TEMPORARY) =================
+    Console.WriteLine("==== EMBED DUMP START ====");
+    Console.WriteLine($"TITLE: {embed.Title}");
+    Console.WriteLine($"DESC: {embed.Description}");
+    Console.WriteLine($"FOOTER: {embed.Footer?.Text}");
 
-    // 🔹 Action comes from title
+    foreach (var field in embed.Fields)
+    {
+        Console.WriteLine($"FIELD NAME: {field.Name}");
+        Console.WriteLine($"FIELD VALUE: {field.Value}");
+    }
+    Console.WriteLine("==== EMBED DUMP END ====");
+    // =====================================================
+
+    // Combine title + description into ONE text block
+    var rawText = $"{embed.Title}\n{embed.Description}";
+    var lines = rawText
+        .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+        .Select(x => x.Trim())
+        .ToList();
+
+    // -------- ACTION --------
     var action = DetectAction(embed.Title ?? "");
     if (action == null)
         return;
@@ -67,42 +88,49 @@ public class TicketActivityService
     string channelName = "Unknown";
     string channelId = "Unknown";
 
-    foreach (var field in embed.Fields)
+    // -------- LINE BY LINE PARSING --------
+    for (int i = 0; i < lines.Count; i++)
     {
-        var value = field.Value ?? "";
+        var line = lines[i];
 
-        // -------- MODERATOR (<@123>) --------
-        var userMatch = Regex.Match(value, @"<@!?(\d{17,20})>");
-        if (userMatch.Success)
+        // Moderator is on the line AFTER "Moderator"
+        if (line.Equals("Moderator", StringComparison.OrdinalIgnoreCase)
+            && i + 1 < lines.Count)
         {
-            moderatorId = userMatch.Groups[1].Value;
+            var next = lines[i + 1];
 
-            if (ulong.TryParse(moderatorId, out var uid))
+            // Extract ID from mention
+            var idMatch = Regex.Match(next, @"(\d{17,20})");
+
+            if (idMatch.Success)
             {
-                var user = _client.GetUser(uid);
-                moderatorName = user?.Username ?? "Unknown";
+                moderatorId = idMatch.Groups[1].Value;
+
+                if (ulong.TryParse(moderatorId, out var uid))
+                {
+                    var user = _client.GetUser(uid);
+                    moderatorName = user?.Username ?? "Unknown";
+                }
+            }
+            else
+            {
+                // fallback — remove @ symbol
+                moderatorName = next.Replace("@", "").Trim();
             }
         }
 
-        // -------- CHANNEL MENTION (<#123>) --------
-        var channelMentionMatch = Regex.Match(value, @"<#(\d{17,20})>");
-        if (channelMentionMatch.Success)
+        // Ticket is on the line AFTER "Ticket"
+        if (line.Equals("Ticket", StringComparison.OrdinalIgnoreCase)
+            && i + 1 < lines.Count)
         {
-            channelId = channelMentionMatch.Groups[1].Value;
+            var next = lines[i + 1];
 
-            if (ulong.TryParse(channelId, out var cid))
+            var match = Regex.Match(next, @"(.+)\s+\((\d{17,20})\)");
+            if (match.Success)
             {
-                var channel = _client.GetChannel(cid) as SocketTextChannel;
-                channelName = channel?.Name ?? "Unknown";
+                channelName = match.Groups[1].Value;
+                channelId = match.Groups[2].Value;
             }
-        }
-
-        // -------- FALLBACK TEXT FORMAT (general-123 (id)) --------
-        var channelTextMatch = Regex.Match(value, @"([a-zA-Z\-]+-\d+)\s*\((\d{17,20})\)");
-        if (channelTextMatch.Success)
-        {
-            channelName = channelTextMatch.Groups[1].Value;
-            channelId = channelTextMatch.Groups[2].Value;
         }
     }
 
