@@ -48,64 +48,76 @@ public class TicketActivityService
     // ================= MESSAGE HANDLER =================
 
     private async Task OnMessage(SocketMessage msg)
+{
+    if (msg.Channel.Id != SupportLogsChannelId)
+        return;
+
+    if (msg.Embeds.Count == 0)
+        return;
+
+    var embed = msg.Embeds.First();
+
+    // 🔹 Action comes from title
+    var action = DetectAction(embed.Title ?? "");
+    if (action == null)
+        return;
+
+    string moderatorName = "Unknown";
+    string moderatorId = "Unknown";
+    string channelName = "Unknown";
+    string channelId = "Unknown";
+
+    foreach (var field in embed.Fields)
     {
-        if (msg.Channel.Id != SupportLogsChannelId)
-            return;
+        var value = field.Value ?? "";
 
-        if (msg.Embeds.Count == 0)
-            return;
-
-        var embed = msg.Embeds.First();
-
-        // 🔹 Action is ALWAYS in the title
-        var action = DetectAction(embed.Title ?? "");
-        if (action == null)
-            return;
-
-        string moderatorName = "Unknown";
-        string moderatorId = "Unknown";
-        string channelName = "Unknown";
-        string channelId = "Unknown";
-
-        // 🔹 Ticket bots store data in embed FIELDS
-        foreach (var field in embed.Fields)
+        // -------- MODERATOR (<@123>) --------
+        var userMatch = Regex.Match(value, @"<@!?(\d{17,20})>");
+        if (userMatch.Success)
         {
-            var value = field.Value ?? "";
+            moderatorId = userMatch.Groups[1].Value;
 
-            // -------- MODERATOR (Ping format <@123>) --------
-            var userMatch = Regex.Match(value, @"<@!?(\d{17,20})>");
-            if (userMatch.Success)
+            if (ulong.TryParse(moderatorId, out var uid))
             {
-                moderatorId = userMatch.Groups[1].Value;
-
-                if (ulong.TryParse(moderatorId, out var uid))
-                {
-                    var user = _client.GetUser(uid);
-                    moderatorName = user?.Username ?? "Unknown";
-                }
-            }
-
-            // -------- CHANNEL (general-1234 (id)) --------
-            var channelMatch = Regex.Match(value, @"([a-zA-Z\-]+-\d+)\s*\((\d{17,20})\)");
-            if (channelMatch.Success)
-            {
-                channelName = channelMatch.Groups[1].Value;
-                channelId = channelMatch.Groups[2].Value;
+                var user = _client.GetUser(uid);
+                moderatorName = user?.Username ?? "Unknown";
             }
         }
 
-        await AppendRow(new List<object>
+        // -------- CHANNEL MENTION (<#123>) --------
+        var channelMentionMatch = Regex.Match(value, @"<#(\d{17,20})>");
+        if (channelMentionMatch.Success)
         {
-            DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
-            moderatorName,
-            moderatorId,
-            action,
-            channelName,
-            channelId
-        });
+            channelId = channelMentionMatch.Groups[1].Value;
 
-        Console.WriteLine($"✅ Logged {action} by {moderatorName}");
+            if (ulong.TryParse(channelId, out var cid))
+            {
+                var channel = _client.GetChannel(cid) as SocketTextChannel;
+                channelName = channel?.Name ?? "Unknown";
+            }
+        }
+
+        // -------- FALLBACK TEXT FORMAT (general-123 (id)) --------
+        var channelTextMatch = Regex.Match(value, @"([a-zA-Z\-]+-\d+)\s*\((\d{17,20})\)");
+        if (channelTextMatch.Success)
+        {
+            channelName = channelTextMatch.Groups[1].Value;
+            channelId = channelTextMatch.Groups[2].Value;
+        }
     }
+
+    await AppendRow(new List<object>
+    {
+        DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+        moderatorName,
+        moderatorId,
+        action,
+        channelName,
+        channelId
+    });
+
+    Console.WriteLine($"✅ Logged {action} by {moderatorName} in {channelName}");
+}
 
 
     // ================= GOOGLE SHEETS =================
