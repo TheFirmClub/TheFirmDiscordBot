@@ -29,7 +29,17 @@ public class SupportModalHandler
 
     public async Task HandleModalAsync(SocketModal modal)
     {
-        if (!modal.Data.CustomId.StartsWith("ticket_reason:")) return;
+        // ✅ AI SUPPORT MODAL
+        if (modal.Data.CustomId == "ai_support_modal")
+        {
+            await HandleAiSupportModal(modal);
+            return;
+        }
+
+        // ✅ NORMAL TICKET CREATION
+        if (!modal.Data.CustomId.StartsWith("ticket_reason:"))
+            return;
+
 
         var ticketType = modal.Data.CustomId.Split(":")[1];
         var values = modal.Data.Components.ToDictionary(x => x.CustomId, x => (x.Value ?? string.Empty).Trim());
@@ -181,4 +191,65 @@ public class SupportModalHandler
         await channel.SendMessageAsync(embed: eb.Build(), components: buttons.Build());
         await modal.RespondAsync($"✅ Your ticket has been created: {channel.Mention}", ephemeral: true);
     }
+    
+    private async Task HandleAiSupportModal(SocketModal modal)
+    {
+        try
+        {
+            await modal.DeferAsync(ephemeral: true);
+
+            var issue = modal.Data.Components
+                .FirstOrDefault(x => x.CustomId == "ai_issue")?.Value;
+
+            var attempts = modal.Data.Components
+                .FirstOrDefault(x => x.CustomId == "ai_attempts")?.Value;
+
+            if (string.IsNullOrWhiteSpace(issue))
+            {
+                await modal.FollowupAsync(
+                    "⚠️ Please describe your issue.",
+                    ephemeral: true);
+                return;
+            }
+
+            var channel = modal.Channel as SocketTextChannel;
+
+            if (channel == null)
+            {
+                await modal.FollowupAsync(
+                    "⚠️ AI unavailable in this channel.",
+                    ephemeral: true);
+                return;
+            }
+
+            await channel.SendMessageAsync(
+                "🤖 Support Assistant is analyzing your issue...");
+
+            var reply = await _aiSupport.GetSupportReplyAsync(
+                issue,
+                attempts,
+                "FiveM Support"
+            );
+
+            await channel.SendMessageAsync(reply);
+
+            await modal.FollowupAsync(
+                "✅ Support Assistant has responded in the ticket.",
+                ephemeral: true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("🔥 AI MODAL CRASH:");
+            Console.WriteLine(ex.ToString());
+
+            try
+            {
+                await modal.FollowupAsync(
+                    "⚠️ Support Assistant crashed. Staff have been notified.",
+                    ephemeral: true);
+            }
+            catch { }
+        }
+    }
+
 }
