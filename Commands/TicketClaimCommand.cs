@@ -57,7 +57,6 @@ public class TicketClaimCommand : ISlashCommand
             await logChannel.SendMessageAsync(embed: embed);
         }
     }
-
     public static class PermissionHelper
     {
         public static bool IsModerator(SocketGuildUser user)
