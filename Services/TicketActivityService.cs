@@ -62,20 +62,6 @@ public class TicketActivityService
 
     var embed = msg.Embeds.First();
     
-    // ================= DEBUG (TEMPORARY) =================
-    Console.WriteLine("==== EMBED DUMP START ====");
-    Console.WriteLine($"TITLE: {embed.Title}");
-    Console.WriteLine($"DESC: {embed.Description}");
-    Console.WriteLine($"FOOTER: {embed.Footer?.Text}");
-
-    foreach (var field in embed.Fields)
-    {
-        Console.WriteLine($"FIELD NAME: {field.Name}");
-        Console.WriteLine($"FIELD VALUE: {field.Value}");
-    }
-    Console.WriteLine("==== EMBED DUMP END ====");
-    // =====================================================
-
     var action = DetectAction(embed.Title ?? "");
     if (action == null)
         return;
