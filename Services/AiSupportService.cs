@@ -70,13 +70,29 @@ Fixes Tried:
 
         using var doc = JsonDocument.Parse(resultJson);
 
-        var reply =
-            doc.RootElement
-               .GetProperty("candidates")[0]
-               .GetProperty("content")
-               .GetProperty("parts")[0]
-               .GetProperty("text")
-               .GetString();
+        string reply = null;
+
+        if (doc.RootElement.TryGetProperty("candidates", out var candidates) &&
+            candidates.GetArrayLength() > 0)
+        {
+            var first = candidates[0];
+
+            if (first.TryGetProperty("content", out var content) &&
+                content.TryGetProperty("parts", out var parts) &&
+                parts.GetArrayLength() > 0 &&
+                parts[0].TryGetProperty("text", out var text))
+            {
+                reply = text.GetString();
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(reply))
+        {
+            reply =
+                "I'm unable to analyze this issue automatically right now. " +
+                "A staff member will assist you shortly.";
+        }
+
 
         return $"""
 🤖 **FiveM Support Assistant**
