@@ -11,6 +11,7 @@ public class TicketActivityService
 {
     private readonly DiscordSocketClient _client;
     private readonly SheetsService _sheets;
+    private readonly HashSet<ulong> _processedMessages = new();
 
     private const ulong SupportLogsChannelId = 1394405064520499415;
     private const string SpreadsheetId = "1GvPht9ETF-JwkX3NO2S9tWFOiLWCBsMraDfGWM_PRsk";
@@ -55,6 +56,10 @@ public class TicketActivityService
     if (msg.Embeds.Count == 0)
         return;
 
+    // ✅ Prevent duplicate logs after reconnects
+    if (!_processedMessages.Add(msg.Id))
+        return;
+
     var embed = msg.Embeds.First();
     
     // ================= DEBUG (TEMPORARY) =================
@@ -71,14 +76,6 @@ public class TicketActivityService
     Console.WriteLine("==== EMBED DUMP END ====");
     // =====================================================
 
-    // Combine title + description into ONE text block
-    var rawText = $"{embed.Title}\n{embed.Description}";
-    var lines = rawText
-        .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-        .Select(x => x.Trim())
-        .ToList();
-
-    // -------- ACTION --------
     var action = DetectAction(embed.Title ?? "");
     if (action == null)
         return;
@@ -88,49 +85,44 @@ public class TicketActivityService
     string channelName = "Unknown";
     string channelId = "Unknown";
 
-    // -------- LINE BY LINE PARSING --------
-    for (int i = 0; i < lines.Count; i++)
+    foreach (var field in embed.Fields)
     {
-        var line = lines[i];
-
-        // Moderator is on the line AFTER "Moderator"
-        if (line.Equals("Moderator", StringComparison.OrdinalIgnoreCase)
-            && i + 1 < lines.Count)
+        // ================= MODERATOR =================
+        if (field.Name.Contains("By", StringComparison.OrdinalIgnoreCase) ||
+            field.Name.Contains("Moderator", StringComparison.OrdinalIgnoreCase))
         {
-            var next = lines[i + 1];
-
-            // Extract ID from mention
-            var idMatch = Regex.Match(next, @"(\d{17,20})");
+            var idMatch = Regex.Match(field.Value, @"\d{17,20}");
 
             if (idMatch.Success)
             {
-                moderatorId = idMatch.Groups[1].Value;
+                moderatorId = idMatch.Value;
 
                 if (ulong.TryParse(moderatorId, out var uid))
                 {
-                    var user = _client.GetUser(uid);
-                    moderatorName = user?.Username ?? "Unknown";
+                    IUser? user = _client.GetUser(uid);
+
+                    if (user == null)
+                        user = await _client.Rest.GetUserAsync(uid);
+
+                    // ⭐ BEST PRACTICE — store mention instead
+                    moderatorName = $"<@{moderatorId}>";
                 }
-            }
-            else
-            {
-                // fallback — remove @ symbol
-                moderatorName = next.Replace("@", "").Trim();
             }
         }
 
-        // Ticket is on the line AFTER "Ticket"
-        if (line.Equals("Ticket", StringComparison.OrdinalIgnoreCase)
-            && i + 1 < lines.Count)
+        // ================= CHANNEL =================
+        if (field.Name.Contains("Channel", StringComparison.OrdinalIgnoreCase) ||
+            field.Name.Contains("Ticket", StringComparison.OrdinalIgnoreCase))
         {
-            var next = lines[i + 1];
+            // Extract ID (works even with backticks)
+            var idMatch = Regex.Match(field.Value, @"\d{17,20}");
+            if (idMatch.Success)
+                channelId = idMatch.Value;
 
-            var match = Regex.Match(next, @"(.+)\s+\((\d{17,20})\)");
-            if (match.Success)
-            {
-                channelName = match.Groups[1].Value;
-                channelId = match.Groups[2].Value;
-            }
+            // Extract channel name
+            var nameMatch = Regex.Match(field.Value, @"^(.+?)\s*\(");
+            if (nameMatch.Success)
+                channelName = nameMatch.Groups[1].Value.Trim();
         }
     }
 
