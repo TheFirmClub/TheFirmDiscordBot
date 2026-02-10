@@ -155,7 +155,7 @@ public class SupportModalHandler
             .WithTitle($"📄 {fullTypeLabel} Ticket Information")
             .WithColor(Color.Orange)
             .WithDescription(
-                "A member of staff will be with you shortly.\n\nBelow you will find the information you provided regarding the support request.\nIf you think of anything else you would like to add to the support ticket, feel free to comment below.\n\n🤖 If ticket is unclaimed by a staff, feel free to use our AI Assistant to resolve game issues.\n\n🔒 *Please note: A copy of the chat logs will be stored for audit, quality, and training purposes.*\n🔐 *Disclaimer: This ticket and its contents are confidential and should not be shared or discussed outside of this channel.*")
+                "A member of staff will be with you shortly.\n\nBelow you will find the information you provided regarding the support request.\nIf you think of anything else you would like to add to the support ticket, feel free to comment below.\n\n🤖 If ticket is unclaimed by staff, feel free to click 'Ask AI Assistant' to attempt to resolve your game issues.\n\n🔒 *Please note: A copy of the chat logs will be stored for audit, quality, and training purposes.*\n🔐 *Disclaimer: This ticket and its contents are confidential and should not be shared or discussed outside of this channel.*")
             .WithTimestamp(DateTimeOffset.UtcNow)
             .WithFooter(footer =>
             {
