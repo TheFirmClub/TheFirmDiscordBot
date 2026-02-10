@@ -89,6 +89,25 @@ public class TicketButtonHandler
                     m.Embed = embedBuilder.Build();
                     m.Components = claimButtons.Build();
                 });
+                
+                // ✅ LOG CHANNEL
+                ulong logChannelId = 1394405064520499415;
+
+                var guild = (component.Channel as SocketGuildChannel)?.Guild;
+                var logChannel = guild?.GetTextChannel(logChannelId);
+
+                if (logChannel != null)
+                {
+                    var logEmbed = new EmbedBuilder()
+                        .WithTitle("🔒 Ticket Claimed")
+                        .AddField("Moderator", user.Mention, true)
+                        .AddField("Ticket", $"{component.Channel.Name} (`{component.Channel.Id}`)", true)
+                        .WithColor(Color.Blue)
+                        .WithTimestamp(DateTimeOffset.UtcNow)
+                        .Build();
+
+                    await logChannel.SendMessageAsync(embed: logEmbed);
+                }
 
                 await component.RespondAsync($"🎯 Ticket claimed by {user.Mention}.", ephemeral: false);
                 break;
