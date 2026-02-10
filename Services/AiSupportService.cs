@@ -1,25 +1,24 @@
+using Google.GenAI;
+using Google.GenAI.Types;
 using Microsoft.Extensions.Configuration;
-using System.Net.Http;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 public class AiSupportService
 {
-    private readonly HttpClient _http;
-    private readonly string _apiKey;
+    private readonly Client _client;
     private readonly string _model;
 
     public AiSupportService(IConfiguration config)
     {
-        _http = new HttpClient();
+        var apiKey = config["Gemini:ApiKey"];
 
-        _apiKey = config["Gemini:ApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey))
+            throw new Exception("Gemini API key missing");
 
-        if (string.IsNullOrWhiteSpace(_apiKey))
-            throw new System.Exception("Gemini API key missing in appsettings.json");
+        _client = new Client(apiKey: apiKey);
 
-        _model = config["Gemini:Model"] ?? "gemini-1.5-flash";
+        _model = config["Gemini:Model"] ?? "gemini-1.5-flash-latest";
     }
 
     public async Task<string> GetSupportReplyAsync(
@@ -28,78 +27,36 @@ public class AiSupportService
         string ticketType = "FiveM Support")
     {
         var prompt = $"""
-You are a professional FiveM server support assistant.
+                      You are an expert FiveM server technical support assistant.
 
-RULES:
-- Only help with technical issues.
-- Never discuss bans or staff actions.
-- Do not guess.
-- Provide step-by-step troubleshooting.
+                      Provide clear, step-by-step troubleshooting.
 
-Ticket Type: {ticketType}
+                      If unsure, recommend contacting staff.
 
-Player Issue:
-{issue}
+                      Ticket Type: {ticketType}
 
-Fixes Tried:
-{attemptedFixes ?? "None"}
-""";
+                      Issue:
+                      {issue}
 
-        var body = new
-        {
-            contents = new[]
-            {
-                new
-                {
-                    parts = new[]
-                    {
-                        new { text = prompt }
-                    }
-                }
-            }
-        };
+                      Fixes Tried:
+                      {attemptedFixes ?? "None"}
+                      """;
 
-        var json = JsonSerializer.Serialize(body);
-
-        var response = await _http.PostAsync(
-            $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}",
-            new StringContent(json, Encoding.UTF8, "application/json")
+        var response = await _client.Models.GenerateContentAsync(
+            model: _model,
+            contents: prompt
         );
 
-        var resultJson = await response.Content.ReadAsStringAsync();
-
-        using var doc = JsonDocument.Parse(resultJson);
-
-        string reply = null;
-
-        if (doc.RootElement.TryGetProperty("candidates", out var candidates) &&
-            candidates.GetArrayLength() > 0)
-        {
-            var first = candidates[0];
-
-            if (first.TryGetProperty("content", out var content) &&
-                content.TryGetProperty("parts", out var parts) &&
-                parts.GetArrayLength() > 0 &&
-                parts[0].TryGetProperty("text", out var text))
-            {
-                reply = text.GetString();
-            }
-        }
-
-        if (string.IsNullOrWhiteSpace(reply))
-        {
-            reply =
-                "I'm unable to analyze this issue automatically right now. " +
-                "A staff member will assist you shortly.";
-        }
-
+        var reply =
+            response?.Candidates?[0]?.Content?.Parts?[0]?.Text
+            ?? "I'm unable to analyze this issue right now. A staff member will assist you shortly.";
 
         return $"""
-🤖 **FiveM Support Assistant**
+                🤖 **FiveM Support Assistant**
 
-{reply}
+                {reply}
 
-*If this does not resolve your issue, a staff member will assist you shortly.*
-""";
+                *If this does not resolve your issue, a staff member will assist you shortly.*
+                """;
     }
 }
