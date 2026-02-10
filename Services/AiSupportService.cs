@@ -18,7 +18,7 @@ public class AiSupportService
 
         _client = new Client(apiKey: apiKey);
 
-        _model = config["Gemini:Model"] ?? "gemini-1.5-flash-latest";
+        _model = config["Gemini:Model"] ?? "gemini-3-pro-preview";
     }
 
     public async Task<string> GetSupportReplyAsync(
