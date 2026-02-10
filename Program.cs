@@ -29,6 +29,8 @@ class Program
     
     private TerritoryAlertService? _territoryAlert;
     
+    private TicketActivityService? _ticketActivity;
+    
     private EvidenceRelayService? _evidenceRelay;
     
     private VoiceModLogger? _voiceLogger;
@@ -86,6 +88,8 @@ class Program
         
         // ✅ Turf invasion detection
         _territoryAlert = new TerritoryAlertService(_client!);
+        
+        _ticketActivity = new TicketActivityService(_client!);
         
         _commandHandler = new SlashCommandHandler(
             _config,
