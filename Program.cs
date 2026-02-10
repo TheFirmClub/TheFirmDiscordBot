@@ -34,6 +34,8 @@ class Program
     private EvidenceRelayService? _evidenceRelay;
     
     private VoiceModLogger? _voiceLogger;
+    
+    private AiSupportService? _aiSupport;
 
     // ✅ LOA command integration
     private StaffLoaCommand _staffLoa = new StaffLoaCommand();
@@ -47,6 +49,8 @@ class Program
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: false)
             .Build();
+
+        _aiSupport = new AiSupportService(_config);
 
         var guildIdString = _config["Discord:GuildId"];
         if (!ulong.TryParse(guildIdString, out ulong guildId))
@@ -97,7 +101,7 @@ class Program
             _suggestionsCommand
         );
 
-        _ticketButtonHandler = new TicketButtonHandler(_config);
+        _ticketButtonHandler = new TicketButtonHandler(_config, _aiSupport);
 
         _client.SlashCommandExecuted += SlashCommandExecuted;
         _client.SelectMenuExecuted += _supportMenuHandler.HandleAsync;

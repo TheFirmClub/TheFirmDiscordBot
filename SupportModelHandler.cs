@@ -52,8 +52,10 @@ public class SupportModalHandler
 
         var overwrites = new List<Overwrite>
         {
-            new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Deny)),
-            new Overwrite(user.Id, PermissionTarget.User, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow))
+            new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role,
+                new OverwritePermissions(viewChannel: PermValue.Deny)),
+            new Overwrite(user.Id, PermissionTarget.User,
+                new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow))
         };
 
         if (ticketType == "reportstaff")
@@ -62,18 +64,22 @@ public class SupportModalHandler
             var asstHeadModRole = guild.GetRole(1405330877440983130);
 
             if (headModRole != null)
-                overwrites.Add(new Overwrite(headModRole.Id, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)));
+                overwrites.Add(new Overwrite(headModRole.Id, PermissionTarget.Role,
+                    new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)));
             if (asstHeadModRole != null)
-                overwrites.Add(new Overwrite(asstHeadModRole.Id, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)));
+                overwrites.Add(new Overwrite(asstHeadModRole.Id, PermissionTarget.Role,
+                    new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)));
         }
         else if (ticketType == "reportplayer")
         {
-            overwrites.Add(new Overwrite(1393729574537396355, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)));
+            overwrites.Add(new Overwrite(1393729574537396355, PermissionTarget.Role,
+                new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)));
         }
         else
         {
             foreach (var roleId in _moderatorRoleIds)
-                overwrites.Add(new Overwrite(roleId, PermissionTarget.Role, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)));
+                overwrites.Add(new Overwrite(roleId, PermissionTarget.Role,
+                    new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)));
         }
 
         ulong categoryId = ticketType switch
@@ -128,7 +134,8 @@ public class SupportModalHandler
         var eb = new EmbedBuilder()
             .WithTitle($"📄 {fullTypeLabel} Ticket Information")
             .WithColor(Color.Orange)
-            .WithDescription("A member of staff will be with you shortly.\n\nBelow you will find the information you provided regarding the support request.\nIf you think of anything else you would like to add to the support ticket, feel free to comment below.\n\n🔒 *Please note: A copy of the chat logs will be stored for audit, quality, and training purposes.*\n🔐 *Disclaimer: This ticket and its contents are confidential and should not be shared or discussed outside of this channel.*")
+            .WithDescription(
+                "A member of staff will be with you shortly.\n\nBelow you will find the information you provided regarding the support request.\nIf you think of anything else you would like to add to the support ticket, feel free to comment below.\n\n🔒 *Please note: A copy of the chat logs will be stored for audit, quality, and training purposes.*\n🔐 *Disclaimer: This ticket and its contents are confidential and should not be shared or discussed outside of this channel.*")
             .WithTimestamp(DateTimeOffset.UtcNow)
             .WithFooter(footer =>
             {
@@ -138,15 +145,28 @@ public class SupportModalHandler
 
         if (ticketType == "reportplayer")
         {
-            eb.AddField("Character Name of Player", string.IsNullOrWhiteSpace(charName) ? "*Not provided*" : charName, true);
+            eb.AddField("Character Name of Player", string.IsNullOrWhiteSpace(charName) ? "*Not provided*" : charName,
+                true);
             eb.AddField("Evidence", string.IsNullOrWhiteSpace(evidence) ? "*Not provided*" : evidence, true);
         }
 
-        eb.AddField("📝 How can we help?", string.IsNullOrWhiteSpace(reason) ? "*No description provided.*" : reason, false);
+        eb.AddField("📝 How can we help?", string.IsNullOrWhiteSpace(reason) ? "*No description provided.*" : reason,
+            false);
 
         var buttons = new ComponentBuilder()
             .WithButton("🎯 Claim Ticket", customId: "ticket_claim", ButtonStyle.Primary)
             .WithButton("🔓 Release Ticket", customId: "ticket_release", ButtonStyle.Secondary);
+
+        // ✅ ONLY add AI button for general + game
+        if (ticketType == "general" || ticketType == "game")
+        {
+            buttons.WithButton(
+                "🤖 Ask Support Assistant",
+                customId: "ticket_ai",
+                ButtonStyle.Success
+            );
+        }
+
 
         await channel.SendMessageAsync(embed: eb.Build(), components: buttons.Build());
         await modal.RespondAsync($"✅ Your ticket has been created: {channel.Mention}", ephemeral: true);
