@@ -20,6 +20,7 @@ public class AiSupportService
 
         _model = config["Gemini:Model"] ?? "gemini-2.5-flash";
     }
+    
     public async Task<string> GetSupportReplyAsync(
         string issue,
         string attemptedFixes = null,
