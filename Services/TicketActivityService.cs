@@ -87,11 +87,14 @@ public class TicketActivityService
 
     foreach (var field in embed.Fields)
     {
+        var name = field.Name ?? string.Empty;
+        var value = field.Value ?? string.Empty;
+        
         // ================= MODERATOR =================
-        if (field.Name.Contains("By", StringComparison.OrdinalIgnoreCase) ||
-            field.Name.Contains("Moderator", StringComparison.OrdinalIgnoreCase))
+        if (name.Contains("By", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Moderator", StringComparison.OrdinalIgnoreCase))
         {
-            var idMatch = Regex.Match(field.Value, @"\d{17,20}");
+            var idMatch = Regex.Match(value, @"\d{17,20}");
 
             if (idMatch.Success)
             {
@@ -104,8 +107,7 @@ public class TicketActivityService
                     if (user == null)
                         user = await _client.Rest.GetUserAsync(uid);
 
-                    // ⭐ BEST PRACTICE — store mention instead
-                    moderatorName = $"<@{moderatorId}>";
+                    moderatorName = user?.Username ?? "Unknown";
                 }
             }
         }
