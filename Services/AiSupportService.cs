@@ -1,33 +1,25 @@
-using OpenAI.Chat;
 using Microsoft.Extensions.Configuration;
-using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
-
-#region Settings Model
-public class OpenAiSettings
-{
-    public string ApiKey { get; set; }
-    public string Model { get; set; }
-}
-#endregion
 
 public class AiSupportService
 {
-    private readonly ChatClient _chatClient;
+    private readonly HttpClient _http;
+    private readonly string _apiKey;
+    private readonly string _model;
 
-    public AiSupportService(IConfiguration configuration)
+    public AiSupportService(IConfiguration config)
     {
-        // Read settings from appsettings.json
-        var settings = new OpenAiSettings();
-        configuration.GetSection("OpenAI").Bind(settings);
+        _http = new HttpClient();
 
-        if (string.IsNullOrWhiteSpace(settings.ApiKey))
-            throw new System.Exception("OpenAI:ApiKey is missing from appsettings.json");
+        _apiKey = config["Gemini:ApiKey"];
 
-        _chatClient = new ChatClient(
-            model: settings.Model ?? "gpt-4.1-mini",
-            apiKey: settings.ApiKey
-        );
+        if (string.IsNullOrWhiteSpace(_apiKey))
+            throw new System.Exception("Gemini API key missing in appsettings.json");
+
+        _model = config["Gemini:Model"] ?? "gemini-1.5-flash";
     }
 
     public async Task<string> GetSupportReplyAsync(
@@ -35,69 +27,61 @@ public class AiSupportService
         string attemptedFixes = null,
         string ticketType = "FiveM Support")
     {
-        var systemPrompt = """
-You are a professional FiveM roleplay server Support Assistant.
+        var prompt = $"""
+You are a professional FiveM server support assistant.
 
-YOUR ROLE:
-Help players troubleshoot FiveM technical issues such as crashes, bugs,
-connection problems, and installation issues.
+RULES:
+- Only help with technical issues.
+- Never discuss bans or staff actions.
+- Do not guess.
+- Provide step-by-step troubleshooting.
 
-STRICT RULES:
-- Do NOT handle bans, punishments, staff actions, or rule disputes.
-- Do NOT invent server rules or policies.
-- Do NOT guess.
-- If unsure, tell the player a staff member will assist shortly.
-- Never provide exploits or bypass methods.
-- Keep responses structured and easy to follow.
-
-ALLOWED TOPICS:
-• FiveM crashes
-• Cache issues
-• Resource loading problems
-• GTA V / FiveM installation issues
-• Connection & timeout errors
-• Client-side bugs
-""";
-
-        var userPrompt = $"""
 Ticket Type: {ticketType}
 
 Player Issue:
 {issue}
 
-Troubleshooting Already Tried:
-{attemptedFixes ?? "None provided"}
+Fixes Tried:
+{attemptedFixes ?? "None"}
 """;
 
-        var response = await _chatClient.CompleteChatAsync(
-            new ChatMessage[]
+        var body = new
+        {
+            contents = new[]
             {
-                ChatMessage.CreateSystemMessage(systemPrompt),
-                ChatMessage.CreateUserMessage(userPrompt)
-            },
-            new ChatCompletionOptions
-            {
-                Temperature = 0.2f,
-                MaxOutputTokenCount = 500
+                new
+                {
+                    parts = new[]
+                    {
+                        new { text = prompt }
+                    }
+                }
             }
+        };
+
+        var json = JsonSerializer.Serialize(body);
+
+        var response = await _http.PostAsync(
+            $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}",
+            new StringContent(json, Encoding.UTF8, "application/json")
         );
 
-        var reply = string.Join(
-            "\n",
-            response.Value.Content
-                .Where(c => !string.IsNullOrWhiteSpace(c.Text))
-                .Select(c => c.Text));
+        var resultJson = await response.Content.ReadAsStringAsync();
 
-        return FormatForDiscord(reply);
-    }
+        using var doc = JsonDocument.Parse(resultJson);
 
-    private string FormatForDiscord(string text)
-    {
-        return
-$"""
+        var reply =
+            doc.RootElement
+               .GetProperty("candidates")[0]
+               .GetProperty("content")
+               .GetProperty("parts")[0]
+               .GetProperty("text")
+               .GetString();
+
+        return $"""
 🤖 **FiveM Support Assistant**
 
-{text}
+{reply}
 
 *If this does not resolve your issue, a staff member will assist you shortly.*
 """;
