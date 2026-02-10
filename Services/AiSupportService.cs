@@ -27,20 +27,27 @@ public class AiSupportService
         string ticketType = "FiveM Support")
     {
         var prompt = $"""
-                      You are an expert FiveM server technical support assistant.
+                       You are an expert FiveM server technical support assistant.
 
-                      Provide clear, step-by-step troubleshooting.
+                       RULES:
+                       - Keep responses SHORT and practical.
+                       - Maximum 5 bullet points.
+                       - Prefer bullet points over paragraphs.
+                       - Do NOT write long explanations.
+                       - Do NOT exceed roughly 1200 characters.
+                       - Focus only on fixing the issue.
 
-                      If unsure, recommend contacting staff.
+                       If unsure → escalate to staff.
 
-                      Ticket Type: {ticketType}
+                       Ticket Type: {ticketType}
 
-                      Issue:
-                      {issue}
+                       Issue:
+                       {issue}
 
-                      Fixes Tried:
-                      {attemptedFixes ?? "None"}
-                      """;
+                       Fixes Tried:
+                       {attemptedFixes ?? "None"}
+                       """;
+
 
         var response = await _client.Models.GenerateContentAsync(
             model: _model,
