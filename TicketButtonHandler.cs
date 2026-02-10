@@ -144,7 +144,6 @@ public class TicketButtonHandler
                 return;
             }
 
-
             case "ticket_claim":
             {
                 if (!isMod)
