@@ -69,6 +69,7 @@ public class AddRoleCommand : ISlashCommand
         1457933411565178932, // Diaz Family
         1469355919510077470, // GSC
         1469654367593566349, // Lost MC
+        1471129098649735311, // Zero Tolerance
     };
 
     public async Task ExecuteAsync(SocketSlashCommand command)
