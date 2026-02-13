@@ -16,7 +16,7 @@ public class FiveMChannelUpdater
     private int _lastPlayerCount = -1;
     private int _failCount = 0;
     private const int MaxFailsBeforePause = 10;
-    private static readonly TimeSpan NormalInterval = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan NormalInterval = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan PauseInterval = TimeSpan.FromHours(1);
 
     public FiveMChannelUpdater(
