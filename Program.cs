@@ -104,6 +104,7 @@ class Program
         );
         
         _evidenceRelay = new EvidenceRelayService(_client);
+        
 
         _ticketButtonHandler = new TicketButtonHandler(_config, _aiSupport);
         _supportModalHandler = new SupportModalHandler(_config, _aiSupport);
