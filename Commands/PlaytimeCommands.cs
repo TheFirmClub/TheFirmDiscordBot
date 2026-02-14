@@ -19,6 +19,7 @@ public class PlaytimeCommand : ISlashCommand
     // --- Role gates ---
     private const ulong SeniorManagementRoleId = 1393590761953558608; // Senior Management
     private const ulong SeniorModeratorRoleId  = 1393638449709584434; // Senior Moderator
+    private const ulong GameModeratorRoleId = 1393729574537396355; // Game Moderator
 
     private static readonly HashSet<ulong> PoliceLeadershipRoleIds = new()
     {
@@ -69,12 +70,14 @@ public class PlaytimeCommand : ISlashCommand
         // Authorization: SM + Senior Mod always allowed; Police leaders for police; Medical leaders for ambulance
         bool isSeniorManagement = caller.Roles.Any(r => r.Id == SeniorManagementRoleId);
         bool isSeniorModerator  = caller.Roles.Any(r => r.Id == SeniorModeratorRoleId);
+        bool isGameModerator    = caller.Roles.Any(r => r.Id == GameModeratorRoleId);
         bool isPoliceLeader     = caller.Roles.Any(r => PoliceLeadershipRoleIds.Contains(r.Id));
         bool isMedicalLeader    = caller.Roles.Any(r => MedicalLeadershipRoleIds.Contains(r.Id));
 
         bool allowed =
             isSeniorManagement ||
             isSeniorModerator ||
+            isGameModerator    ||
             (subName == "police"    && isPoliceLeader) ||
             (subName == "ambulance" && isMedicalLeader);
 
