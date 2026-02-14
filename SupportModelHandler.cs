@@ -144,9 +144,10 @@ public class SupportModalHandler
         }
         else
         {
-            var supportRole = guild.GetRole(1393623589122736238);
-            if (supportRole != null)
-                await channel.SendMessageAsync($"{supportRole.Mention}");
+            var discordMod = guild.GetRole(1393623589122736238);
+            var gameMod = guild.GetRole(1393729574537396355);
+
+            await channel.SendMessageAsync($"{discordMod?.Mention} {gameMod?.Mention}");
         }
 
         await channel.SendMessageAsync($"Thank you for creating a **{fullTypeLabel}** ticket!\n\n👋 {user.Mention}");
