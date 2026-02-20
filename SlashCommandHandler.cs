@@ -2,6 +2,7 @@ using Discord.WebSocket;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using FirmDiscordBot.Commands;
 
 public class SlashCommandHandler
 {
@@ -89,7 +90,10 @@ public class SlashCommandHandler
         // --- NEW: police blacklist ---
         var policeBlacklist = new PoliceBlacklistCommand();
         _commands.Add(policeBlacklist.Name, policeBlacklist);
-
+        
+        // --- NEW: manual verification ---
+        _commands.Add("manualverify", new ManualVerifyCommand());
+        _commands.Add("userverified", new UserVerifiedCommand());
 
     }
 

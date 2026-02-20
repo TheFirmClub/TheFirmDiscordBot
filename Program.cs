@@ -16,6 +16,7 @@ class Program
     private InviteTrackerService? _inviteTracker;
     private SuggestionsCommand _suggestionsCommand = new SuggestionsCommand();
     private CheckRoleInfoCommand _checkRoleInfoCommand = new CheckRoleInfoCommand();
+    private FirmDiscordBot.Services.ManualVerifyOnJoinHandler? _manualVerifyOnJoin;
 
 
     private ulong _logChannelId = 1394449608603603085;
@@ -71,6 +72,9 @@ class Program
                              GatewayIntents.GuildMessageReactions,
             LogLevel = LogSeverity.Info
         });
+       
+        _manualVerifyOnJoin = new FirmDiscordBot.Services.ManualVerifyOnJoinHandler(_client);
+        _manualVerifyOnJoin.Register();
         
         // ⭐ ADD THIS RIGHT HERE
         _client.MessageReceived += (msg) =>
@@ -478,6 +482,8 @@ class Program
                 builder.AddOption("user", ApplicationCommandOptionType.User, "User who is kinda sus", false);
             else if (command.Name == "hack")
                 builder.AddOption("user", ApplicationCommandOptionType.User, "Target to (pretend) hack", false);
+            else if (command.Name == "manualverify")
+                builder.AddOption("discordid", ApplicationCommandOptionType.String, "Discord ID of the user", true);
             else if (command.Name == "cursedimage")
             {
                 // no options
