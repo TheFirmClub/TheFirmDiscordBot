@@ -269,7 +269,12 @@ public class TicketButtonHandler
                     await channel.AddPermissionOverwriteAsync(channel.Guild.EveryoneRole,
                         new OverwritePermissions(viewChannel: PermValue.Deny));
 
-                    ulong closedCategoryId = 1393610408706965656;
+                // ✅ If it's a manual-verify ticket, move to Manual Verification Tickets - Closed
+                    ulong closedCategoryId =
+                        (channel.Topic != null && channel.Topic.Contains("type:manual_verify"))
+                            ? 1474419760237379846UL
+                            : 1393610408706965656UL;
+
                     await channel.ModifyAsync(props =>
                     {
                         props.CategoryId = closedCategoryId;
