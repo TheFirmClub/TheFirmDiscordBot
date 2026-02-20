@@ -34,7 +34,7 @@ public sealed class ManualVerifyOnJoinHandler
     };
 
     // ✅ Announcement channel (game-moderators)
-    private const ulong VerifyAnnouncementsChannelId = 1393630868412567582;
+    private const ulong VerifyAnnouncementsChannelId = 1474538794953867337;
 
     private const int MinAccountAgeDays = 30;
 
@@ -163,7 +163,7 @@ public sealed class ManualVerifyOnJoinHandler
             .WithColor(Color.Orange)
             .WithDescription(
                 $"Hello {user.Mention},\n\n" +
-                $"Thank you for joining **The Firm**. Our systems have triggered a manual verification check before we can assign you the **Verified** role.\n\n" +
+                $"Thank you for joining **The Firm**. Our system has detected that your Discord account was recently created. As a security precaution, this has automatically triggered a verification check to help us protect the community.\n\n" +
                 $"🔗 **Step 1 – Create a Forum Account**\n" +
                 $"https://forum.thefirm.club\n\n" +
                 $"🔗 **Step 2 – Link Your Discord Account**\n" +

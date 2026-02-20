@@ -17,6 +17,9 @@ public sealed class UserVerifiedCommand : ISlashCommand
     private const ulong ManualVerifyRoleId = 1474419863798812752UL;
     private const ulong NonVerifiedRoleId = 1393664929042530425UL;
 
+    // ✅ NEW: Manual Verification log channel
+    private const ulong ManualVerifyLogChannelId = 1474538794953867337UL;
+
     private static readonly ulong[] StaffRoleIds =
     {
         1393729574537396355UL,
@@ -141,6 +144,42 @@ public sealed class UserVerifiedCommand : ISlashCommand
             {
                 // ignore — still close ticket
             }
+        }
+
+        // ✅ Log verification to the Manual Verify log channel (new embed)
+        try
+        {
+            var logChannel = guild.GetTextChannel(ManualVerifyLogChannelId);
+            if (logChannel != null)
+            {
+                var logEmbed = new EmbedBuilder()
+                    .WithTitle("✅ Manual Verification Completed")
+                    .WithColor(Color.Green)
+                    .WithDescription(
+                        "A manual verification ticket has been completed and closed."
+                    )
+                    .AddField("User",
+                        target != null ? $"{target.Mention} (`{target.Id}`)" : $"`{ownerId}` (not cached)",
+                        true)
+                    .AddField("Verified By", $"{invoker.Mention} (`{invoker.Id}`)", true)
+                    .AddField("Ticket", $"{channel.Name} (`{channel.Id}`)", false)
+                    .AddField("Outcome",
+                        string.IsNullOrWhiteSpace(roleWarning)
+                            ? "Verified role applied. Manual Verify + Non-Verified removed."
+                            : "Verified role applied, but Non-Verified could not be removed automatically.",
+                        false)
+                    .WithTimestamp(DateTimeOffset.UtcNow)
+                    .Build();
+
+                await logChannel.SendMessageAsync(embed: logEmbed);
+
+                if (!string.IsNullOrWhiteSpace(roleWarning))
+                    await logChannel.SendMessageAsync($"⚠️ {roleWarning}\nTicket: <#{channel.Id}>");
+            }
+        }
+        catch
+        {
+            // Logging failure should not stop ticket closure
         }
 
         // Close ticket: rename + move category
