@@ -17,6 +17,7 @@ public sealed class ManualVerifyOnJoinHandler
     // ✅ Roles
     private const ulong ManualVerifyRoleId = 1474419863798812752;
     private const ulong NonVerifiedRoleId = 1393664929042530425;
+    private const ulong ForumLinkedRoleId = 1467211008610406411;
 
     // ✅ Ping ONLY these roles in the ticket
     private const ulong GameModeratorRoleId = 1393729574537396355;
@@ -57,7 +58,7 @@ public sealed class ManualVerifyOnJoinHandler
                 return;
 
             // Pass 1: remove roles immediately (may miss roles added a moment later)
-            await RemoveAllManageableRolesAsync(user, excludeRoleIds: new[] { ManualVerifyRoleId });
+            await RemoveAllManageableRolesAsync(user, excludeRoleIds: new[] { ManualVerifyRoleId, ForumLinkedRoleId });
 
             // Add Manual Verification role
             var manualRole = user.Guild.GetRole(ManualVerifyRoleId);
@@ -73,7 +74,7 @@ public sealed class ManualVerifyOnJoinHandler
             var refreshed = user.Guild.GetUser(user.Id);
             if (refreshed != null)
             {
-                await RemoveAllManageableRolesAsync(refreshed, excludeRoleIds: new[] { ManualVerifyRoleId });
+                await RemoveAllManageableRolesAsync(refreshed, excludeRoleIds: new[] { ManualVerifyRoleId, ForumLinkedRoleId });
 
                 // Ensure Non-Verified is gone (explicit)
                 var nonVerifiedRole = refreshed.Guild.GetRole(NonVerifiedRoleId);
