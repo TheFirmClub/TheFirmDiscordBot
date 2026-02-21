@@ -19,10 +19,9 @@ public class TerritoryAlertService
 
     private readonly Dictionary<int, ulong> _gangChannels = new()
     {
-        {1, 1469357015426928718},
-        {2, 1466582372299575326},
-        {3, 1467204788138545264},
-        {4, 1469655420506341590},
+        {2, 1466582372299575326}, // Ferrari
+        {3, 1467204788138545264}, // E22
+        {7, 1474080936852328582}  // Families
     };
 
     public TerritoryAlertService(DiscordSocketClient client)
