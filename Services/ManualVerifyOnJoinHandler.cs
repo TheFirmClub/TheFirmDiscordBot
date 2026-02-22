@@ -46,7 +46,25 @@ public sealed class ManualVerifyOnJoinHandler
 
     public void Register()
     {
-        _client.UserJoined += OnUserJoinedAsync;
+        _client.UserJoined += user =>
+        {
+            // Run in background so gateway is not blocked
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await OnUserJoinedAsync(user);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("🔥 ManualVerifyOnJoinHandler error:");
+                    Console.WriteLine(ex);
+                }
+            });
+
+            // Immediately return so the gateway thread is never blocked
+            return Task.CompletedTask;
+        };
     }
 
     private async Task OnUserJoinedAsync(SocketGuildUser user)
