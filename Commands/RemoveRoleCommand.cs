@@ -71,6 +71,7 @@ public class RemoveRoleCommand : ISlashCommand
         1469355919510077470, // GSC
         1469654367593566349, // Lost MC
         1471129098649735311, // Zero Tolerance
+        1475211012323020921, // +44
     };
 
     public async Task ExecuteAsync(SocketSlashCommand command)
