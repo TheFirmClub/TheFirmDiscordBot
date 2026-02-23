@@ -16,7 +16,7 @@ public class PoliceBlacklistCommand : ISlashCommand
 
     private const ulong SeniorManagementRoleId = 1393590761953558608;
     private const ulong SeniorModeratorRoleId  = 1393638449709584434;
-    private const ulong LogChannelId           = 1442668507786383511;
+    private const ulong LogChannelId           = 1475222924301439148;
 
     private static readonly HashSet<ulong> PoliceLeadershipRoleIds = new()
     {
