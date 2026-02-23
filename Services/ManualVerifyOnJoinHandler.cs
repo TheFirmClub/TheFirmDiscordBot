@@ -182,7 +182,7 @@ public sealed class ManualVerifyOnJoinHandler
             .WithColor(Color.Orange)
             .WithDescription(
                 $"Hello {user.Mention},\n\n" +
-                $"Thank you for joining **The Firm**. Our system has detected that your Discord account was recently created. As a security precaution, this has automatically triggered a verification check to help us protect the community.\n\n" +
+                $"Thank you for joining **The Firm**. Our system has detected that your Discord account was recently created. As a security precaution, this has automatically triggered a verification check to help us protect the community. You have 24 hours to verify your account, if not verified you will be kicked from Discord.\n\n" +
                 $"🔗 **Step 1 – Create a Forum Account**\n" +
                 $"https://forum.thefirm.club\n\n" +
                 $"🔗 **Step 2 – Link Your Discord Account**\n" +

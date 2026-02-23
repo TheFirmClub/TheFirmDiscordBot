@@ -94,6 +94,8 @@ public class SlashCommandHandler
         // --- NEW: manual verification ---
         _commands.Add("manualverify", new ManualVerifyCommand());
         _commands.Add("userverified", new UserVerifiedCommand());
+        _commands.Add("userverifytimeout", new UserVerifyTimeoutCommand());
+        _commands.Add("userverifydenied", new UserVerifyDeniedCommand());
 
     }
 
