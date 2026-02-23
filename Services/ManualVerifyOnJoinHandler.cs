@@ -20,13 +20,13 @@ public sealed class ManualVerifyOnJoinHandler
     private const ulong ForumLinkedRoleId = 1467211008610406411;
 
     // ✅ Ping ONLY these roles in the ticket
-    private const ulong GameModeratorRoleId = 1393729574537396355;
+    //private const ulong GameModeratorRoleId = 1393729574537396355;
     private const ulong DiscordModeratorRoleId = 1393623589122736238;
 
     // ✅ Still allow these staff roles to view the ticket
     private static readonly ulong[] StaffViewRoleIds =
     {
-        1393729574537396355, // Game Moderator
+        //1393729574537396355, // Game Moderator
         1393623589122736238, // Discord Moderator
         1393638449709584434, // Senior Moderator
         1405330877440983130, // Assistant Head Moderator
@@ -170,9 +170,9 @@ public sealed class ManualVerifyOnJoinHandler
         });
 
         // Ping ONLY Game Moderator + Discord Moderator + user
-        var gameMod = guild.GetRole(GameModeratorRoleId);
+        //var gameMod = guild.GetRole(GameModeratorRoleId);
         var discordMod = guild.GetRole(DiscordModeratorRoleId);
-        var pingText = $"{gameMod?.Mention} {discordMod?.Mention} {user.Mention}".Trim();
+        var pingText = $"{discordMod?.Mention} {user.Mention}".Trim();
 
         await channel.SendMessageAsync(pingText);
 
