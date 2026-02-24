@@ -21,7 +21,10 @@ public class TerritoryAlertService
     {
         {2, 1466582372299575326}, // Ferrari
         {3, 1467204788138545264}, // E22
-        {7, 1474080936852328582}  // Families
+        {7, 1474080936852328582}, // Families
+        {8, 1475211337867989064}, // +44
+        {9, 1475250339664891904}  // Incognito
+        
     };
 
     public TerritoryAlertService(DiscordSocketClient client)
