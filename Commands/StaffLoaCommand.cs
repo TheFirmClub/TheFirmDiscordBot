@@ -51,10 +51,10 @@ public class StaffLoaCommand : ISlashCommand
     private static readonly Dictionary<string, (ulong ChannelId, ulong ApproverRoleId, string Label)> DivisionRoutes =
         new()
         {
-            ["police_response_staff"] = (1442668507786383511, 1394649657644290078, "Police Response Staff"),
-            ["police_roads_staff"]    = (1442668507786383511, 1394649657644290078, "Police Roads Staff"),
-            ["police_firearms_staff"] = (1442668507786383511, 1394649657644290078, "Police Firearms Staff"),
-            ["police_senior_command"] = (1442668507786383511, 1394458024503935006, "Police Senior Command"),
+            ["police_response_staff"] = (1475222924301439148, 1394649657644290078, "Police Response Staff"),
+            ["police_roads_staff"]    = (1475222924301439148, 1394649657644290078, "Police Roads Staff"),
+            ["police_firearms_staff"] = (1475222924301439148, 1394649657644290078, "Police Firearms Staff"),
+            ["police_senior_command"] = (1475222924301439148, 1394458024503935006, "Police Senior Command"),
             ["tfhs_staff"]            = (1404782091199053847, 1398308435795251302, "TFHS Staff"),
             ["civilian_affairs"]      = (1406298760866172958, 1406295299311272006, "Civilian Affairs Staff"),
             ["creative_media_staff"]  = (1398309451697750106, 1394651533253017671, "Creative Media Staff"),
