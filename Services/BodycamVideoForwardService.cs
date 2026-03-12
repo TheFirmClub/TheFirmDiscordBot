@@ -20,19 +20,19 @@ public class BodycamVideoForwardService
         if (msg.Channel.Id != SourceChannelId)
             return;
 
-        if (!msg.Author.IsWebhook)
+        // Ensure it's from FiveManage webhook
+        if (!msg.Author.Username.Equals("Mobile Media", StringComparison.OrdinalIgnoreCase) &&
+            !msg.Author.Username.Equals("Fivemanage", StringComparison.OrdinalIgnoreCase))
             return;
 
-        var content = msg.Content;
-
-        if (string.IsNullOrWhiteSpace(content))
+        if (string.IsNullOrWhiteSpace(msg.Content))
             return;
 
-        // ✅ Ensure this is BODYCAM metadata from FiveManage
-        if (!content.Contains("\"name\": \"Bodycam Recording Clips\"", StringComparison.OrdinalIgnoreCase))
+        // Ensure it's bodycam metadata
+        if (!msg.Content.Contains("\"name\": \"Bodycam Recording Clips\"", StringComparison.OrdinalIgnoreCase))
             return;
 
-        var link = ExtractVideoLink(content);
+        var link = ExtractVideoLink(msg.Content);
 
         if (link == null)
         {
@@ -48,9 +48,9 @@ public class BodycamVideoForwardService
             return;
         }
 
-        Console.WriteLine($"🎥 Bodycam clip detected: {link}");
+        Console.WriteLine($"🎥 Forwarding bodycam clip: {link}");
 
-        // Send link first (so Discord embeds the video)
+        // Send link first so video embeds
         await channel.SendMessageAsync(link);
 
         var embed = new EmbedBuilder()
