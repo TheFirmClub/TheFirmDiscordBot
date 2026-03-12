@@ -18,82 +18,93 @@ public class BodycamVideoForwardService
     private async Task OnMessage(SocketMessage msg)
     {
         Console.WriteLine("--------------------------------------------------");
-        Console.WriteLine($"GLOBAL MESSAGE EVENT");
+        Console.WriteLine("GLOBAL MESSAGE EVENT");
         Console.WriteLine($"Channel: {msg.Channel.Id}");
         Console.WriteLine($"Author: {msg.Author.Username}");
         Console.WriteLine($"IsWebhook: {msg.Author.IsWebhook}");
-        Console.WriteLine("Content:");
-        Console.WriteLine(msg.Content);
+        Console.WriteLine($"Content: {msg.Content}");
+        Console.WriteLine($"Embeds: {msg.Embeds.Count}");
         Console.WriteLine("--------------------------------------------------");
 
-        // Only process source channel
         if (msg.Channel.Id != SourceChannelId)
         {
             Console.WriteLine("❌ Ignoring — wrong channel.");
             return;
         }
 
-        Console.WriteLine("✅ Correct source channel.");
+        Console.WriteLine("✅ Correct source channel");
 
-        // Check webhook username (FiveManage / Mobile Media)
-        if (!msg.Author.Username.Equals("Mobile Media", StringComparison.OrdinalIgnoreCase) &&
-            !msg.Author.Username.Equals("Fivemanage", StringComparison.OrdinalIgnoreCase))
+        if (!msg.Author.IsWebhook)
         {
-            Console.WriteLine("❌ Ignoring — not FiveManage webhook.");
+            Console.WriteLine("❌ Not a webhook message");
             return;
         }
 
-        Console.WriteLine("✅ Message from FiveManage.");
+        Console.WriteLine("✅ Webhook detected");
 
-        if (string.IsNullOrWhiteSpace(msg.Content))
+        string fullText = msg.Content ?? "";
+
+        // Read embed text too
+        foreach (var embed in msg.Embeds)
         {
-            Console.WriteLine("❌ Message content empty.");
-            return;
+            Console.WriteLine("🔎 Reading embed...");
+
+            if (!string.IsNullOrEmpty(embed.Title))
+                fullText += "\n" + embed.Title;
+
+            if (!string.IsNullOrEmpty(embed.Description))
+                fullText += "\n" + embed.Description;
+
+            foreach (var field in embed.Fields)
+            {
+                fullText += "\n" + field.Name + "\n" + field.Value;
+            }
         }
+
+        Console.WriteLine("📜 Combined Message Text:");
+        Console.WriteLine(fullText);
 
         // Check metadata
-        if (!msg.Content.Contains("\"name\": \"Bodycam Recording Clips\"", StringComparison.OrdinalIgnoreCase))
+        if (!fullText.Contains("Bodycam Recording Clips", StringComparison.OrdinalIgnoreCase))
         {
-            Console.WriteLine("❌ Metadata does not match Bodycam Recording Clips.");
+            Console.WriteLine("❌ Not a bodycam recording clip");
             return;
         }
 
-        Console.WriteLine("✅ Bodycam metadata detected.");
+        Console.WriteLine("✅ Bodycam metadata detected");
 
-        // Extract video link
-        var link = ExtractVideoLink(msg.Content);
+        var link = ExtractVideoLink(fullText);
 
         if (link == null)
         {
-            Console.WriteLine("❌ No video link found.");
+            Console.WriteLine("❌ Video link not found");
             return;
         }
 
-        Console.WriteLine($"✅ Video link detected: {link}");
+        Console.WriteLine($"✅ Video link: {link}");
 
         var channel = _client.GetChannel(TargetChannelId) as IMessageChannel;
 
         if (channel == null)
         {
-            Console.WriteLine("❌ Target channel not found.");
+            Console.WriteLine("❌ Target channel not found");
             return;
         }
 
         Console.WriteLine("🚀 Forwarding video...");
 
-        // Send link first so Discord embeds video
         await channel.SendMessageAsync(link);
 
-        var embed = new EmbedBuilder()
+        var embedMessage = new EmbedBuilder()
             .WithColor(Color.DarkBlue)
             .WithTitle("🎥 Bodycam Footage Uploaded")
             .AddField("Timestamp", DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss UTC"))
             .WithFooter("Evidence System")
             .Build();
 
-        await channel.SendMessageAsync(embed: embed);
+        await channel.SendMessageAsync(embed: embedMessage);
 
-        Console.WriteLine("✅ Bodycam video forwarded successfully.");
+        Console.WriteLine("✅ Video forwarded successfully");
     }
 
     private string? ExtractVideoLink(string text)
@@ -104,11 +115,11 @@ public class BodycamVideoForwardService
 
         if (match.Success)
         {
-            Console.WriteLine("✅ Regex matched video URL.");
+            Console.WriteLine("✅ Found .webm link");
             return match.Value;
         }
 
-        Console.WriteLine("❌ Regex failed to find .webm link.");
+        Console.WriteLine("❌ No .webm link detected");
         return null;
     }
 }
