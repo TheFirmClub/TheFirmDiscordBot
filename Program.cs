@@ -30,6 +30,8 @@ class Program
     
     private TerritoryAlertService? _territoryAlert;
     
+    private BodycamVideoForwardService? _bodycamVideoForward;
+    
     private TicketActivityService? _ticketActivity;
     
     private EvidenceRelayService? _evidenceRelay;
@@ -98,6 +100,8 @@ class Program
         
         // ✅ Turf invasion detection
         _territoryAlert = new TerritoryAlertService(_client!);
+        
+        _bodycamVideoForward = new BodycamVideoForwardService(_client!);
         
         _ticketActivity = new TicketActivityService(_client!);
         
