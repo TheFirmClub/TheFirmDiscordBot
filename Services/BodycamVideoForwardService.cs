@@ -17,28 +17,59 @@ public class BodycamVideoForwardService
 
     private async Task OnMessage(SocketMessage msg)
     {
-        if (msg.Channel.Id != SourceChannelId)
-            return;
+        Console.WriteLine("--------------------------------------------------");
+        Console.WriteLine($"GLOBAL MESSAGE EVENT");
+        Console.WriteLine($"Channel: {msg.Channel.Id}");
+        Console.WriteLine($"Author: {msg.Author.Username}");
+        Console.WriteLine($"IsWebhook: {msg.Author.IsWebhook}");
+        Console.WriteLine("Content:");
+        Console.WriteLine(msg.Content);
+        Console.WriteLine("--------------------------------------------------");
 
-        // Ensure it's from FiveManage webhook
+        // Only process source channel
+        if (msg.Channel.Id != SourceChannelId)
+        {
+            Console.WriteLine("❌ Ignoring — wrong channel.");
+            return;
+        }
+
+        Console.WriteLine("✅ Correct source channel.");
+
+        // Check webhook username (FiveManage / Mobile Media)
         if (!msg.Author.Username.Equals("Mobile Media", StringComparison.OrdinalIgnoreCase) &&
             !msg.Author.Username.Equals("Fivemanage", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine("❌ Ignoring — not FiveManage webhook.");
             return;
+        }
+
+        Console.WriteLine("✅ Message from FiveManage.");
 
         if (string.IsNullOrWhiteSpace(msg.Content))
+        {
+            Console.WriteLine("❌ Message content empty.");
             return;
+        }
 
-        // Ensure it's bodycam metadata
+        // Check metadata
         if (!msg.Content.Contains("\"name\": \"Bodycam Recording Clips\"", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine("❌ Metadata does not match Bodycam Recording Clips.");
             return;
+        }
 
+        Console.WriteLine("✅ Bodycam metadata detected.");
+
+        // Extract video link
         var link = ExtractVideoLink(msg.Content);
 
         if (link == null)
         {
-            Console.WriteLine("❌ No video link detected.");
+            Console.WriteLine("❌ No video link found.");
             return;
         }
+
+        Console.WriteLine($"✅ Video link detected: {link}");
 
         var channel = _client.GetChannel(TargetChannelId) as IMessageChannel;
 
@@ -48,9 +79,9 @@ public class BodycamVideoForwardService
             return;
         }
 
-        Console.WriteLine($"🎥 Forwarding bodycam clip: {link}");
+        Console.WriteLine("🚀 Forwarding video...");
 
-        // Send link first so video embeds
+        // Send link first so Discord embeds video
         await channel.SendMessageAsync(link);
 
         var embed = new EmbedBuilder()
@@ -61,11 +92,23 @@ public class BodycamVideoForwardService
             .Build();
 
         await channel.SendMessageAsync(embed: embed);
+
+        Console.WriteLine("✅ Bodycam video forwarded successfully.");
     }
 
     private string? ExtractVideoLink(string text)
     {
+        Console.WriteLine("🔍 Searching for video link...");
+
         var match = Regex.Match(text, @"https?:\/\/[^\s]+\.webm", RegexOptions.IgnoreCase);
-        return match.Success ? match.Value : null;
+
+        if (match.Success)
+        {
+            Console.WriteLine("✅ Regex matched video URL.");
+            return match.Value;
+        }
+
+        Console.WriteLine("❌ Regex failed to find .webm link.");
+        return null;
     }
 }
