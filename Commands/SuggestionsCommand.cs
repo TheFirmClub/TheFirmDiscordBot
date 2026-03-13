@@ -47,6 +47,11 @@ public class SuggestionsCommand : ISlashCommand
             new SlashCommandBuilder()
                 .WithName("suggestions")
                 .WithDescription("Suggestion system")
+                
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("new")
+                    .WithDescription("Open the suggestions panel")
+                    .WithType(ApplicationCommandOptionType.SubCommand))
 
                 .AddOption(new SlashCommandOptionBuilder()
                     .WithName("enable")
@@ -69,7 +74,7 @@ public class SuggestionsCommand : ISlashCommand
         var sub = cmd.Data.Options.FirstOrDefault()?.Name;
         
         // Show suggestion panel if no subcommand
-        if (sub == null)
+        if (sub == "new")
         {
             var embed = new EmbedBuilder()
                 .WithTitle("📢 Suggestions")
