@@ -14,9 +14,17 @@ public class SuggestionsCommand : ISlashCommand
 
     private static readonly ulong[] StaffRoleIds =
     {
-        1420513009729802260,
+        1399173940622135448,
         1393590761953558608
     };
+    
+    private bool IsStaff(IUser user)
+    {
+        var guser = user as SocketGuildUser;
+        return guser != null && guser.Roles.Any(r => StaffRoleIds.Contains(r.Id));
+    }
+    
+    private static bool SuggestionsEnabled = true;
 
     private readonly string _mysql =
         "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore;User ID=thefirmprod;Password=edr6BYZqmq7eud0mwm;SslMode=Required;AllowPublicKeyRetrieval=True;Character Set=utf8mb4;";
@@ -32,11 +40,25 @@ public class SuggestionsCommand : ISlashCommand
 
         _client.InteractionCreated -= OnInteractionCreated;
         _client.InteractionCreated += OnInteractionCreated;
+        
+        await LoadSuggestionState();
 
         await client.Rest.CreateGuildCommand(
             new SlashCommandBuilder()
                 .WithName(Name)
-                .WithDescription(Description)
+                .WithDescription("Suggestions system")
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("start")
+                    .WithDescription("Enable suggestions")
+                    .WithType(ApplicationCommandOptionType.SubCommand))
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("stop")
+                    .WithDescription("Disable suggestions")
+                    .WithType(ApplicationCommandOptionType.SubCommand))
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("panel")
+                    .WithDescription("Open suggestion panel")
+                    .WithType(ApplicationCommandOptionType.SubCommand))
                 .Build(),
             _guildId
         );
@@ -45,6 +67,53 @@ public class SuggestionsCommand : ISlashCommand
     // ========= Slash =========
     public async Task ExecuteAsync(SocketSlashCommand cmd)
     {
+        var sub = cmd.Data.Options.FirstOrDefault()?.Name;
+
+        if (sub == "start")
+        {
+            if (!IsStaff(cmd.User))
+            {
+                await cmd.RespondAsync("Staff only.", ephemeral: true);
+                return;
+            }
+
+            SuggestionsEnabled = true;
+
+            using (var conn = new MySqlConnection(_mysql))
+            {
+                await conn.OpenAsync();
+                var db = conn.CreateCommand();
+                db.CommandText = "UPDATE bot_settings SET value='1' WHERE setting='suggestions_enabled'";
+                await db.ExecuteNonQueryAsync();
+            }
+
+            await cmd.RespondAsync("✅ Suggestions have been **enabled**.");
+            return;
+        }
+
+        if (sub == "stop")
+        {
+            if (!IsStaff(cmd.User))
+            {
+                await cmd.RespondAsync("Staff only.", ephemeral: true);
+                return;
+            }
+
+            SuggestionsEnabled = false;
+
+            using (var conn = new MySqlConnection(_mysql))
+            {
+                await conn.OpenAsync();
+                var db = conn.CreateCommand();
+                db.CommandText = "UPDATE bot_settings SET value='0' WHERE setting='suggestions_enabled'";
+                await db.ExecuteNonQueryAsync();
+            }
+
+            await cmd.RespondAsync("⛔ Suggestions have been **disabled**.");
+            return;
+        }
+
+        // panel command
         var embed = new EmbedBuilder()
             .WithTitle("📢 Suggestions")
             .WithColor(Color.Blue)
@@ -56,7 +125,12 @@ public class SuggestionsCommand : ISlashCommand
             );
 
         var buttons = new ComponentBuilder()
-            .WithButton("Create New Suggestion", "suggest:create", ButtonStyle.Primary)
+            .WithButton(
+                "Create New Suggestion",
+                "suggest:create",
+                ButtonStyle.Primary,
+                disabled: !SuggestionsEnabled
+            )
             .WithButton("Exit", "suggest:exit", ButtonStyle.Secondary);
 
         await cmd.RespondAsync(embed: embed.Build(), components: buttons.Build(), ephemeral: true);
@@ -93,6 +167,15 @@ public class SuggestionsCommand : ISlashCommand
     // ========= Modal =========
     private async Task OpenModal(SocketMessageComponent comp)
     {
+        if (!SuggestionsEnabled)
+        {
+            await comp.RespondAsync(
+                "⛔ Suggestions are currently **closed** by staff.",
+                ephemeral: true
+            );
+            return;
+        }
+
         var modal = new ModalBuilder()
             .WithTitle("New Suggestion")
             .WithCustomId("suggest:submit")
@@ -104,6 +187,15 @@ public class SuggestionsCommand : ISlashCommand
     // ========= Submit =========
     private async Task SubmitSuggestion(SocketModal modal)
     {
+        if (!SuggestionsEnabled)
+        {
+            await modal.RespondAsync(
+                "⛔ Suggestions are currently **closed** by staff.",
+                ephemeral: true
+            );
+            return;
+        }
+        
         var text = modal.Data.Components.First().Value.Trim();
 
         var embed = new EmbedBuilder()
@@ -185,7 +277,7 @@ public class SuggestionsCommand : ISlashCommand
     private async Task HandleStaffAction(SocketMessageComponent comp)
     {
         var guser = comp.User as SocketGuildUser;
-        if (!guser.Roles.Any(r => StaffRoleIds.Contains(r.Id)))
+        if (guser == null || !guser.Roles.Any(r => StaffRoleIds.Contains(r.Id)))
         {
             await comp.RespondAsync("Staff only.", ephemeral: true);
             return;
@@ -214,5 +306,19 @@ public class SuggestionsCommand : ISlashCommand
         });
 
         await comp.RespondAsync($"Suggestion {status.ToLower()}.", ephemeral: true);
+    }
+    
+    private async Task LoadSuggestionState()
+    {
+        using var conn = new MySqlConnection(_mysql);
+        await conn.OpenAsync();
+
+        var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT value FROM bot_settings WHERE setting='suggestions_enabled'";
+
+        var result = await cmd.ExecuteScalarAsync();
+
+        if (result != null)
+            SuggestionsEnabled = result.ToString() == "1";
     }
 }
