@@ -49,11 +49,6 @@ public class SuggestionsCommand : ISlashCommand
                 .WithDescription("Suggestion system")
 
                 .AddOption(new SlashCommandOptionBuilder()
-                    .WithName("new")
-                    .WithDescription("Create a new suggestion")
-                    .WithType(ApplicationCommandOptionType.SubCommand))
-
-                .AddOption(new SlashCommandOptionBuilder()
                     .WithName("enable")
                     .WithDescription("Enable suggestions")
                     .WithType(ApplicationCommandOptionType.SubCommand))
@@ -72,6 +67,32 @@ public class SuggestionsCommand : ISlashCommand
     public async Task ExecuteAsync(SocketSlashCommand cmd)
     {
         var sub = cmd.Data.Options.FirstOrDefault()?.Name;
+        
+        // Show suggestion panel if no subcommand
+        if (sub == null)
+        {
+            var embed = new EmbedBuilder()
+                .WithTitle("📢 Suggestions")
+                .WithColor(Color.Blue)
+                .WithDescription(
+                    "• Be constructive\n" +
+                    "• One idea per suggestion\n" +
+                    "• Staff review all submissions\n\n" +
+                    "Click **Create** to continue."
+                );
+
+            var buttons = new ComponentBuilder()
+                .WithButton(
+                    "Create New Suggestion",
+                    "suggest:create",
+                    ButtonStyle.Primary,
+                    disabled: !SuggestionsEnabled
+                )
+                .WithButton("Exit", "suggest:exit", ButtonStyle.Secondary);
+
+            await cmd.RespondAsync(embed: embed.Build(), components: buttons.Build(), ephemeral: true);
+            return;
+        }
 
         if (sub == "enable")
         {
@@ -116,26 +137,6 @@ public class SuggestionsCommand : ISlashCommand
             await cmd.RespondAsync("⛔ Suggestions have been **disabled**.");
             return;
         }
-
-        // panel command
-        if (sub == "new")
-        {
-            if (!SuggestionsEnabled)
-            {
-                await cmd.RespondAsync(
-                    "⛔ Suggestions are currently **closed** by staff.",
-                    ephemeral: true
-                );
-                return;
-            }
-
-            var modal = new ModalBuilder()
-                .WithTitle("New Suggestion")
-                .WithCustomId("suggest:submit")
-                .AddTextInput("Suggestion", "text", TextInputStyle.Paragraph, required: true);
-
-            await cmd.RespondWithModalAsync(modal.Build());
-        }
     }
 
     // ========= Router =========
@@ -148,8 +149,18 @@ public class SuggestionsCommand : ISlashCommand
                 case SocketMessageComponent c:
                     if (c.Data.CustomId == "suggest:create")
                         await OpenModal(c);
+
+                    else if (c.Data.CustomId == "suggest:exit")
+                        await c.UpdateAsync(msg =>
+                        {
+                            msg.Embed = null;
+                            msg.Components = new ComponentBuilder().Build();
+                            msg.Content = "";
+                        });
+
                     else if (c.Data.CustomId.StartsWith("vote:"))
                         await HandleVote(c);
+
                     else if (c.Data.CustomId.StartsWith("staff:"))
                         await HandleStaffAction(c);
                     break;
