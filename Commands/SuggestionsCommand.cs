@@ -158,9 +158,9 @@ public class SuggestionsCommand : ISlashCommand
                     else if (c.Data.CustomId == "suggest:exit")
                         await c.UpdateAsync(msg =>
                         {
-                            msg.Embed = null;
+                            msg.Embeds = Array.Empty<Embed>();
                             msg.Components = new ComponentBuilder().Build();
-                            msg.Content = "";
+                            msg.Content = "Suggestion panel closed.";
                         });
 
                     else if (c.Data.CustomId.StartsWith("vote:"))
