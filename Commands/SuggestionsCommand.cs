@@ -45,20 +45,24 @@ public class SuggestionsCommand : ISlashCommand
 
         await client.Rest.CreateGuildCommand(
             new SlashCommandBuilder()
-                .WithName(Name)
-                .WithDescription("Suggestions system")
+                .WithName("suggestions")
+                .WithDescription("Suggestion system")
+
                 .AddOption(new SlashCommandOptionBuilder()
-                    .WithName("start")
+                    .WithName("new")
+                    .WithDescription("Create a new suggestion")
+                    .WithType(ApplicationCommandOptionType.SubCommand))
+
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("enable")
                     .WithDescription("Enable suggestions")
                     .WithType(ApplicationCommandOptionType.SubCommand))
+
                 .AddOption(new SlashCommandOptionBuilder()
-                    .WithName("stop")
+                    .WithName("disable")
                     .WithDescription("Disable suggestions")
                     .WithType(ApplicationCommandOptionType.SubCommand))
-                .AddOption(new SlashCommandOptionBuilder()
-                    .WithName("panel")
-                    .WithDescription("Open suggestion panel")
-                    .WithType(ApplicationCommandOptionType.SubCommand))
+
                 .Build(),
             _guildId
         );
@@ -69,7 +73,7 @@ public class SuggestionsCommand : ISlashCommand
     {
         var sub = cmd.Data.Options.FirstOrDefault()?.Name;
 
-        if (sub == "start")
+        if (sub == "enable")
         {
             if (!IsStaff(cmd.User))
             {
@@ -91,7 +95,7 @@ public class SuggestionsCommand : ISlashCommand
             return;
         }
 
-        if (sub == "stop")
+        if (sub == "disable")
         {
             if (!IsStaff(cmd.User))
             {
@@ -114,26 +118,24 @@ public class SuggestionsCommand : ISlashCommand
         }
 
         // panel command
-        var embed = new EmbedBuilder()
-            .WithTitle("📢 Suggestions")
-            .WithColor(Color.Blue)
-            .WithDescription(
-                "• Be constructive\n" +
-                "• One idea per suggestion\n" +
-                "• Staff review all submissions\n\n" +
-                "Click **Create** to continue."
-            );
+        if (sub == "new")
+        {
+            if (!SuggestionsEnabled)
+            {
+                await cmd.RespondAsync(
+                    "⛔ Suggestions are currently **closed** by staff.",
+                    ephemeral: true
+                );
+                return;
+            }
 
-        var buttons = new ComponentBuilder()
-            .WithButton(
-                "Create New Suggestion",
-                "suggest:create",
-                ButtonStyle.Primary,
-                disabled: !SuggestionsEnabled
-            )
-            .WithButton("Exit", "suggest:exit", ButtonStyle.Secondary);
+            var modal = new ModalBuilder()
+                .WithTitle("New Suggestion")
+                .WithCustomId("suggest:submit")
+                .AddTextInput("Suggestion", "text", TextInputStyle.Paragraph, required: true);
 
-        await cmd.RespondAsync(embed: embed.Build(), components: buttons.Build(), ephemeral: true);
+            await cmd.RespondWithModalAsync(modal.Build());
+        }
     }
 
     // ========= Router =========
