@@ -68,7 +68,6 @@ public class SlashCommandHandler
         _commands.Add("playtime", new PlaytimeCommand());
         _commands.Add("resetplaytime", new ResetPlaytimeCommand());
         _commands.Add("game", new GameModCommands());
-        _commands.Add("suggestions", suggestionsCommand);
         _commands.Add("gamestats", new GameStatsCommand());
         _commands.Add("mdtincidents", new MDTIncidentsCommand());
         _commands.Add("listinv", new ListInventoryCommand());
