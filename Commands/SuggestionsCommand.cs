@@ -243,6 +243,7 @@ public class SuggestionsCommand : ISlashCommand
                     $"⌛ Try again in **{remaining.Hours}h {remaining.Minutes}m**.",
                     ephemeral: true
                 );
+                return;
             }
         }
         
