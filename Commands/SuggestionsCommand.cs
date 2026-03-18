@@ -214,6 +214,38 @@ public class SuggestionsCommand : ISlashCommand
             return;
         }
         
+        using var conn = new MySqlConnection(_mysql);
+        await conn.OpenAsync();
+        
+        var checkCmd = conn.CreateCommand();
+        checkCmd.CommandText = @"
+            SELECT created_at
+            FROM suggestions
+            WHERE author_id = @u
+            ORDER BY created_at DESC
+            LIMIT 1";
+        
+        checkCmd.Parameters.AddWithValue("@u", (long)modal.User.Id);
+        
+        var result = await checkCmd.ExecuteReaderAsync();
+
+        if (result != null)
+        {
+            var lastTime = Convert.ToDateTime(result);
+            var timeSince = DateTime.UtcNow - lastTime;
+
+            if (timeSince.TotalHours < 48)
+            {
+                var remaining = TimeSpan.FromHours(48) - timeSince;
+
+                await modal.RespondAsync(
+                    $"⛔ You can only submit one suggestion every 48 hours.\n" +
+                    $"⌛ Try again in **{remaining.Hours}h {remaining.Minutes}m**.",
+                    ephemeral: true
+                );
+            }
+        }
+        
         var text = modal.Data.Components.First().Value.Trim();
 
         var embed = new EmbedBuilder()
@@ -240,14 +272,14 @@ public class SuggestionsCommand : ISlashCommand
             message: msg
         );
         
-        using var conn = new MySqlConnection(_mysql);
-        await conn.OpenAsync();
         var cmd = conn.CreateCommand();
         cmd.CommandText =
-            "INSERT INTO suggestions (message_id, author_id, suggestion) VALUES (@m,@u,@s)";
+            "INSERT INTO suggestions (message_id, author_id, suggestion, created_at) VALUES (@m,@u,@s, NOW())";
+
         cmd.Parameters.AddWithValue("@m", (long)msg.Id);
         cmd.Parameters.AddWithValue("@u", (long)modal.User.Id);
         cmd.Parameters.AddWithValue("@s", text);
+
         await cmd.ExecuteNonQueryAsync();
 
         await modal.RespondAsync("✅ Suggestion submitted.", ephemeral: true);
