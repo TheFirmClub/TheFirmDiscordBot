@@ -240,7 +240,7 @@ public class SuggestionsCommand : ISlashCommand
 
                 await modal.RespondAsync(
                     $"⛔ You can only submit one suggestion every 48 hours.\n" +
-                    $"⌛ Try again in **{remaining.Hours}h {remaining.Minutes}m**.",
+                    $"⌛ Try again in **{(int)remaining.Hours}h {remaining.Minutes}m**.",
                     ephemeral: true
                 );
                 return;
