@@ -238,9 +238,16 @@ public class SuggestionsCommand : ISlashCommand
             {
                 var remaining = TimeSpan.FromHours(48) - timeSince;
 
+                // prevent negative / weird values
+                if (remaining.TotalSeconds < 0)
+                    remaining = TimeSpan.Zero;
+
+                int hours = (int)Math.Floor(remaining.TotalHours);
+                int minutes = remaining.Minutes;
+
                 await modal.RespondAsync(
                     $"⛔ You can only submit one suggestion every 48 hours.\n" +
-                    $"⌛ Try again in **{(int)remaining.TotalHours}h {remaining.Minutes}m**.",
+                    $"⌛ Try again in **{hours}h {minutes}m**.",
                     ephemeral: true
                 );
                 return;
