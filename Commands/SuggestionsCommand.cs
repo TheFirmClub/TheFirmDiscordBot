@@ -227,7 +227,7 @@ public class SuggestionsCommand : ISlashCommand
         
         checkCmd.Parameters.AddWithValue("@u", (long)modal.User.Id);
         
-        var result = await checkCmd.ExecuteReaderAsync();
+        var result = await checkCmd.ExecuteScalarAsync();
 
         if (result != null)
         {
