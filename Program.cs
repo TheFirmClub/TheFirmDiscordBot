@@ -554,21 +554,28 @@ class Program
     {
         var name = command.Data.Name?.ToLowerInvariant();
 
-        // ✅ Route LOA commands directly to StaffLoaCommand
+        // 🔥 FIX: handle suggestions FIRST
+        if (name == "suggestions")
+        {
+            await _suggestionsCommand.ExecuteAsync(command);
+            return;
+        }
+
+        // ✅ Route LOA commands
         if (name == "staffloa" || name == "loaremove" || name == "staffloalist")
         {
             await _staffLoa.ExecuteAsync(command);
             return;
         }
 
-        // ✅ Route CheckRoleInfo command
+        // ✅ Route CheckRoleInfo
         if (name == "checkroleinfo")
         {
             await _checkRoleInfoCommand.ExecuteAsync(command);
             return;
         }
 
-        // Everything else stays on your existing handler
+        // fallback to handler
         if (_commandHandler != null)
             await _commandHandler.HandleCommandAsync(command);
     }
