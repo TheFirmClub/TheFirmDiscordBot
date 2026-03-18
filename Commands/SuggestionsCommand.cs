@@ -213,10 +213,10 @@ public class SuggestionsCommand : ISlashCommand
             );
             return;
         }
-        
+
         using var conn = new MySqlConnection(_mysql);
         await conn.OpenAsync();
-        
+
         var checkCmd = conn.CreateCommand();
         checkCmd.CommandText = @"
             SELECT created_at
@@ -224,34 +224,21 @@ public class SuggestionsCommand : ISlashCommand
             WHERE author_id = @u
             ORDER BY created_at DESC
             LIMIT 1";
-        
+
         checkCmd.Parameters.AddWithValue("@u", (long)modal.User.Id);
-        
+
         var result = await checkCmd.ExecuteScalarAsync();
 
         if (result != null && result != DBNull.Value)
         {
             var lastTime = Convert.ToDateTime(result);
 
-            var timeSince = DateTime.UtcNow - lastTime;
-
-            // 🔥 CRITICAL FIX — stop time going negative
-            if (timeSince.TotalSeconds < 0)
-                timeSince = TimeSpan.Zero;
-
-            if (timeSince.TotalHours < 48)
+            // simple check only (no fancy math)
+            if ((DateTime.UtcNow - lastTime).TotalHours < 48)
             {
-                var remaining = TimeSpan.FromHours(48) - timeSince;
-
-                if (remaining.TotalSeconds < 0)
-                    remaining = TimeSpan.Zero;
-
-                int hours = (int)Math.Floor(remaining.TotalHours);
-                int minutes = remaining.Minutes;
-
                 await modal.RespondAsync(
-                    $"⛔ You can only submit one suggestion every 48 hours.\n" +
-                    $"⌛ Try again in **{hours}h {minutes:D2}m**.",
+                    "⛔ You can only submit one suggestion every 48 hours.\n" +
+                    "⌛ Please try again in 48 hours.",
                     ephemeral: true
                 );
                 return;
