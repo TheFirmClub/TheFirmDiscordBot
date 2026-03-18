@@ -201,7 +201,19 @@ class Program
             Console.WriteLine("✅ Registered LOA commands (/staffloa, /loaremove, /staffloalist)");
         }
         
-        // ✅ Register Suggestions
+        // 🔥 DELETE OLD /suggestions COMMAND FIRST
+        var commands = await guild.GetApplicationCommandsAsync();
+
+        foreach (var cmd in commands)
+        {
+            if (cmd.Name == "suggestions")
+            {
+                await cmd.DeleteAsync();
+                Console.WriteLine("🗑️ Removed old /suggestions");
+            }
+        }
+
+        // ✅ Register Suggestions (fresh)
         await _suggestionsCommand.RegisterAsync(_client);
         Console.WriteLine("✅ Registered /suggestions");
         
