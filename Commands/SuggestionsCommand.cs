@@ -229,16 +229,20 @@ public class SuggestionsCommand : ISlashCommand
         
         var result = await checkCmd.ExecuteScalarAsync();
 
-        if (result != null)
+        if (result != null && result != DBNull.Value)
         {
             var lastTime = Convert.ToDateTime(result);
+
             var timeSince = DateTime.UtcNow - lastTime;
+
+            // 🔥 CRITICAL FIX — stop time going negative
+            if (timeSince.TotalSeconds < 0)
+                timeSince = TimeSpan.Zero;
 
             if (timeSince.TotalHours < 48)
             {
                 var remaining = TimeSpan.FromHours(48) - timeSince;
 
-                // prevent negative / weird values
                 if (remaining.TotalSeconds < 0)
                     remaining = TimeSpan.Zero;
 
@@ -247,7 +251,7 @@ public class SuggestionsCommand : ISlashCommand
 
                 await modal.RespondAsync(
                     $"⛔ You can only submit one suggestion every 48 hours.\n" +
-                    $"⌛ Try again in **{hours}h {minutes}m**.",
+                    $"⌛ Try again in **{hours}h {minutes:D2}m**.",
                     ephemeral: true
                 );
                 return;
