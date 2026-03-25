@@ -18,7 +18,10 @@ public class SupportModalHandler
         1393729574537396355,
         1393623589122736238,
         1393590761953558608,
-        1393638449709584434
+        1393638449709584434,
+        1393728468608487594, // HEAD MOD
+        1405330877440983130  // ASST HEAD MOD
+        
     };
     
     public SupportModalHandler(IConfiguration config, AiSupportService aiSupport)
