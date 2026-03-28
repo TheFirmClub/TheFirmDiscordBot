@@ -30,6 +30,8 @@ public class MemeCommand : ISlashCommand
         var url = command.Data.Options.First(x => x.Name == "url").Value.ToString();
         var topText = command.Data.Options.First(x => x.Name == "top").Value.ToString();
         var bottomText = command.Data.Options.First(x => x.Name == "bottom").Value.ToString();
+        var userOption = command.Data.Options.FirstOrDefault(x => x.Name == "user");
+        var targetUser = userOption?.Value as IUser;
 
         if (string.IsNullOrWhiteSpace(url) || !url.StartsWith("http"))
         {
@@ -68,7 +70,14 @@ public class MemeCommand : ISlashCommand
                 var path = $"meme_{Guid.NewGuid()}.png";
                 image.Save(path, DrawingImaging.ImageFormat.Png);
 
-                await command.RespondWithFileAsync(path);
+                if (targetUser != null)
+                {
+                    await command.RespondWithFileAsync(path, text: $"{targetUser.Mention}");
+                }
+                else
+                {
+                    await command.RespondWithFileAsync(path);
+                }
 
                 System.IO.File.Delete(path);
             }
