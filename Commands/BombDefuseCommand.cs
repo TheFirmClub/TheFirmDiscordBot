@@ -249,11 +249,10 @@ public class BombDefuseCommand : ISlashCommand
     private static MessageComponent DisableButtons(string id)
     {
         return new ComponentBuilder()
-            .WithButton("🔴 Red", $"bomb:off:{id}", ButtonStyle.Secondary, disabled: true)
-            .WithButton("🔵 Blue", $"bomb:off:{id}", ButtonStyle.Secondary, disabled: true)
-            .WithButton("🟢 Green", $"bomb:off:{id}", ButtonStyle.Secondary, disabled: true)
-            .WithButton("🟡 Yellow", $"bomb:off:{id}", ButtonStyle.Secondary, disabled: true)
-            .WithButton("Cancel", $"bomb:off:{id}", ButtonStyle.Secondary, disabled: true)
+            .WithButton("🔴 Red", $"bomb:off:{id}:Red", ButtonStyle.Secondary, disabled: true)
+            .WithButton("🔵 Blue", $"bomb:off:{id}:Blue", ButtonStyle.Secondary, disabled: true)
+            .WithButton("🟢 Green", $"bomb:off:{id}:Green", ButtonStyle.Secondary, disabled: true)
+            .WithButton("🟡 Yellow", $"bomb:off:{id}:Yellow", ButtonStyle.Secondary, disabled: true)
+            .WithButton("Cancel", $"bomb:off:{id}:Cancel", ButtonStyle.Secondary, disabled: true)
             .Build();
     }
-}
