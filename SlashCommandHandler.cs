@@ -47,6 +47,7 @@ public class SlashCommandHandler
         _commands.Add("removerole", new RemoveRoleCommand());
         _commands.Add("checkrole", new CheckRoleCommand());
         
+        _commands.Add("meme", new MemeCommand());
         _commands.Add("coinflip", new CoinFlipCommand());
         _commands.Add("8ball", new Magic8BallCommand());
         _commands.Add("tictactoe", new TicTacToeCommand());

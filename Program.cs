@@ -466,6 +466,12 @@ class Program
                 builder.AddOption("user", ApplicationCommandOptionType.User, "Target user", true);
                 builder.AddOption("role", ApplicationCommandOptionType.Role, "Role to assign/remove", true);
             }
+            else if (command.Name == "meme")
+            {
+                builder.AddOption("url", ApplicationCommandOptionType.String, "Direct image link (jpg/png)", true);
+                builder.AddOption("top", ApplicationCommandOptionType.String, "Top text", true);
+                builder.AddOption("bottom", ApplicationCommandOptionType.String, "Bottom text", true);
+            }
             else if (command.Name == "checkrole")
                 builder.AddOption("user", ApplicationCommandOptionType.User, "User to check", true);
             else if (command.Name == "8ball")
