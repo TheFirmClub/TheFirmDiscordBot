@@ -471,7 +471,6 @@ class Program
                 builder.AddOption("url", ApplicationCommandOptionType.String, "Direct image link (jpg/png)", true);
                 builder.AddOption("top", ApplicationCommandOptionType.String, "Top text", true);
                 builder.AddOption("bottom", ApplicationCommandOptionType.String, "Bottom text", true);
-                builder.AddOption("user", ApplicationCommandOptionType.String, "Mention User to meme", false);
             }
             else if (command.Name == "checkrole")
                 builder.AddOption("user", ApplicationCommandOptionType.User, "User to check", true);

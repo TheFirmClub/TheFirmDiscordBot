@@ -21,7 +21,6 @@ public class MemeCommand : ISlashCommand
             .AddOption("url", ApplicationCommandOptionType.String, "Direct image link (jpg/png)", true)
             .AddOption("top", ApplicationCommandOptionType.String, "Top text", true)
             .AddOption("bottom", ApplicationCommandOptionType.String, "Bottom text", true)
-            .AddOption("user", ApplicationCommandOptionType.User, "User to mention", false)
             .Build();
     }
 
@@ -30,8 +29,6 @@ public class MemeCommand : ISlashCommand
         var url = command.Data.Options.First(x => x.Name == "url").Value.ToString();
         var topText = command.Data.Options.First(x => x.Name == "top").Value.ToString();
         var bottomText = command.Data.Options.First(x => x.Name == "bottom").Value.ToString();
-        var userOption = command.Data.Options.FirstOrDefault(x => x.Name == "user");
-        var targetUser = userOption?.Value as IUser;
 
         if (string.IsNullOrWhiteSpace(url) || !url.StartsWith("http"))
         {
@@ -67,11 +64,6 @@ public class MemeCommand : ISlashCommand
 
                 var path = $"meme_{Guid.NewGuid()}.png";
                 image.Save(path, DrawingImaging.ImageFormat.Png);
-
-                if (targetUser != null)
-                {
-                    await command.FollowupAsync(targetUser.Mention, allowedMentions: AllowedMentions.All);
-                }
 
                 await command.FollowupWithFileAsync(path);
 
