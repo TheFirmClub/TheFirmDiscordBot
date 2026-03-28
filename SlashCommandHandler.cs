@@ -52,6 +52,7 @@ public class SlashCommandHandler
         _commands.Add("tictactoe", new TicTacToeCommand());
         _commands.Add("slap", new SlapCommand());
         _commands.Add("rps", new RpsCommand());
+        _commands.Add("bomb", new BombDefuseCommand());
         _commands.Add("trivia", new TriviaCommand());
         _commands.Add("rickroll", new RickrollCommand());
         _commands.Add("fakeban", new FakeBanCommand());
