@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Discord;
 using Discord.WebSocket;
 
-// Aliases to avoid conflicts
+// Aliases
 using Drawing = System.Drawing;
 using DrawingImaging = System.Drawing.Imaging;
 
@@ -31,10 +31,9 @@ public class MemeCommand : ISlashCommand
         var topText = command.Data.Options.First(x => x.Name == "top").Value.ToString();
         var bottomText = command.Data.Options.First(x => x.Name == "bottom").Value.ToString();
 
-        // Basic validation
         if (string.IsNullOrWhiteSpace(url) || !url.StartsWith("http"))
         {
-            await command.RespondAsync("❌ Invalid URL. Must be a direct image link.", ephemeral: true);
+            await command.RespondAsync("❌ Invalid URL.", ephemeral: true);
             return;
         }
 
@@ -44,10 +43,8 @@ public class MemeCommand : ISlashCommand
         {
             using var stream = await http.GetStreamAsync(url);
 
-            // ⚠️ FIX: no 'using var' so we can reassign
             var image = Drawing.Image.FromStream(stream);
 
-            // Resize large images (prevent crashes)
             if (image.Width > 2000 || image.Height > 2000)
             {
                 image = new Drawing.Bitmap(image, new Drawing.Size(1000, 1000));
@@ -56,16 +53,17 @@ public class MemeCommand : ISlashCommand
             using (image)
             using (var graphics = Drawing.Graphics.FromImage(image))
             {
-                var font = new Drawing.Font(Drawing.FontFamily.GenericSansSerif, image.Width / 10, Drawing.FontStyle.Bold);
-                var sf = new Drawing.StringFormat { Alignment = Drawing.StringAlignment.Center };
+                // 🔥 IMPORTANT: force rendering
+                graphics.SmoothingMode = Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                graphics.TextRenderingHint = Drawing.Text.TextRenderingHint.AntiAlias;
 
-                // TOP TEXT
-                DrawText(graphics, topText.ToUpper(), font,
-                    new Drawing.RectangleF(0, 0, image.Width, image.Height / 4));
+                // TOP
+                DrawText(graphics, topText.ToUpper(),
+                    new Drawing.RectangleF(0, 0, image.Width, image.Height / 3));
 
-                // BOTTOM TEXT
-                DrawText(graphics, bottomText.ToUpper(), font,
-                    new Drawing.RectangleF(0, image.Height - (image.Height / 4), image.Width, image.Height / 4));
+                // BOTTOM
+                DrawText(graphics, bottomText.ToUpper(),
+                    new Drawing.RectangleF(0, image.Height - (image.Height / 3), image.Width, image.Height / 3));
 
                 var path = $"meme_{Guid.NewGuid()}.png";
                 image.Save(path, DrawingImaging.ImageFormat.Png);
@@ -77,29 +75,28 @@ public class MemeCommand : ISlashCommand
         }
         catch (Exception ex)
         {
-            await command.RespondAsync($"❌ Failed to process image: {ex.Message}", ephemeral: true);
+            await command.RespondAsync($"❌ Failed: {ex.Message}", ephemeral: true);
         }
     }
 
-    private void DrawText(Drawing.Graphics g, string text, Drawing.Font font, Drawing.RectangleF rect)
+    private void DrawText(Drawing.Graphics g, string text, Drawing.RectangleF rect)
     {
+        if (string.IsNullOrWhiteSpace(text)) return;
+
         var format = new Drawing.StringFormat
         {
             Alignment = Drawing.StringAlignment.Center,
-            LineAlignment = Drawing.StringAlignment.Center,
-            FormatFlags = Drawing.StringFormatFlags.LineLimit
+            LineAlignment = Drawing.StringAlignment.Center
         };
-        var size = g.MeasureString(text, font, rect.Size);
 
-        while ((size.Width > rect.Width || size.Height > rect.Height) && font.Size > 10)
-        {
-            font = new Drawing.Font(font.FontFamily, font.Size - 2, Drawing.FontStyle.Bold);
-            size = g.MeasureString(text, font, rect.Size);
-        }
+        // 🔥 FORCE visible font size
+        float fontSize = Math.Max(24, rect.Height / 3);
+        using var font = new Drawing.Font("Arial", fontSize, Drawing.FontStyle.Bold);
 
-        for (int x = -2; x <= 2; x++)
+        // 🔥 STRONG outline (so text ALWAYS visible)
+        for (int x = -3; x <= 3; x++)
         {
-            for (int y = -2; y <= 2; y++)
+            for (int y = -3; y <= 3; y++)
             {
                 g.DrawString(text, font, Drawing.Brushes.Black,
                     new Drawing.RectangleF(rect.X + x, rect.Y + y, rect.Width, rect.Height),
@@ -107,6 +104,7 @@ public class MemeCommand : ISlashCommand
             }
         }
 
+        // Main text
         g.DrawString(text, font, Drawing.Brushes.White, rect, format);
     }
 }
