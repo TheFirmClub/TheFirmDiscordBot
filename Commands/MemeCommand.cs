@@ -68,11 +68,12 @@ public class MemeCommand : ISlashCommand
                 var path = $"meme_{Guid.NewGuid()}.png";
                 image.Save(path, DrawingImaging.ImageFormat.Png);
 
-                await command.FollowupWithFileAsync(
-                    path,
-                    text: targetUser != null ? targetUser.Mention : null,
-                    allowedMentions: AllowedMentions.All
-                );
+                if (targetUser != null)
+                {
+                    await command.FollowupAsync(targetUser.Mention, allowedMentions: AllowedMentions.All);
+                }
+
+                await command.FollowupWithFileAsync(path);
 
                 System.IO.File.Delete(path);
             }
