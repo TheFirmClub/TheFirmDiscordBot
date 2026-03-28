@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Discord;
 using Discord.WebSocket;
 
-// Aliases
 using Drawing = System.Drawing;
 using DrawingImaging = System.Drawing.Imaging;
 
@@ -22,6 +21,7 @@ public class MemeCommand : ISlashCommand
             .AddOption("url", ApplicationCommandOptionType.String, "Direct image link (jpg/png)", true)
             .AddOption("top", ApplicationCommandOptionType.String, "Top text", true)
             .AddOption("bottom", ApplicationCommandOptionType.String, "Bottom text", true)
+            .AddOption("user", ApplicationCommandOptionType.User, "User to mention", false)
             .Build();
     }
 
@@ -43,8 +43,9 @@ public class MemeCommand : ISlashCommand
 
         try
         {
-            using var stream = await http.GetStreamAsync(url);
+            await command.DeferAsync();
 
+            using var stream = await http.GetStreamAsync(url);
             var image = Drawing.Image.FromStream(stream);
 
             if (image.Width > 2000 || image.Height > 2000)
@@ -55,15 +56,12 @@ public class MemeCommand : ISlashCommand
             using (image)
             using (var graphics = Drawing.Graphics.FromImage(image))
             {
-                // 🔥 IMPORTANT: force rendering
                 graphics.SmoothingMode = Drawing.Drawing2D.SmoothingMode.AntiAlias;
                 graphics.TextRenderingHint = Drawing.Text.TextRenderingHint.AntiAlias;
 
-                // TOP
                 DrawText(graphics, topText.ToUpper(),
                     new Drawing.RectangleF(0, 0, image.Width, image.Height / 3));
 
-                // BOTTOM
                 DrawText(graphics, bottomText.ToUpper(),
                     new Drawing.RectangleF(0, image.Height - (image.Height / 3), image.Width, image.Height / 3));
 
@@ -72,11 +70,15 @@ public class MemeCommand : ISlashCommand
 
                 if (targetUser != null)
                 {
-                    await command.RespondWithFileAsync(path, text: $"{targetUser.Mention}");
+                    await command.FollowupWithFileAsync(
+                        path,
+                        text: $"{targetUser.Mention}",
+                        allowedMentions: AllowedMentions.All
+                    );
                 }
                 else
                 {
-                    await command.RespondWithFileAsync(path);
+                    await command.FollowupWithFileAsync(path);
                 }
 
                 System.IO.File.Delete(path);
@@ -98,11 +100,9 @@ public class MemeCommand : ISlashCommand
             LineAlignment = Drawing.StringAlignment.Center
         };
 
-        // 🔥 FORCE visible font size
         float fontSize = Math.Max(24, rect.Height / 3);
         using var font = new Drawing.Font("Arial", fontSize, Drawing.FontStyle.Bold);
 
-        // 🔥 STRONG outline (so text ALWAYS visible)
         for (int x = -3; x <= 3; x++)
         {
             for (int y = -3; y <= 3; y++)
@@ -113,7 +113,6 @@ public class MemeCommand : ISlashCommand
             }
         }
 
-        // Main text
         g.DrawString(text, font, Drawing.Brushes.White, rect, format);
     }
 }
