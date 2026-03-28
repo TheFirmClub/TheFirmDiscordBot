@@ -22,7 +22,13 @@ public class BombDefuseCommand : ISlashCommand
     private bool HasPermission(SocketGuildUser user) =>
         user.Roles.Any(r => allowedRoles.Contains(r.Id));
 
-    private enum Wire { Red, Blue, Green, Yellow }
+    private enum Wire
+    {
+        Red,
+        Blue,
+        Green,
+        Yellow
+    }
 
     private record GameState(
         ulong MessageId,
@@ -113,10 +119,7 @@ public class BombDefuseCommand : ISlashCommand
 
         ActiveGames[state.ChannelId] = state;
 
-        await msg.ModifyAsync(m =>
-        {
-            m.Components = BuildButtons(state.MessageId.ToString());
-        });
+        await msg.ModifyAsync(m => { m.Components = BuildButtons(state.MessageId.ToString()); });
 
         // ⏱️ AUTO EXPLODE TIMER
         _ = Task.Run(async () =>
@@ -147,7 +150,10 @@ public class BombDefuseCommand : ISlashCommand
                         });
                     }
                 }
-                catch { /* message might be deleted */ }
+                catch
+                {
+                    /* message might be deleted */
+                }
             }
         });
     }
@@ -256,3 +262,4 @@ public class BombDefuseCommand : ISlashCommand
             .WithButton("Cancel", $"bomb:off:{id}:Cancel", ButtonStyle.Secondary, disabled: true)
             .Build();
     }
+}
