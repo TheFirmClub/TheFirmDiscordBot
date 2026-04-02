@@ -39,18 +39,16 @@ public class SendTFUAppCommand : ISlashCommand
             return;
         }
 
-        // Get input
-        var targetInput = command.Data.Options.First().Value;
+        // Get input safely
+        var option = command.Data.Options.FirstOrDefault();
 
         SocketUser? targetUser = null;
 
-        // If it's a mention (best case)
-        if (targetInput is SocketUser user)
+        if (option?.Value is SocketUser user)
         {
             targetUser = user;
         }
-        // If it's an ID
-        else if (ulong.TryParse(targetInput.ToString(), out var id))
+        else if (option?.Value != null && ulong.TryParse(option.Value.ToString(), out var id))
         {
             targetUser = caller.Guild.GetUser(id);
         }

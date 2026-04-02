@@ -424,6 +424,19 @@ class Program
 
         Console.WriteLine("✅ Registered /myplaytime + /checkplaytime");
         
+        // 🔥 DELETE OLD /sendtfuapp FIRST (FIXES YOUR ERROR)
+        var cmds = await guild.GetApplicationCommandsAsync();
+
+        foreach (var cmd in cmds)
+        {
+            if (cmd.Name == "sendtfuapp")
+            {
+                await cmd.DeleteAsync();
+                Console.WriteLine("🗑️ Removed old /sendtfuapp");
+            }
+        }
+
+        // ✅ Register fresh
         await guild.CreateApplicationCommandAsync(
             new SlashCommandBuilder()
                 .WithName("sendtfuapp")
