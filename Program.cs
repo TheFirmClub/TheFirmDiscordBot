@@ -423,6 +423,16 @@ class Program
         );
 
         Console.WriteLine("✅ Registered /myplaytime + /checkplaytime");
+        
+        await guild.CreateApplicationCommandAsync(
+            new SlashCommandBuilder()
+                .WithName("sendtfuapp")
+                .WithDescription("Send TFU application to a user")
+                .AddOption("user", ApplicationCommandOptionType.User, "User to send application to", true)
+                .Build()
+        );
+
+        Console.WriteLine("✅ Registered /sendtfuapp");
       
         // Register your other existing commands from SlashCommandHandler
         foreach (var command in _commandHandler!.GetAllCommands())

@@ -73,6 +73,7 @@ public class SlashCommandHandler
         _commands.Add("gamestats", new GameStatsCommand());
         _commands.Add("mdtincidents", new MDTIncidentsCommand());
         _commands.Add("listinv", new ListInventoryCommand());
+        _commands.Add("sendtfuapp", new SendTFUAppCommand());
         
         // --- NEW: invite tracker commands ---
         _commands.Add("myinvites",  new MyInvitesCommand(inviteTracker));
