@@ -562,6 +562,12 @@ class Program
 
     private async Task StartFiveMUpdater(ulong guildId)
     {
+        if (_fivemUpdater != null)
+        {
+            await Log(new LogMessage(LogSeverity.Info, "FiveM", "ℹ️ FiveM updater already running, skipping."));
+            return;
+        }
+
         string? fivemUrl = _config["FiveM:ServerUrl"];
         string? channelIdStr = _config["FiveM:ChannelId"];
 
@@ -573,6 +579,8 @@ class Program
 
         _fivemUpdater = new FiveMChannelUpdater(_client!, fivemUrl, guildId, channelId, Log);
         _fivemUpdater.Start();
+
+        await Log(new LogMessage(LogSeverity.Info, "FiveM", "✅ FiveM updater started"));
     }
 
     private async Task SlashCommandExecuted(SocketSlashCommand command)
