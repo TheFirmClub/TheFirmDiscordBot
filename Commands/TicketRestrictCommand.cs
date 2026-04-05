@@ -176,12 +176,24 @@ public class TicketRestrictCommand : ISlashCommand
         }
         
         // 🔑 Build new allowed roles from current channel state
-        var allowedRoles = channel.PermissionOverwrites
-            .Where(o => o.TargetType == PermissionTarget.Role)
-            .Where(o => o.Permissions.ViewChannel == PermValue.Allow)
-            .Where(o => o.TargetId != channel.Guild.EveryoneRole.Id)
-            .Select(o => o.TargetId)
-            .ToArray();
+        ulong[] allowedRoles;
+
+        if (targetRole.Id == SENIOR_MGMT)
+        {
+            allowedRoles = new[] { SENIOR_MGMT };
+        }
+        else if (targetRole.Id == ASST_HEAD)
+        {
+            allowedRoles = new[] { ASST_HEAD, HEAD_MOD, SENIOR_MGMT };
+        }
+        else if (targetRole.Id == HEAD_MOD)
+        {
+            allowedRoles = new[] { HEAD_MOD, SENIOR_MGMT };
+        }
+        else
+        {
+            allowedRoles = new[] { targetRole.Id, SENIOR_MOD };
+        }
 
         // 📝 Build new topic safely
         var newTopic = channel.Topic ?? "";
