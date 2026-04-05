@@ -235,6 +235,27 @@ public class TicketButtonHandler
                     // ✅ FIX: convert to List
                     var allowedRoles = (await permissionService.GetRolesAsync(channel.Id)).ToList();
 
+                    // 🎯 minimum role allowed = Senior Moderator
+                    const ulong SENIOR_MOD = 1393638449709584434;
+
+                    var seniorRole = channel.Guild.GetRole(SENIOR_MOD);
+
+                    // keep only roles >= Senior Mod
+                    allowedRoles = allowedRoles
+                        .Where(id =>
+                        {
+                            var role = channel.Guild.GetRole(id);
+                            return role != null && seniorRole != null && role.Position >= seniorRole.Position;
+                        })
+                        .ToList();
+
+                    // 🛡️ FAILSAFE: always ensure leadership has access
+                    if (!allowedRoles.Any())
+                    {
+                        allowedRoles.Add(1393728468608487594); // Head Mod
+                        allowedRoles.Add(1405330877440983130); // Assistant Head Mod
+                    }
+                    
                     // role IDs
                     const ulong HEAD_MOD = 1393728468608487594;
                     const ulong ASST_HEAD = 1405330877440983130;
