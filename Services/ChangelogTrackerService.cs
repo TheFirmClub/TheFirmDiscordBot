@@ -24,6 +24,14 @@ public class ChangelogTrackerService
     // Channel IDs
     private const ulong SourceChannelId = 1393640613576179752UL;
     private const ulong StatsChannelId  = 1393637573385126058UL;
+    
+    private static readonly HashSet<ulong> AllowedRoleIds = new()
+    {
+        1407655775077404806UL, // junior dev
+        1393733280523882546UL, // developer
+        1421177514189127840UL, // senior dev
+        1393590761953558608UL  // senior management
+    };
 
     // Data and persistence
     private readonly ConcurrentDictionary<ulong, UserStats> _byUser = new();
@@ -208,9 +216,22 @@ public class ChangelogTrackerService
             return;
         }
 
-        int totalItems = _byUser.Values.Sum(s => s.Items);
+        var guild = (_client.GetChannel(SourceChannelId) as SocketGuildChannel)?.Guild;
 
-        var top10 = _byUser.Values
+        var filteredUsers = _byUser.Values.Where(u =>
+        {
+            if (guild == null) return false;
+
+            var member = guild.GetUser(u.UserId);
+            if (member == null) return false;
+
+            return member.Roles.Any(r => AllowedRoleIds.Contains(r.Id));
+        });
+
+    // optional: clean total (only current team)
+        int totalItems = filteredUsers.Sum(s => s.Items);
+
+        var top10 = filteredUsers
             .OrderByDescending(s => s.Items)
             .ThenBy(s => s.DisplayName, StringComparer.OrdinalIgnoreCase)
             .Take(10)
