@@ -70,67 +70,17 @@ public class TicketRestrictCommand : ISlashCommand
 
         // === RULES BRANCHING ===
 
-        if (targetRole.Id == SENIOR_MGMT)
-        {
-            foreach (var modId in ALL_MODS)
-            {
-                var r = channel.Guild.GetRole(modId);
-                if (r != null)
-                    await channel.AddPermissionOverwriteAsync(r, new OverwritePermissions(viewChannel: PermValue.Deny));
-            }
-            
-            await channel.AddPermissionOverwriteAsync(targetRole,
-                new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
-        }
-        else if (targetRole.Id == ASST_HEAD)
-        {
-            var toDeny = ALL_MODS
-                .Where(id => id != targetRole.Id)
-                .Where(id => id != HEAD_MOD)
-                .Where(id => id != SENIOR_MGMT); 
+        var senModRole = channel.Guild.GetRole(SENIOR_MOD);
 
-            foreach (var id in toDeny)
+        // 🔥 HIGHER OR EQUAL → ONLY target role
+        if (targetRole.Position >= senModRole.Position)
+        {
+            foreach (var id in ALL_MODS)
             {
                 var r = channel.Guild.GetRole(id);
                 if (r != null)
-                    await channel.AddPermissionOverwriteAsync(r, new OverwritePermissions(viewChannel: PermValue.Deny));
-            }
-
-            var seniorMgmtRole = channel.Guild.GetRole(SENIOR_MGMT);
-            if (seniorMgmtRole != null)
-            {
-                await channel.AddPermissionOverwriteAsync(seniorMgmtRole,
-                    new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
-            }
-
-            var headModRole = channel.Guild.GetRole(HEAD_MOD);
-            if (headModRole != null)
-            {
-                await channel.AddPermissionOverwriteAsync(headModRole,
-                    new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
-            }
-
-            await channel.AddPermissionOverwriteAsync(targetRole,
-                new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
-        }
-        else if (targetRole.Id == HEAD_MOD)
-        {
-            var toDeny = ALL_MODS
-                .Where(id => id != targetRole.Id)
-                .Where(id => id != SENIOR_MGMT);
-
-            foreach (var id in toDeny)
-            {
-                var r = channel.Guild.GetRole(id);
-                if (r != null)
-                    await channel.AddPermissionOverwriteAsync(r, new OverwritePermissions(viewChannel: PermValue.Deny));
-            }
-
-            var seniorMgmtRole = channel.Guild.GetRole(SENIOR_MGMT);
-            if (seniorMgmtRole != null)
-            {
-                await channel.AddPermissionOverwriteAsync(seniorMgmtRole,
-                    new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
+                    await channel.AddPermissionOverwriteAsync(r,
+                        new OverwritePermissions(viewChannel: PermValue.Deny));
             }
 
             await channel.AddPermissionOverwriteAsync(targetRole,
@@ -138,18 +88,18 @@ public class TicketRestrictCommand : ISlashCommand
         }
         else
         {
-            var denyThese = ALL_MODS.Where(id => id != SENIOR_MOD);
-            foreach (var id in denyThese)
+            // 🔥 LOWER → target + senior mod
+            foreach (var id in ALL_MODS.Where(x => x != SENIOR_MOD))
             {
                 var r = channel.Guild.GetRole(id);
                 if (r != null)
-                    await channel.AddPermissionOverwriteAsync(r, new OverwritePermissions(viewChannel: PermValue.Deny));
+                    await channel.AddPermissionOverwriteAsync(r,
+                        new OverwritePermissions(viewChannel: PermValue.Deny));
             }
 
-            var seniorModRole = channel.Guild.GetRole(SENIOR_MOD);
-            if (seniorModRole != null)
+            if (senModRole != null)
             {
-                await channel.AddPermissionOverwriteAsync(seniorModRole,
+                await channel.AddPermissionOverwriteAsync(senModRole,
                     new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow));
             }
 
@@ -177,9 +127,7 @@ public class TicketRestrictCommand : ISlashCommand
         var permissionService = new TicketPermissionService();
 
         ulong[] allowedRoles;
-
-        var senModRole = channel.Guild.GetRole(SENIOR_MOD);
-
+        
         // If target is higher or equal → DO NOT include Senior Mod
         if (targetRole.Position >= senModRole.Position)
         {
