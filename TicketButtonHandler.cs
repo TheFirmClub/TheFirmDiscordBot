@@ -233,15 +233,14 @@ public class TicketButtonHandler
                     var permissionService = new TicketPermissionService();
 
                     // === ROLE IDS ===
+                    const ulong SENIOR_MGMT = 1393590761953558608;
                     const ulong SENIOR_MOD = 1393638449709584434;
                     const ulong HEAD_MOD = 1393728468608487594;
                     const ulong ASST_HEAD = 1405330877440983130;
-                    const ulong SENIOR_MGMT = 1393590761953558608;
 
                     var senModRole = channel.Guild.GetRole(SENIOR_MOD);
                     var headModRole = channel.Guild.GetRole(HEAD_MOD);
                     var asstHeadRole = channel.Guild.GetRole(ASST_HEAD);
-                    var seniorMgmtRole = channel.Guild.GetRole(SENIOR_MGMT);
 
                     if (senModRole == null || headModRole == null || asstHeadRole == null)
                     {
@@ -249,93 +248,74 @@ public class TicketButtonHandler
                         return;
                     }
 
-                    // 🔍 Get saved roles
+                    // 🔍 Get ORIGINAL restriction role
                     var savedRoles = await permissionService.GetRolesAsync(channel.Id);
-
-                    // 🎯 THIS is the key → get ORIGINAL restriction role
-                    var targetRole = savedRoles
-                        .Select(id => channel.Guild.GetRole(id))
-                        .Where(r => r != null)
-                        .OrderBy(r => r.Position)
-                        .FirstOrDefault();
+                    var targetRoleId = savedRoles.FirstOrDefault();
+                    var targetRole = channel.Guild.GetRole(targetRoleId);
 
                     if (targetRole == null)
-                        targetRole = senModRole; // fallback safety
+                        targetRole = senModRole; // fallback
 
                     List<ulong> allowedRoles;
 
                     // =========================
-                    // 🔥 YOUR EXACT RULES
+                    // 🔥 YOUR RESOLVE RULES
                     // =========================
 
-                    // 🔹 Restricted to SM → ONLY SM
+                    // 🔹 SM → only SM
                     if (targetRole.Id == SENIOR_MGMT)
                     {
-                        allowedRoles = new List<ulong>
-                        {
-                            SENIOR_MGMT
-                        };
+                        allowedRoles = new List<ulong> { SENIOR_MGMT };
                     }
 
-                    // 🔹 Restricted to AHM → AHM + HM
+                    // 🔹 AHM → AHM + HM
                     else if (targetRole.Id == ASST_HEAD)
                     {
-                        allowedRoles = new List<ulong>
-                        {
-                            ASST_HEAD,
-                            HEAD_MOD
-                        };
+                        allowedRoles = new List<ulong> { ASST_HEAD, HEAD_MOD };
                     }
 
-                    // 🔹 Restricted to HM → ONLY HM
+                    // 🔹 HM → only HM
                     else if (targetRole.Id == HEAD_MOD)
                     {
-                        allowedRoles = new List<ulong>
-                        {
-                            HEAD_MOD
-                        };
+                        allowedRoles = new List<ulong> { HEAD_MOD };
                     }
 
-                    // 🔹 Restricted to Senior Mod → SM + AHM + HM
+                    // 🔹 Senior Mod → SM + AHM + HM
                     else if (targetRole.Id == SENIOR_MOD)
                     {
-                        allowedRoles = new List<ulong>
-                        {
-                            SENIOR_MOD,
-                            ASST_HEAD,
-                            HEAD_MOD
-                        };
+                        allowedRoles = new List<ulong> { SENIOR_MOD, ASST_HEAD, HEAD_MOD };
                     }
 
-                    // 🔹 Restricted to ABOVE Senior Mod (but not SM itself)
+                    // 🔹 ABOVE Senior Mod → AHM + HM
                     else if (targetRole.Position > asstHeadRole.Position)
                     {
-                        allowedRoles = new List<ulong>
-                        {
-                            ASST_HEAD,
-                            HEAD_MOD
-                        };
+                        allowedRoles = new List<ulong> { ASST_HEAD, HEAD_MOD };
                     }
 
-                    // 🔹 Restricted to BELOW Senior Mod
+                    // 🔹 BELOW Senior Mod → SM + AHM + HM
                     else
                     {
-                        allowedRoles = new List<ulong>
-                        {
-                            SENIOR_MOD,
-                            ASST_HEAD,
-                            HEAD_MOD
-                        };
+                        allowedRoles = new List<ulong> { SENIOR_MOD, ASST_HEAD, HEAD_MOD };
                     }
 
                     // =========================
-                    // 🔥 RESET PERMISSIONS
+                    // 🔥 SAFE OVERWRITE RESET (NO FLICKER)
                     // =========================
 
+                    // 🚫 STEP 1: Deny everyone FIRST
+                    await channel.AddPermissionOverwriteAsync(
+                        channel.Guild.EveryoneRole,
+                        new OverwritePermissions(viewChannel: PermValue.Deny)
+                    );
+
+                    // ❌ STEP 2: Remove all other overwrites
                     foreach (var overwrite in channel.PermissionOverwrites.ToArray())
                     {
                         if (overwrite.TargetType == PermissionTarget.Role)
                         {
+                            if (overwrite.TargetId == channel.Guild.EveryoneRole.Id)
+                                continue;
+
                             var role = channel.Guild.GetRole(overwrite.TargetId);
                             if (role != null)
                                 await channel.RemovePermissionOverwriteAsync(role);
@@ -348,13 +328,7 @@ public class TicketButtonHandler
                         }
                     }
 
-                    // Deny everyone
-                    await channel.AddPermissionOverwriteAsync(
-                        channel.Guild.EveryoneRole,
-                        new OverwritePermissions(viewChannel: PermValue.Deny)
-                    );
-
-                    // Add correct roles
+                    // ✅ STEP 3: Apply final roles
                     foreach (var roleId in allowedRoles)
                     {
                         var role = channel.Guild.GetRole(roleId);
@@ -369,7 +343,7 @@ public class TicketButtonHandler
                     }
 
                     // =========================
-                    // 📂 MOVE + MESSAGE
+                    // 📂 MOVE CHANNEL
                     // =========================
 
                     var closedCategoryId =
@@ -385,11 +359,15 @@ public class TicketButtonHandler
                             props.Name = $"closed-{channel.Name}";
                     });
 
+                    // =========================
+                    // 📩 MESSAGE
+                    // =========================
+
                     var embed = new EmbedBuilder()
                         .WithTitle("✅ Ticket Resolved")
                         .WithDescription(
                             $"This ticket has been marked as **resolved** by {component.User.Mention}.\n\n" +
-                            "Kindly review before closing.")
+                            "Please review and close if everything is complete.")
                         .WithColor(Color.Red)
                         .WithTimestamp(DateTimeOffset.UtcNow)
                         .Build();
@@ -402,6 +380,8 @@ public class TicketButtonHandler
 
                 break;
             }
+            
+            case "ticket_confirm_unresolved":
             {
                 await component.DeferAsync(true);
 

@@ -54,19 +54,32 @@ public class TicketRestrictCommand : ISlashCommand
             await channel.ModifyAsync(props => props.CategoryId = _restrictedCategoryId);
         }
 
-        var roleOverwrites = channel.PermissionOverwrites
-            .Where(po => po.TargetType == PermissionTarget.Role)
-            .ToList();
+        // 🚫 STEP 1: DENY everyone FIRST (prevents exposure)
+        await channel.AddPermissionOverwriteAsync(
+            channel.Guild.EveryoneRole,
+            new OverwritePermissions(viewChannel: PermValue.Deny)
+        );
 
-        foreach (var po in roleOverwrites)
+        // ❌ STEP 2: Remove ALL other overwrites
+        foreach (var overwrite in channel.PermissionOverwrites.ToArray())
         {
-            var role = channel.Guild.GetRole(po.TargetId);
-            if (role != null)
-                await channel.RemovePermissionOverwriteAsync(role);
-        }
+            if (overwrite.TargetType == PermissionTarget.Role)
+            {
+                // Skip @everyone (already handled)
+                if (overwrite.TargetId == channel.Guild.EveryoneRole.Id)
+                    continue;
 
-        await channel.AddPermissionOverwriteAsync(channel.Guild.EveryoneRole,
-            new OverwritePermissions(viewChannel: PermValue.Deny));
+                var role = channel.Guild.GetRole(overwrite.TargetId);
+                if (role != null)
+                    await channel.RemovePermissionOverwriteAsync(role);
+            }
+            else if (overwrite.TargetType == PermissionTarget.User)
+            {
+                var member = channel.Guild.GetUser(overwrite.TargetId);
+                if (member != null)
+                    await channel.RemovePermissionOverwriteAsync(member);
+            }
+        }
 
         // === RULES BRANCHING ===
 
@@ -99,25 +112,6 @@ public class TicketRestrictCommand : ISlashCommand
                     new OverwritePermissions(viewChannel: PermValue.Deny));
             }
         }
-
-        // 🔥 === NEW LOGIC (EXACT RULES) ===
-
-        // ❌ Remove ALL overwrites first
-        foreach (var overwrite in channel.PermissionOverwrites.ToArray())
-        {
-            if (overwrite.TargetType == PermissionTarget.Role)
-            {
-                var role = channel.Guild.GetRole(overwrite.TargetId);
-                if (role != null)
-                    await channel.RemovePermissionOverwriteAsync(role);
-            }
-        }
-
-        // 🚫 Deny everyone
-        await channel.AddPermissionOverwriteAsync(
-            channel.Guild.EveryoneRole,
-            new OverwritePermissions(viewChannel: PermValue.Deny)
-        );
 
         List<ulong> allowedRoles;
 
