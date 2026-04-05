@@ -203,11 +203,17 @@ public class TicketRestrictCommand : ISlashCommand
             newTopic += $"roles:{string.Join(",", allowedRoles)}";
         }
 
-        // ✅ Apply topic update (ONLY correct way)
-        await channel.ModifyAsync(props =>
+        // ⏳ Small delay to avoid rate limit (after permission edits)
+        await Task.Delay(500);
+
+        // ✅ Only update if actually changed
+        if (channel.Topic != newTopic)
         {
-            props.Topic = newTopic;
-        });
+            await channel.ModifyAsync(props =>
+            {
+                props.Topic = newTopic;
+            });
+        }
 
         await command.FollowupAsync(
             $"✅ Restricted this ticket to {targetRole.Mention}.",
