@@ -35,7 +35,6 @@ public class ChangelogTrackerService
         WriteIndented = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
-
     private const string StatsPath = "changelog_stats.json";
 
     // Post/update controls
