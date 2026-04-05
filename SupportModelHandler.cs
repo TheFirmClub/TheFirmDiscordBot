@@ -38,11 +38,14 @@ public class SupportModalHandler
             await HandleAiSupportModal(modal);
             return;
         }
-
+        await modal.DeferAsync(ephemeral: true);
+        
         // ✅ NORMAL TICKET CREATION
         if (!modal.Data.CustomId.StartsWith("ticket_reason:"))
+        {
+            await modal.FollowupAsync("⚠️ Invalid modal.", ephemeral: true);
             return;
-
+        }
 
         var ticketType = modal.Data.CustomId.Split(":")[1];
         var values = modal.Data.Components.ToDictionary(x => x.CustomId, x => (x.Value ?? string.Empty).Trim());
@@ -203,7 +206,7 @@ public class SupportModalHandler
 
 
         await channel.SendMessageAsync(embed: eb.Build(), components: buttons.Build());
-        await modal.RespondAsync($"✅ Your ticket has been created: {channel.Mention}", ephemeral: true);
+        await modal.FollowupAsync($"✅ Your ticket has been created: {channel.Mention}", ephemeral: true);
     }
     
     private async Task HandleAiSupportModal(SocketModal modal)

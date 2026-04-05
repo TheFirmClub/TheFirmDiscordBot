@@ -23,10 +23,12 @@ public class ModTicketCommand : ISlashCommand
 
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
+        await command.DeferAsync(ephemeral: true);
+        
         var staffUser = command.User as SocketGuildUser;
         if (!IsAuthorizedMod(staffUser))
         {
-            await command.RespondAsync("❌ You do not have permission to use this command.", ephemeral: true);
+            await command.FollowupAsync("❌ You do not have permission to use this command.", ephemeral: true);
             return;
         }
 
@@ -34,7 +36,7 @@ public class ModTicketCommand : ISlashCommand
         var guildUser = targetUser as SocketGuildUser;
         if (guildUser == null)
         {
-            await command.RespondAsync("❌ Invalid user.", ephemeral: true);
+            await command.FollowupAsync("❌ Invalid user.", ephemeral: true);
             return;
         }
 
@@ -98,7 +100,7 @@ public class ModTicketCommand : ISlashCommand
             allowedMentions: allowed
         );
 
-        await command.RespondAsync($"✅ Moderation ticket created: {channel.Mention}", ephemeral: true);
+        await command.FollowupAsync($"✅ Moderation ticket created: {channel.Mention}", ephemeral: true);
     }
 
     private bool IsAuthorizedMod(SocketGuildUser user)
