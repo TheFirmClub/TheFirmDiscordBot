@@ -100,45 +100,101 @@ public class TicketRestrictCommand : ISlashCommand
             }
         }
 
-        // 🔥 === LOGIC START ===
+        // 🔥 === NEW LOGIC (EXACT RULES) ===
 
-        // First deny ALL known roles (clean slate)
-        foreach (var id in ALL_MODS.Append(SENIOR_MGMT))
+        // ❌ Remove ALL overwrites first
+        foreach (var overwrite in channel.PermissionOverwrites.ToArray())
         {
-            var r = channel.Guild.GetRole(id);
-            if (r != null)
-                await DenyRole(r);
+            if (overwrite.TargetType == PermissionTarget.Role)
+            {
+                var role = channel.Guild.GetRole(overwrite.TargetId);
+                if (role != null)
+                    await channel.RemovePermissionOverwriteAsync(role);
+            }
         }
 
-        // Always allow target
-        await AllowRole(targetRole);
+        // 🚫 Deny everyone
+        await channel.AddPermissionOverwriteAsync(
+            channel.Guild.EveryoneRole,
+            new OverwritePermissions(viewChannel: PermValue.Deny)
+        );
 
-        // === CASE 1: BELOW SENIOR MOD ===
-        if (targetRole.Position < senModRole.Position)
+        List<ulong> allowedRoles;
+
+        // 🔹 SM → only SM
+        if (targetRole.Id == SENIOR_MGMT)
         {
-            await AllowRole(senModRole);
-            await AllowRole(headModRole);
-            await AllowRole(asstHeadRole);
+            allowedRoles = new List<ulong>
+            {
+                SENIOR_MGMT
+            };
         }
 
-        // === CASE 2: EXACTLY SENIOR MOD ===
+        // 🔹 AHM → AHM + HM
+        else if (targetRole.Id == ASST_HEAD)
+        {
+            allowedRoles = new List<ulong>
+            {
+                ASST_HEAD,
+                HEAD_MOD
+            };
+        }
+
+        // 🔹 HM → only HM
+        else if (targetRole.Id == HEAD_MOD)
+        {
+            allowedRoles = new List<ulong>
+            {
+                HEAD_MOD
+            };
+        }
+
+        // 🔹 Senior Mod → SM + AHM + HM
         else if (targetRole.Id == SENIOR_MOD)
         {
-            await AllowRole(headModRole);
-            await AllowRole(asstHeadRole);
+            allowedRoles = new List<ulong>
+            {
+                SENIOR_MOD,
+                ASST_HEAD,
+                HEAD_MOD
+            };
         }
 
-        // === CASE 3: ABOVE AHM ===
+        // 🔹 ABOVE AHM (e.g. CI)
         else if (targetRole.Position > asstHeadRole.Position)
         {
-            // Only target stays — nothing else added back
+            allowedRoles = new List<ulong>
+            {
+                targetRole.Id,   // ✅ IMPORTANT
+                ASST_HEAD,
+                HEAD_MOD
+            };
         }
 
-        // === CASE 4: BETWEEN SENIOR MOD AND AHM (Head Mod / AHM) ===
+        // 🔹 BELOW Senior Mod
         else
         {
-            await AllowRole(headModRole);
-            await AllowRole(asstHeadRole);
+            allowedRoles = new List<ulong>
+            {
+                targetRole.Id,   // ✅ IMPORTANT
+                SENIOR_MOD,
+                ASST_HEAD,
+                HEAD_MOD
+            };
+        }
+
+        // ✅ Apply roles
+        foreach (var roleId in allowedRoles)
+        {
+            var role = channel.Guild.GetRole(roleId);
+            if (role != null)
+            {
+                await channel.AddPermissionOverwriteAsync(role,
+                    new OverwritePermissions(
+                        viewChannel: PermValue.Allow,
+                        sendMessages: PermValue.Allow
+                    ));
+            }
         }
 
         await channel.SendMessageAsync($"{targetRole.Mention} 🔒 This ticket has been restricted by {user.Mention}.");
@@ -159,29 +215,8 @@ public class TicketRestrictCommand : ISlashCommand
         }
         
         var permissionService = new TicketPermissionService();
-
-        ulong[] allowedRoles;
-
-        if (targetRole.Position > asstHeadRole.Position)
-        {
-            // Above AHM → only target
-            allowedRoles = new[] { targetRole.Id };
-        }
-        else if (targetRole.Id == SENIOR_MOD)
-        {
-            allowedRoles = new[] { SENIOR_MOD, HEAD_MOD, ASST_HEAD };
-        }
-        else if (targetRole.Position < senModRole.Position)
-        {
-            allowedRoles = new[] { targetRole.Id, SENIOR_MOD, HEAD_MOD, ASST_HEAD };
-        }
-        else
-        {
-            // Head Mod / AHM
-            allowedRoles = new[] { targetRole.Id, HEAD_MOD, ASST_HEAD };
-        }
-
-        await permissionService.SaveAsync(channel.Id, user.Id, allowedRoles);
+        
+        await permissionService.SaveAsync(channel.Id, user.Id, new[] { targetRole.Id });
 
         await command.FollowupAsync(
             $"✅ Restricted this ticket to {targetRole.Mention}.",
