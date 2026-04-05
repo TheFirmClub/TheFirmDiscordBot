@@ -178,20 +178,32 @@ public class TicketRestrictCommand : ISlashCommand
 
         ulong[] allowedRoles;
 
-        if (targetRole.Id == SENIOR_MGMT)
+        var senModRole = channel.Guild.GetRole(SENIOR_MOD);
+
+        // If target is higher or equal → DO NOT include Senior Mod
+        if (targetRole.Position >= senModRole.Position)
         {
-            allowedRoles = new[] { SENIOR_MGMT };
-        }
-        else if (targetRole.Id == ASST_HEAD)
-        {
-            allowedRoles = new[] { ASST_HEAD, HEAD_MOD, SENIOR_MGMT };
-        }
-        else if (targetRole.Id == HEAD_MOD)
-        {
-            allowedRoles = new[] { HEAD_MOD, SENIOR_MGMT };
+            if (targetRole.Id == SENIOR_MGMT)
+            {
+                allowedRoles = new[] { SENIOR_MGMT };
+            }
+            else if (targetRole.Id == ASST_HEAD)
+            {
+                allowedRoles = new[] { ASST_HEAD, HEAD_MOD, SENIOR_MGMT };
+            }
+            else if (targetRole.Id == HEAD_MOD)
+            {
+                allowedRoles = new[] { HEAD_MOD, SENIOR_MGMT };
+            }
+            else
+            {
+                // any other higher role
+                allowedRoles = new[] { targetRole.Id };
+            }
         }
         else
         {
+            // LOWER than Senior Mod → include Senior Mod
             allowedRoles = new[] { targetRole.Id, SENIOR_MOD };
         }
 
