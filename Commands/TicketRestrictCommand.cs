@@ -3,6 +3,7 @@ using Discord.WebSocket;
 using System.Linq;
 using System.Threading.Tasks;
 using System;
+using System.Text.RegularExpressions;
 
 public class TicketRestrictCommand : ISlashCommand
 {
@@ -173,6 +174,40 @@ public class TicketRestrictCommand : ISlashCommand
 
             await logChannel.SendMessageAsync(embed: logEmbed);
         }
+        
+        // 🔑 Build new allowed roles from current channel state
+        var allowedRoles = channel.PermissionOverwrites
+            .Where(o => o.TargetType == PermissionTarget.Role)
+            .Where(o => o.Permissions.ViewChannel == PermValue.Allow)
+            .Where(o => o.TargetId != channel.Guild.EveryoneRole.Id)
+            .Select(o => o.TargetId)
+            .ToArray();
+
+        // 📝 Build new topic safely
+        var newTopic = channel.Topic ?? "";
+
+        // Replace existing roles OR add if missing
+        if (newTopic.Contains("roles:"))
+        {
+            newTopic = Regex.Replace(
+                newTopic,
+                @"roles:[\d,]*",
+                $"roles:{string.Join(",", allowedRoles)}"
+            );
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(newTopic))
+                newTopic += ";";
+
+            newTopic += $"roles:{string.Join(",", allowedRoles)}";
+        }
+
+        // ✅ Apply topic update (ONLY correct way)
+        await channel.ModifyAsync(props =>
+        {
+            props.Topic = newTopic;
+        });
 
         await command.FollowupAsync(
             $"✅ Restricted this ticket to {targetRole.Mention}.",
