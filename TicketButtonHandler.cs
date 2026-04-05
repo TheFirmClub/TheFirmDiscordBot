@@ -1,11 +1,7 @@
+using System.Text.RegularExpressions;
 using Discord;
 using Discord.WebSocket;
-using System.Linq;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
-using System;
-using System.Collections.Generic;
 
 public class TicketButtonHandler
 {
@@ -21,14 +17,14 @@ public class TicketButtonHandler
         _aiSupport = aiSupport;
     }
 
-    private readonly ulong[] _moderatorRoleIds = new ulong[]
+    private readonly ulong[] _moderatorRoleIds =
     {
         1393729574537396355,
         1393623589122736238,
         1393590761953558608
     };
 
-   public async Task HandleAsync(SocketMessageComponent component)
+    public async Task HandleAsync(SocketMessageComponent component)
     {
         if (!component.Data.CustomId.StartsWith("ticket_"))
             return;
@@ -51,22 +47,20 @@ public class TicketButtonHandler
                 embedBuilder.AddField(field.Name, field.Value, field.Inline);
         }
 
-        bool isMod = IsModerator(user);
+        var isMod = IsModerator(user);
 
         ulong? ticketOwnerId = null;
         if (component.Channel is SocketTextChannel chForOwner)
             ticketOwnerId = await GetTicketOwnerIdAsync(chForOwner, originalMessage);
 
-        bool isOwner = ticketOwnerId.HasValue && user.Id == ticketOwnerId.Value;
+        var isOwner = ticketOwnerId.HasValue && user.Id == ticketOwnerId.Value;
 
         switch (component.Data.CustomId)
         {
             case "ticket_ai":
             {
-                
                 // ✅ Cooldown check
                 if (_aiCooldown.TryGetValue(component.User.Id, out var lastUsed))
-                {
                     if ((DateTime.UtcNow - lastUsed).TotalMinutes < 3)
                     {
                         await component.RespondAsync(
@@ -74,7 +68,6 @@ public class TicketButtonHandler
                             ephemeral: true);
                         return;
                     }
-                }
 
                 var channel = component.Channel as SocketTextChannel;
 
@@ -117,17 +110,17 @@ public class TicketButtonHandler
                     .WithTitle("FiveM Support Assistant")
                     .WithCustomId("ai_support_modal")
                     .AddTextInput(
-                        label: "Describe your issue",
-                        customId: "ai_issue",
-                        style: TextInputStyle.Paragraph,
-                        placeholder: "Explain the problem you're having...",
+                        "Describe your issue",
+                        "ai_issue",
+                        TextInputStyle.Paragraph,
+                        "Explain the problem you're having...",
                         required: true,
                         maxLength: 1000)
                     .AddTextInput(
-                        label: "What troubleshooting have you tried?",
-                        customId: "ai_attempts",
-                        style: TextInputStyle.Paragraph,
-                        placeholder: "Cache cleared? Restarted FiveM?",
+                        "What troubleshooting have you tried?",
+                        "ai_attempts",
+                        TextInputStyle.Paragraph,
+                        "Cache cleared? Restarted FiveM?",
                         required: false,
                         maxLength: 500);
 
@@ -198,7 +191,7 @@ public class TicketButtonHandler
                     updatedEmbed.AddField(field.Name, field.Value, field.IsInline);
 
                 var resetButtons = new ComponentBuilder()
-                    .WithButton("🎯 Claim Ticket", "ticket_claim", ButtonStyle.Primary)
+                    .WithButton("🎯 Claim Ticket", "ticket_claim")
                     .WithButton("🔓 Release Ticket", "ticket_release", ButtonStyle.Secondary)
                     .WithButton("🤖 Ask Support Assistant", "ticket_ai", ButtonStyle.Success);
 
@@ -226,8 +219,6 @@ public class TicketButtonHandler
 
                     var closeCommand = new TicketCloseCommand(_config);
                     await closeCommand.CloseTicketAsync(channel, user);
-
-                    return;
                 }
 
                 break;
@@ -235,16 +226,52 @@ public class TicketButtonHandler
 
             case "ticket_confirm_resolved":
             {
-                await component.DeferAsync(ephemeral: true);
+                await component.DeferAsync(true);
 
                 if (component.Channel is SocketTextChannel channel)
                 {
                     var permissionService = new TicketPermissionService();
-                    var allowedRoles = await permissionService.GetRolesAsync(channel.Id);
+
+                    // ✅ FIX: convert to List
+                    var allowedRoles = (await permissionService.GetRolesAsync(channel.Id)).ToList();
+
+                    // role IDs
+                    const ulong HEAD_MOD = 1393728468608487594;
+                    const ulong ASST_HEAD = 1405330877440983130;
+
+                    // get roles
+                    var headModRole = channel.Guild.GetRole(HEAD_MOD);
+                    var asstHeadRole = channel.Guild.GetRole(ASST_HEAD);
+
+                    // pick highest leadership role
+                    var compareRole = new[] { headModRole, asstHeadRole }
+                        .Where(r => r != null)
+                        .OrderByDescending(r => r.Position)
+                        .FirstOrDefault();
+
+                    // get highest current role
+                    var highestRole = allowedRoles
+                        .Select(id => channel.Guild.GetRole(id))
+                        .Where(r => r != null)
+                        .OrderByDescending(r => r.Position)
+                        .FirstOrDefault();
+
+                    // ✅ ONLY add leadership if below them
+                    if (highestRole != null && compareRole != null)
+                        if (highestRole.Position < compareRole.Position)
+                        {
+                            if (!allowedRoles.Contains(HEAD_MOD))
+                                allowedRoles.Add(HEAD_MOD);
+
+                            if (!allowedRoles.Contains(ASST_HEAD))
+                                allowedRoles.Add(ASST_HEAD);
+                        }
+
+                    // ✅ cleanup duplicates
+                    allowedRoles = allowedRoles.Distinct().ToList();
 
                     // ❌ Remove ALL overwrites
                     foreach (var overwrite in channel.PermissionOverwrites.ToArray())
-                    {
                         if (overwrite.TargetType == PermissionTarget.Role)
                         {
                             var role = channel.Guild.GetRole(overwrite.TargetId);
@@ -257,7 +284,6 @@ public class TicketButtonHandler
                             if (member != null)
                                 await channel.RemovePermissionOverwriteAsync(member);
                         }
-                    }
 
                     // 🚫 Deny everyone
                     await channel.AddPermissionOverwriteAsync(
@@ -265,23 +291,21 @@ public class TicketButtonHandler
                         new OverwritePermissions(viewChannel: PermValue.Deny)
                     );
 
-                    // ✅ Re-add ONLY roles from DB
+                    // ✅ Re-add ONLY roles
                     foreach (var roleId in allowedRoles)
                     {
                         var role = channel.Guild.GetRole(roleId);
                         if (role != null)
-                        {
                             await channel.AddPermissionOverwriteAsync(role,
                                 new OverwritePermissions(
                                     viewChannel: PermValue.Allow,
                                     sendMessages: PermValue.Allow
                                 ));
-                        }
                     }
 
                     // 📂 Move category
-                    ulong closedCategoryId =
-                        (channel.Topic != null && channel.Topic.Contains("type:manual_verify"))
+                    var closedCategoryId =
+                        channel.Topic != null && channel.Topic.Contains("type:manual_verify")
                             ? 1474419760237379846UL
                             : 1393610408706965656UL;
 
@@ -315,17 +339,15 @@ public class TicketButtonHandler
 
             case "ticket_confirm_unresolved":
             {
-                await component.DeferAsync(ephemeral: true);
+                await component.DeferAsync(true);
 
                 var original = component.Message.Embeds.FirstOrDefault();
                 var embed = new EmbedBuilder();
                 if (original != null)
-                {
                     embed.WithTitle(original.Title)
                         .WithDescription(original.Description)
                         .WithColor(original.Color.GetValueOrDefault(Color.Orange))
                         .WithTimestamp(original.Timestamp ?? DateTimeOffset.UtcNow);
-                }
 
                 var disabledButtons = new ComponentBuilder()
                     .WithButton("✅ Resolved", "ticket_confirm_resolved", ButtonStyle.Success)
@@ -345,7 +367,9 @@ public class TicketButtonHandler
     }
 
     private bool IsModerator(SocketGuildUser user)
-        => user != null && user.Roles.Any(r => _moderatorRoleIds.Contains(r.Id));
+    {
+        return user != null && user.Roles.Any(r => _moderatorRoleIds.Contains(r.Id));
+    }
 
     private async Task<ulong?> GetTicketOwnerIdAsync(SocketTextChannel channel, IUserMessage originalMessage)
     {
