@@ -1,23 +1,30 @@
 using Discord;
 using Discord.WebSocket;
-using System.Net.Http;
 using System.Text.Json;
+using System.Threading;
 
-public class FiveMChannelUpdater
+public class FiveMChannelUpdater : IDisposable
 {
     private readonly DiscordSocketClient _client;
     private readonly string _fivemUrl;
     private readonly ulong _guildId;
     private readonly ulong _channelId;
     private readonly Func<LogMessage, Task>? _logFunc;
+
     private Timer? _timer;
     private static readonly HttpClient _httpClient = new();
 
+    private readonly SemaphoreSlim _updateLock = new(1, 1);
+
     private int _lastPlayerCount = -1;
     private int _failCount = 0;
+    private DateTimeOffset _lastRenameUtc = DateTimeOffset.MinValue;
+    private bool _disposed = false;
+
     private const int MaxFailsBeforePause = 5;
     private static readonly TimeSpan NormalInterval = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan PauseInterval = TimeSpan.FromHours(1);
+    private static readonly TimeSpan RenameCooldown = TimeSpan.FromMinutes(15);
 
     public FiveMChannelUpdater(
         DiscordSocketClient client,
@@ -35,13 +42,19 @@ public class FiveMChannelUpdater
 
     public void Start()
     {
-        _logFunc?.Invoke(new LogMessage(LogSeverity.Info, "FiveM", "⏱️ FiveMChannelUpdater started"));
+        _ = Log(LogSeverity.Info, "⏱️ FiveMChannelUpdater started");
 
         _timer = new Timer(async _ => await UpdateAsync(), null, TimeSpan.Zero, NormalInterval);
     }
 
     private async Task UpdateAsync()
     {
+        if (!await _updateLock.WaitAsync(0))
+        {
+            await Log(LogSeverity.Debug, "⏭️ Update already running, skipping.");
+            return;
+        }
+
         try
         {
             string url = $"{_fivemUrl.TrimEnd('/')}/players.json";
@@ -49,7 +62,6 @@ public class FiveMChannelUpdater
             var players = JsonSerializer.Deserialize<List<JsonElement>>(json);
             int playerCount = players?.Count ?? 0;
 
-            // Success — reset fail counter
             _failCount = 0;
 
             if (playerCount == _lastPlayerCount)
@@ -74,8 +86,27 @@ public class FiveMChannelUpdater
 
             string newName = $"🎮┃Online Players: {playerCount}";
 
+            if (channel.Name == newName)
+            {
+                _lastPlayerCount = playerCount;
+                await Log(LogSeverity.Debug, "✅ Channel name already correct, skipping PATCH.");
+                return;
+            }
+
+            var now = DateTimeOffset.UtcNow;
+
+            if (now - _lastRenameUtc < RenameCooldown)
+            {
+                var remaining = RenameCooldown - (now - _lastRenameUtc);
+                await Log(LogSeverity.Debug,
+                    $"🧊 Rename cooldown active, skipping rename. Remaining: {remaining.TotalMinutes:F1} minutes.");
+                return;
+            }
+
             await channel.ModifyAsync(props => props.Name = newName);
+
             _lastPlayerCount = playerCount;
+            _lastRenameUtc = now;
 
             await Log(LogSeverity.Info, $"🔄 Channel name updated to: {newName}");
         }
@@ -86,10 +117,16 @@ public class FiveMChannelUpdater
 
             if (_failCount >= MaxFailsBeforePause)
             {
-                await Log(LogSeverity.Warning, $"⚠️ {_failCount} failed attempts in a row. Pausing for {PauseInterval.TotalMinutes} minutes...");
+                await Log(LogSeverity.Warning,
+                    $"⚠️ {_failCount} failed attempts in a row. Pausing for {PauseInterval.TotalMinutes} minutes...");
+
                 _timer?.Change(PauseInterval, NormalInterval);
-                _failCount = 0; // reset after pausing
+                _failCount = 0;
             }
+        }
+        finally
+        {
+            _updateLock.Release();
         }
     }
 
@@ -97,5 +134,15 @@ public class FiveMChannelUpdater
     {
         Console.WriteLine(message);
         return _logFunc?.Invoke(new LogMessage(severity, "FiveM", message)) ?? Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        _timer?.Dispose();
+        _updateLock.Dispose();
     }
 }
