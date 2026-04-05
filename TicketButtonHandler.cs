@@ -232,67 +232,62 @@ public class TicketButtonHandler
                 {
                     var permissionService = new TicketPermissionService();
 
-                    // ✅ FIX: convert to List
-                    var allowedRoles = (await permissionService.GetRolesAsync(channel.Id)).ToList();
-
-                    // 🎯 minimum role allowed = Senior Moderator
+                    // === ROLE IDS ===
                     const ulong SENIOR_MOD = 1393638449709584434;
-
-                    var seniorRole = channel.Guild.GetRole(SENIOR_MOD);
-
-                    // keep only roles >= Senior Mod
-                    allowedRoles = allowedRoles
-                        .Where(id =>
-                        {
-                            var role = channel.Guild.GetRole(id);
-                            return role != null && seniorRole != null && role.Position >= seniorRole.Position;
-                        })
-                        .ToList();
-
-                    // 🛡️ FAILSAFE: always ensure leadership has access
-                    if (!allowedRoles.Any())
-                    {
-                        allowedRoles.Add(1393728468608487594); // Head Mod
-                        allowedRoles.Add(1405330877440983130); // Assistant Head Mod
-                    }
-                    
-                    // role IDs
                     const ulong HEAD_MOD = 1393728468608487594;
                     const ulong ASST_HEAD = 1405330877440983130;
 
-                    // get roles
+                    // === GET ROLES ===
+                    var senModRole = channel.Guild.GetRole(SENIOR_MOD);
                     var headModRole = channel.Guild.GetRole(HEAD_MOD);
                     var asstHeadRole = channel.Guild.GetRole(ASST_HEAD);
 
-                    // pick highest leadership role
-                    var compareRole = new[] { headModRole, asstHeadRole }
-                        .Where(r => r != null)
-                        .OrderByDescending(r => r.Position)
-                        .FirstOrDefault();
+                    if (senModRole == null || headModRole == null || asstHeadRole == null)
+                    {
+                        await component.FollowupAsync("❌ Role hierarchy misconfigured.", ephemeral: true);
+                        return;
+                    }
 
-                    // get highest current role
-                    var highestRole = allowedRoles
+                    // 🔍 Get saved roles from restriction
+                    var savedRoles = await permissionService.GetRolesAsync(channel.Id);
+
+                    // Determine highest role used in restriction
+                    var highestRole = savedRoles
                         .Select(id => channel.Guild.GetRole(id))
                         .Where(r => r != null)
                         .OrderByDescending(r => r.Position)
                         .FirstOrDefault();
 
-                    // ✅ ONLY add leadership if below them
-                    if (highestRole != null && compareRole != null)
-                        if (highestRole.Position < compareRole.Position)
+                    // Fallback safety
+                    if (highestRole == null)
+                        highestRole = senModRole;
+
+                    // 🎯 APPLY YOUR RULES
+                    List<ulong> allowedRoles;
+
+                    if (highestRole.Position > asstHeadRole.Position)
+                    {
+                        // 🔥 ABOVE AHM → remove Senior Mod
+                        allowedRoles = new List<ulong>
                         {
-                            if (!allowedRoles.Contains(HEAD_MOD))
-                                allowedRoles.Add(HEAD_MOD);
+                            HEAD_MOD,
+                            ASST_HEAD
+                        };
+                    }
+                    else
+                    {
+                        // 🔥 BELOW OR EQUAL → keep Senior Mod
+                        allowedRoles = new List<ulong>
+                        {
+                            SENIOR_MOD,
+                            HEAD_MOD,
+                            ASST_HEAD
+                        };
+                    }
 
-                            if (!allowedRoles.Contains(ASST_HEAD))
-                                allowedRoles.Add(ASST_HEAD);
-                        }
-
-                    // ✅ cleanup duplicates
-                    allowedRoles = allowedRoles.Distinct().ToList();
-
-                    // ❌ Remove ALL overwrites
+                    // === REMOVE ALL OVERWRITES ===
                     foreach (var overwrite in channel.PermissionOverwrites.ToArray())
+                    {
                         if (overwrite.TargetType == PermissionTarget.Role)
                         {
                             var role = channel.Guild.GetRole(overwrite.TargetId);
@@ -305,6 +300,7 @@ public class TicketButtonHandler
                             if (member != null)
                                 await channel.RemovePermissionOverwriteAsync(member);
                         }
+                    }
 
                     // 🚫 Deny everyone
                     await channel.AddPermissionOverwriteAsync(
@@ -312,19 +308,21 @@ public class TicketButtonHandler
                         new OverwritePermissions(viewChannel: PermValue.Deny)
                     );
 
-                    // ✅ Re-add ONLY roles
+                    // ✅ Re-add correct roles ONLY
                     foreach (var roleId in allowedRoles)
                     {
                         var role = channel.Guild.GetRole(roleId);
                         if (role != null)
+                        {
                             await channel.AddPermissionOverwriteAsync(role,
                                 new OverwritePermissions(
                                     viewChannel: PermValue.Allow,
                                     sendMessages: PermValue.Allow
                                 ));
+                        }
                     }
 
-                    // 📂 Move category
+                    // 📂 Move to closed category
                     var closedCategoryId =
                         channel.Topic != null && channel.Topic.Contains("type:manual_verify")
                             ? 1474419760237379846UL
@@ -338,7 +336,7 @@ public class TicketButtonHandler
                             props.Name = $"closed-{channel.Name}";
                     });
 
-                    // 📩 Send message
+                    // 📩 Send resolved message
                     var embed = new EmbedBuilder()
                         .WithTitle("✅ Ticket Resolved")
                         .WithDescription(
