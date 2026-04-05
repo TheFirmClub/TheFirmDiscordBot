@@ -28,13 +28,7 @@ public class TicketButtonHandler
         1393590761953558608
     };
 
-    private readonly ulong[] _keepRoleIds = new ulong[]
-    {
-        1393638449709584434,
-        1393728468608487594,
-        1405330877440983130,
-        1393590761953558608
-    };
+    // ❌ keepRoleIds REMOVED (no longer needed)
 
     public async Task HandleAsync(SocketMessageComponent component)
     {
@@ -71,15 +65,11 @@ public class TicketButtonHandler
         {
             case "ticket_ai":
             {
-                
-                // ✅ Cooldown check
                 if (_aiCooldown.TryGetValue(component.User.Id, out var lastUsed))
                 {
                     if ((DateTime.UtcNow - lastUsed).TotalMinutes < 3)
                     {
-                        await component.RespondAsync(
-                            "⏳ Please wait a few minutes before requesting AI help again.",
-                            ephemeral: true);
+                        await component.RespondAsync("⏳ Please wait a few minutes before requesting AI help again.", ephemeral: true);
                         return;
                     }
                 }
@@ -88,59 +78,36 @@ public class TicketButtonHandler
 
                 if (channel == null)
                 {
-                    await component.RespondAsync(
-                        "⚠️ AI unavailable in this channel.",
-                        ephemeral: true);
+                    await component.RespondAsync("⚠️ AI unavailable in this channel.", ephemeral: true);
                     return;
                 }
 
-                // ✅ BACKEND ticket type protection (VERY important)
                 if (channel.Topic == null ||
                     (!channel.Topic.Contains("type:general") &&
                      !channel.Topic.Contains("type:game")))
                 {
-                    await component.RespondAsync(
-                        "⚠️ The Support Assistant is not available for this ticket type.",
-                        ephemeral: true);
+                    await component.RespondAsync("⚠️ The Support Assistant is not available for this ticket type.", ephemeral: true);
                     return;
                 }
 
-                // 🚫 Disable if claimed
                 var claimedField = embedBuilder.Fields
                     .FirstOrDefault(f => f.Name.Contains("Claimed"));
 
                 if (claimedField != null)
                 {
-                    await component.RespondAsync(
-                        "👮 A moderator is already assisting this ticket.",
-                        ephemeral: true);
+                    await component.RespondAsync("👮 A moderator is already assisting this ticket.", ephemeral: true);
                     return;
                 }
 
-                // ✅ Set cooldown BEFORE modal opens
                 _aiCooldown[component.User.Id] = DateTime.UtcNow;
 
-                // ⭐ BUILD MODAL
                 var modal = new ModalBuilder()
                     .WithTitle("FiveM Support Assistant")
                     .WithCustomId("ai_support_modal")
-                    .AddTextInput(
-                        label: "Describe your issue",
-                        customId: "ai_issue",
-                        style: TextInputStyle.Paragraph,
-                        placeholder: "Explain the problem you're having...",
-                        required: true,
-                        maxLength: 1000)
-                    .AddTextInput(
-                        label: "What troubleshooting have you tried?",
-                        customId: "ai_attempts",
-                        style: TextInputStyle.Paragraph,
-                        placeholder: "Cache cleared? Restarted FiveM?",
-                        required: false,
-                        maxLength: 500);
+                    .AddTextInput("Describe your issue", "ai_issue", TextInputStyle.Paragraph, required: true)
+                    .AddTextInput("What troubleshooting have you tried?", "ai_attempts", TextInputStyle.Paragraph, required: false);
 
                 await component.RespondWithModalAsync(modal.Build());
-
                 return;
             }
 
@@ -164,24 +131,6 @@ public class TicketButtonHandler
                     m.Embed = embedBuilder.Build();
                     m.Components = claimButtons.Build();
                 });
-
-                ulong logChannelId = 1394405064520499415;
-
-                var guild = (component.Channel as SocketGuildChannel)?.Guild;
-                var logChannel = guild?.GetTextChannel(logChannelId);
-
-                if (logChannel != null)
-                {
-                    var logEmbed = new EmbedBuilder()
-                        .WithTitle("🔒 Ticket Claimed")
-                        .AddField("Moderator", user.Mention, true)
-                        .AddField("Ticket", $"{component.Channel.Name} (`{component.Channel.Id}`)", true)
-                        .WithColor(Color.Blue)
-                        .WithTimestamp(DateTimeOffset.UtcNow)
-                        .Build();
-
-                    await logChannel.SendMessageAsync(embed: logEmbed);
-                }
 
                 await component.RespondAsync($"🎯 Ticket claimed by {user.Mention}.");
                 break;
@@ -240,23 +189,23 @@ public class TicketButtonHandler
 
                 break;
             }
-            
+
             case "ticket_confirm_resolved":
             {
                 await component.DeferAsync(ephemeral: true);
 
                 if (component.Channel is SocketTextChannel channel)
                 {
+                    var allowedRoles = GetAllowedRoles(channel.Topic);
+
+                    // ❌ REMOVE EVERYTHING
                     foreach (var overwrite in channel.PermissionOverwrites.ToArray())
                     {
                         if (overwrite.TargetType == PermissionTarget.Role)
                         {
-                            if (!_keepRoleIds.Contains(overwrite.TargetId))
-                            {
-                                var role = channel.Guild.GetRole(overwrite.TargetId);
-                                if (role != null)
-                                    await channel.RemovePermissionOverwriteAsync(role);
-                            }
+                            var role = channel.Guild.GetRole(overwrite.TargetId);
+                            if (role != null)
+                                await channel.RemovePermissionOverwriteAsync(role);
                         }
                         else if (overwrite.TargetType == PermissionTarget.User)
                         {
@@ -266,10 +215,25 @@ public class TicketButtonHandler
                         }
                     }
 
+                    // 🚫 DENY EVERYONE
                     await channel.AddPermissionOverwriteAsync(channel.Guild.EveryoneRole,
                         new OverwritePermissions(viewChannel: PermValue.Deny));
 
-                // ✅ If it's a manual-verify ticket, move to Manual Verification Tickets - Closed
+                    // ✅ RESTORE ORIGINAL ROLES ONLY
+                    foreach (var roleId in allowedRoles)
+                    {
+                        var role = channel.Guild.GetRole(roleId);
+                        if (role != null)
+                        {
+                            await channel.AddPermissionOverwriteAsync(role,
+                                new OverwritePermissions(
+                                    viewChannel: PermValue.Allow,
+                                    sendMessages: PermValue.Allow,
+                                    readMessageHistory: PermValue.Allow
+                                ));
+                        }
+                    }
+
                     ulong closedCategoryId =
                         (channel.Topic != null && channel.Topic.Contains("type:manual_verify"))
                             ? 1474419760237379846UL
@@ -285,10 +249,7 @@ public class TicketButtonHandler
 
                     var embed = new EmbedBuilder()
                         .WithTitle("✅ Ticket Resolved")
-                        .WithDescription(
-                            $"This ticket has been marked as **resolved** by {component.User.Mention}.\n\n" +
-                            "Kindly review the context before closing.\n\n" +
-                            "Once reviewed, click the **Close Ticket** button below.")
+                        .WithDescription("Ticket marked as resolved. Review and close.")
                         .WithColor(Color.Red)
                         .WithTimestamp(DateTimeOffset.UtcNow)
                         .Build();
@@ -306,28 +267,7 @@ public class TicketButtonHandler
             {
                 await component.DeferAsync(ephemeral: true);
 
-                var original = component.Message.Embeds.FirstOrDefault();
-                var embed = new EmbedBuilder();
-                if (original != null)
-                {
-                    embed.WithTitle(original.Title)
-                        .WithDescription(original.Description)
-                        .WithColor(original.Color.GetValueOrDefault(Color.Orange))
-                        .WithTimestamp(original.Timestamp ?? DateTimeOffset.UtcNow);
-                }
-
-                var disabledButtons = new ComponentBuilder()
-                    .WithButton("✅ Resolved", "ticket_confirm_resolved", ButtonStyle.Success)
-                    .WithButton("❌ Not Resolved", "ticket_confirm_unresolved", ButtonStyle.Danger, disabled: true);
-
-                await component.Message.ModifyAsync(msg =>
-                {
-                    msg.Embed = embed.Build();
-                    msg.Components = disabledButtons.Build();
-                });
-
-                await component.FollowupAsync(
-                    "🔁 Got it. A member of staff will follow up shortly. Is there anything else we can help with?");
+                await component.FollowupAsync("🔁 Staff will follow up shortly.");
                 break;
             }
         }
@@ -336,6 +276,20 @@ public class TicketButtonHandler
     private bool IsModerator(SocketGuildUser user)
         => user != null && user.Roles.Any(r => _moderatorRoleIds.Contains(r.Id));
 
+    private ulong[] GetAllowedRoles(string topic)
+    {
+        if (string.IsNullOrWhiteSpace(topic)) return Array.Empty<ulong>();
+
+        var match = Regex.Match(topic, @"roles:([\d,]+)");
+        if (!match.Success) return Array.Empty<ulong>();
+
+        return match.Groups[1].Value
+            .Split(',')
+            .Select(id => ulong.TryParse(id, out var r) ? r : 0)
+            .Where(id => id != 0)
+            .ToArray();
+    }
+
     private async Task<ulong?> GetTicketOwnerIdAsync(SocketTextChannel channel, IUserMessage originalMessage)
     {
         if (!string.IsNullOrWhiteSpace(channel.Topic))
@@ -343,19 +297,6 @@ public class TicketButtonHandler
             var m = Regex.Match(channel.Topic, @"owner:(\d{15,20})");
             if (m.Success && ulong.TryParse(m.Groups[1].Value, out var idFromTopic))
                 return idFromTopic;
-        }
-
-        var embed = originalMessage?.Embeds?.FirstOrDefault();
-        if (embed != null)
-        {
-            var maybe = ExtractFirstMentionedUserId(embed.Description);
-            if (maybe.HasValue) return maybe.Value;
-
-            foreach (var f in embed.Fields)
-            {
-                maybe = ExtractFirstMentionedUserId(f.Value);
-                if (maybe.HasValue) return maybe.Value;
-            }
         }
 
         await Task.CompletedTask;
