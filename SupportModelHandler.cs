@@ -112,17 +112,22 @@ public class SupportModalHandler
             _ => _supportCategoryId
         };
 
-        var allowedRoles = overwrites
-            .Where(o => o.TargetType == PermissionTarget.Role && o.TargetId != guild.EveryoneRole.Id)
-            .Select(o => o.TargetId)
-            .ToArray();
-        
         var channel = await guild.CreateTextChannelAsync(channelName, props =>
         {
             props.CategoryId = categoryId;
             props.PermissionOverwrites = overwrites;
-            props.Topic = $"owner:{user.Id};type:{ticketType};roles:{string.Join(",", allowedRoles)};created:{DateTimeOffset.UtcNow:O}";
+            props.Topic = $"owner:{user.Id}; type:{ticketType}; created:{DateTimeOffset.UtcNow:O}";
         });
+        
+        var permissionService = new TicketPermissionService();
+
+        var allowedRoles = overwrites
+            .Where(o => o.TargetType == PermissionTarget.Role)
+            .Where(o => o.TargetId != guild.EveryoneRole.Id)
+            .Select(o => o.TargetId)
+            .ToArray();
+
+        await permissionService.SaveAsync(channel.Id, user.Id, allowedRoles);
 
         var fullTypeLabel = ticketType switch
         {

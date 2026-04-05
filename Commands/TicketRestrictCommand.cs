@@ -3,7 +3,6 @@ using Discord.WebSocket;
 using System.Linq;
 using System.Threading.Tasks;
 using System;
-using System.Text.RegularExpressions;
 
 public class TicketRestrictCommand : ISlashCommand
 {
@@ -175,7 +174,8 @@ public class TicketRestrictCommand : ISlashCommand
             await logChannel.SendMessageAsync(embed: logEmbed);
         }
         
-        // 🔑 Build new allowed roles from current channel state
+        var permissionService = new TicketPermissionService();
+
         ulong[] allowedRoles;
 
         if (targetRole.Id == SENIOR_MGMT)
@@ -195,37 +195,7 @@ public class TicketRestrictCommand : ISlashCommand
             allowedRoles = new[] { targetRole.Id, SENIOR_MOD };
         }
 
-        // 📝 Build new topic safely
-        var newTopic = channel.Topic ?? "";
-
-        // Replace existing roles OR add if missing
-        if (newTopic.Contains("roles:"))
-        {
-            newTopic = Regex.Replace(
-                newTopic,
-                @"roles:[\d,]*",
-                $"roles:{string.Join(",", allowedRoles)}"
-            );
-        }
-        else
-        {
-            if (!string.IsNullOrWhiteSpace(newTopic))
-                newTopic += ";";
-
-            newTopic += $"roles:{string.Join(",", allowedRoles)}";
-        }
-
-        // ⏳ Small delay to avoid rate limit (after permission edits)
-        await Task.Delay(500);
-
-        // ✅ Only update if actually changed
-        if (channel.Topic != newTopic)
-        {
-            await channel.ModifyAsync(props =>
-            {
-                props.Topic = newTopic;
-            });
-        }
+        await permissionService.SaveAsync(channel.Id, user.Id, allowedRoles);
 
         await command.FollowupAsync(
             $"✅ Restricted this ticket to {targetRole.Mention}.",
