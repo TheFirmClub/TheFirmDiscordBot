@@ -3,6 +3,7 @@ using Discord.WebSocket;
 using System.Linq;
 using System.Threading.Tasks;
 using System;
+using System.Collections.Generic;
 
 public class TicketRestrictCommand : ISlashCommand
 {
@@ -48,6 +49,9 @@ public class TicketRestrictCommand : ISlashCommand
         await command.DeferAsync(ephemeral: true);
 
         var targetRole = (SocketRole)command.Data.Options.First().Value;
+        
+        var permissionService = new TicketPermissionService();
+        var ticketOwnerId = await permissionService.GetOwnerAsync(channel.Id);
 
         if (channel.CategoryId != _restrictedCategoryId)
         {
@@ -75,6 +79,9 @@ public class TicketRestrictCommand : ISlashCommand
             }
             else if (overwrite.TargetType == PermissionTarget.User)
             {
+                if (ticketOwnerId.HasValue && overwrite.TargetId == ticketOwnerId.Value)
+                    continue;
+
                 var member = channel.Guild.GetUser(overwrite.TargetId);
                 if (member != null)
                     await channel.RemovePermissionOverwriteAsync(member);
@@ -190,6 +197,21 @@ public class TicketRestrictCommand : ISlashCommand
                     ));
             }
         }
+        
+        if (ticketOwnerId.HasValue)
+        {
+            var ticketOwner = channel.Guild.GetUser(ticketOwnerId.Value);
+            if (ticketOwner != null)
+            {
+                await channel.AddPermissionOverwriteAsync(
+                    ticketOwner,
+                    new OverwritePermissions(
+                        viewChannel: PermValue.Allow,
+                        sendMessages: PermValue.Allow
+                    )
+                );
+            }
+        }
 
         await channel.SendMessageAsync($"{targetRole.Mention} 🔒 This ticket has been restricted by {user.Mention}.");
 
@@ -207,11 +229,9 @@ public class TicketRestrictCommand : ISlashCommand
 
             await logChannel.SendMessageAsync(embed: logEmbed);
         }
-        
-        var permissionService = new TicketPermissionService();
-        
-        await permissionService.SaveAsync(channel.Id, user.Id, new[] { targetRole.Id });
 
+        await permissionService.UpdateRolesAsync(channel.Id, new[] { targetRole.Id });
+        
         await command.FollowupAsync(
             $"✅ Restricted this ticket to {targetRole.Mention}.",
             ephemeral: true

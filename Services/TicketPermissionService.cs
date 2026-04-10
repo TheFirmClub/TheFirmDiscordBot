@@ -47,4 +47,40 @@ public class TicketPermissionService
             .Where(x => x != 0)
             .ToArray();
     }
+    
+    public async Task<ulong?> GetOwnerAsync(ulong channelId)
+    {
+        using var conn = new MySqlConnection(ConnectionString);
+        await conn.OpenAsync();
+
+        var cmd = new MySqlCommand(
+            "SELECT owner_id FROM ticket_permissions WHERE channel_id = @id LIMIT 1",
+            conn);
+
+        cmd.Parameters.AddWithValue("@id", channelId);
+
+        var result = await cmd.ExecuteScalarAsync();
+
+        if (result == null || result == DBNull.Value)
+            return null;
+
+        return ulong.TryParse(result.ToString(), out var ownerId) ? ownerId : null;
+    }
+    
+    public async Task UpdateRolesAsync(ulong channelId, ulong[] roles)
+    {
+        using var conn = new MySqlConnection(ConnectionString);
+        await conn.OpenAsync();
+
+        var cmd = new MySqlCommand(@"
+        UPDATE ticket_permissions
+        SET allowed_roles = @roles
+        WHERE channel_id = @channel;
+    ", conn);
+
+        cmd.Parameters.AddWithValue("@channel", channelId);
+        cmd.Parameters.AddWithValue("@roles", string.Join(",", roles));
+
+        await cmd.ExecuteNonQueryAsync();
+    }
 }
