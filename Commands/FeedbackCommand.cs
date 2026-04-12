@@ -7,25 +7,20 @@ using System.Threading.Tasks;
 public class FeedbackCommand : ISlashCommand
 {
     private readonly ulong _guildId = 1393589436402634874;
-    private readonly ulong _feedbackChannelId = 1492725457190256710;
+    private readonly ulong _channelId = 1492725457190256710;
 
     private DiscordSocketClient _client;
 
     public string Name => "feedback";
-    public string Description => "Submit server feedback.";
+    public string Description => "Submit feedback.";
 
-    // =========================
-    // Register Command
-    // =========================
     public async Task RegisterAsync(DiscordSocketClient client)
     {
         _client = client;
 
-        // Hook interactions
         _client.InteractionCreated -= OnInteractionCreated;
         _client.InteractionCreated += OnInteractionCreated;
 
-        // Register /feedback (NO subcommands)
         await client.Rest.CreateGuildCommand(
             new SlashCommandBuilder()
                 .WithName("feedback")
@@ -35,33 +30,38 @@ public class FeedbackCommand : ISlashCommand
         );
     }
 
-    // =========================
-    // Slash Command
-    // =========================
+    // =====================
+    // Slash
+    // =====================
     public async Task ExecuteAsync(SocketSlashCommand cmd)
     {
         var embed = new EmbedBuilder()
             .WithTitle("📩 Submit Feedback")
-            .WithColor(Color.Blue)
-            .WithDescription("Select a category below.");
+            .WithDescription("Select a category below.")
+            .WithColor(Color.Blue);
 
-        var buttons = new ComponentBuilder()
-            .WithButton("Police", "fb:police", ButtonStyle.Primary)
-            .WithButton("TFHS", "fb:tfhs", ButtonStyle.Primary)
-            .WithButton("Civilians", "fb:civ", ButtonStyle.Primary)
-            .WithButton("General", "fb:general", ButtonStyle.Secondary)
-            .WithButton("Development", "fb:dev", ButtonStyle.Success);
+        var menu = new SelectMenuBuilder()
+            .WithCustomId("fb:category")
+            .WithPlaceholder("Choose a category...")
+            .AddOption("Police", "police")
+            .AddOption("TFHS", "tfhs")
+            .AddOption("Civilians", "civ")
+            .AddOption("General", "general")
+            .AddOption("Development", "dev");
+
+        var components = new ComponentBuilder()
+            .WithSelectMenu(menu);
 
         await cmd.RespondAsync(
             embed: embed.Build(),
-            components: buttons.Build(),
+            components: components.Build(),
             ephemeral: true
         );
     }
 
-    // =========================
+    // =====================
     // Interaction Router
-    // =========================
+    // =====================
     private async Task OnInteractionCreated(SocketInteraction arg)
     {
         try
@@ -69,32 +69,28 @@ public class FeedbackCommand : ISlashCommand
             switch (arg)
             {
                 case SocketMessageComponent c:
-
-                    if (c.Data.CustomId.StartsWith("fb:"))
-                        await OpenFeedbackModal(c);
-
+                    if (c.Data.CustomId == "fb:category")
+                        await HandleCategorySelect(c);
                     break;
 
                 case SocketModal m:
-
                     if (m.Data.CustomId.StartsWith("fb:submit"))
                         await SubmitFeedback(m);
-
                     break;
             }
         }
         catch (Exception e)
         {
-            Console.WriteLine($"[Feedback] Error: {e}");
+            Console.WriteLine($"[Feedback] {e}");
         }
     }
 
-    // =========================
-    // Open Modal
-    // =========================
-    private async Task OpenFeedbackModal(SocketMessageComponent comp)
+    // =====================
+    // Handle dropdown
+    // =====================
+    private async Task HandleCategorySelect(SocketMessageComponent comp)
     {
-        string category = comp.Data.CustomId.Split(":")[1];
+        var category = comp.Data.Values.First();
 
         var modal = new ModalBuilder()
             .WithTitle($"Feedback - {category.ToUpper()}")
@@ -103,51 +99,44 @@ public class FeedbackCommand : ISlashCommand
                 "Your feedback",
                 "text",
                 TextInputStyle.Paragraph,
-                placeholder: "Write your feedback here...",
                 required: true
             );
 
         await comp.RespondWithModalAsync(modal.Build());
     }
 
-    // =========================
-    // Submit Feedback
-    // =========================
+    // =====================
+    // Submit
+    // =====================
     private async Task SubmitFeedback(SocketModal modal)
     {
-        var parts = modal.Data.CustomId.Split(":");
-        string category = parts[2];
+        var category = modal.Data.CustomId.Split(":")[2];
+        var text = modal.Data.Components.First().Value;
 
-        var text = modal.Data.Components.First().Value.Trim();
-
-        ulong roleToPing = 0;
-        string roleMention = "";
+        ulong roleId = 0;
+        string mention = "";
 
         switch (category)
         {
             case "police":
-                roleToPing = 1420512528395665569;
+                roleId = 1420512528395665569;
                 break;
-
             case "tfhs":
-                roleToPing = 1420512797191704616;
+                roleId = 1420512797191704616;
                 break;
-
             case "civ":
-                roleToPing = 1420513009729802260;
+                roleId = 1420513009729802260;
                 break;
-
             case "general":
-                roleMention = "@here";
+                mention = "@here";
                 break;
-
             case "dev":
-                roleToPing = 1393733280523882546;
+                roleId = 1393733280523882546;
                 break;
         }
 
-        if (roleToPing != 0)
-            roleMention = $"<@&{roleToPing}>";
+        if (roleId != 0)
+            mention = $"<@&{roleId}>";
 
         var embed = new EmbedBuilder()
             .WithTitle("📩 New Feedback")
@@ -155,31 +144,24 @@ public class FeedbackCommand : ISlashCommand
             .AddField("Category", category.ToUpper(), true)
             .AddField("User", modal.User.Mention, true)
             .AddField("Feedback", text)
-            .WithFooter($"User ID: {modal.User.Id}")
             .WithCurrentTimestamp();
 
-        var channel = _client
-            .GetGuild(_guildId)
-            .GetTextChannel(_feedbackChannelId);
+        var channel = _client.GetGuild(_guildId)
+                             .GetTextChannel(_channelId);
 
-        // Send message (compatible with your Discord.NET version)
         var msg = await channel.SendMessageAsync(
-            roleMention,
+            mention,
             false,
             embed.Build()
         );
 
-        // Create thread
         await channel.CreateThreadAsync(
-            name: $"{category.ToUpper()} Feedback - {modal.User.Username}",
-            type: ThreadType.PublicThread,
-            autoArchiveDuration: ThreadArchiveDuration.OneWeek,
+            $"{category.ToUpper()} - {modal.User.Username}",
+            ThreadType.PublicThread,
+            ThreadArchiveDuration.OneWeek,
             message: msg
         );
 
-        await modal.RespondAsync(
-            "✅ Your feedback has been submitted.",
-            ephemeral: true
-        );
+        await modal.RespondAsync("✅ Feedback submitted.", ephemeral: true);
     }
 }
