@@ -17,7 +17,7 @@ class Program
     private SuggestionsCommand _suggestionsCommand = new SuggestionsCommand();
     private CheckRoleInfoCommand _checkRoleInfoCommand = new CheckRoleInfoCommand();
     private FirmDiscordBot.Services.ManualVerifyOnJoinHandler? _manualVerifyOnJoin;
-
+    private FeedbackCommand _feedbackCommand = new FeedbackCommand();
 
     private ulong _logChannelId = 1394449608603603085;
 
@@ -217,6 +217,9 @@ class Program
         // ✅ Register Suggestions (fresh)
         await _suggestionsCommand.RegisterAsync(_client);
         Console.WriteLine("✅ Registered /suggestions");
+        
+        await _feedbackCommand.RegisterAsync(_client);
+        Console.WriteLine("✅ Registered /feedback");
         
         // ✅ Register /playtime (with subcommands) BEFORE the foreach
         try
@@ -591,6 +594,12 @@ class Program
         if (name == "suggestions")
         {
             await _suggestionsCommand.ExecuteAsync(command);
+            return;
+        }
+        
+        if (name == "feedback")
+        {
+            await _feedbackCommand.ExecuteAsync(command);
             return;
         }
 
