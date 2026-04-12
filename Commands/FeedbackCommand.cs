@@ -3,15 +3,18 @@ using Discord.WebSocket;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 public class FeedbackCommand : ISlashCommand
 {
     private readonly ulong _guildId = 1393589436402634874;
     private readonly ulong _channelId = 1492725457190256710;
-    private static readonly Dictionary<ulong, DateTime> _cooldowns = new();
-    private const int CooldownSeconds = 3600; // 5 minutes
 
     private DiscordSocketClient _client;
+
+    // ✅ Cooldown system
+    private static readonly Dictionary<ulong, DateTime> _cooldowns = new();
+    private const int CooldownSeconds = 3600; // 60 minutes
 
     public string Name => "feedback";
     public string Description => "Submit feedback.";
@@ -20,6 +23,7 @@ public class FeedbackCommand : ISlashCommand
     {
         _client = client;
 
+        // ✅ Self-contained handler (SAFE filtering inside)
         _client.InteractionCreated -= OnInteractionCreated;
         _client.InteractionCreated += OnInteractionCreated;
 
@@ -37,7 +41,7 @@ public class FeedbackCommand : ISlashCommand
     // =====================
     public async Task ExecuteAsync(SocketSlashCommand cmd)
     {
-        // 🔴 ADD THIS BLOCK FIRST
+        // 🔒 Cooldown check BEFORE UI
         if (_cooldowns.TryGetValue(cmd.User.Id, out var last))
         {
             var diff = (DateTime.UtcNow - last).TotalSeconds;
@@ -54,7 +58,7 @@ public class FeedbackCommand : ISlashCommand
                 return;
             }
         }
-        
+
         var embed = new EmbedBuilder()
             .WithTitle("📩 Submit Feedback")
             .WithDescription("Select a category below.")
@@ -80,23 +84,27 @@ public class FeedbackCommand : ISlashCommand
     }
 
     // =====================
-    // Interaction Router
+    // Interaction Router (SAFE)
     // =====================
     private async Task OnInteractionCreated(SocketInteraction arg)
     {
         try
         {
-            switch (arg)
+            // ✅ ONLY handle feedback interactions
+            if (arg is SocketMessageComponent c)
             {
-                case SocketMessageComponent c:
-                    if (c.Data.CustomId == "fb:category")
-                        await HandleCategorySelect(c);
-                    break;
+                if (c.Data.CustomId != "fb:category")
+                    return;
 
-                case SocketModal m:
-                    if (m.Data.CustomId.StartsWith("fb:submit"))
-                        await SubmitFeedback(m);
-                    break;
+                await HandleCategory(c);
+            }
+
+            else if (arg is SocketModal m)
+            {
+                if (!m.Data.CustomId.StartsWith("fb:submit"))
+                    return;
+
+                await SubmitFeedback(m);
             }
         }
         catch (Exception e)
@@ -106,9 +114,9 @@ public class FeedbackCommand : ISlashCommand
     }
 
     // =====================
-    // Handle dropdown
+    // Dropdown → Modal
     // =====================
-    private async Task HandleCategorySelect(SocketMessageComponent comp)
+    private async Task HandleCategory(SocketMessageComponent comp)
     {
         var category = comp.Data.Values.First();
 
@@ -126,30 +134,32 @@ public class FeedbackCommand : ISlashCommand
     }
 
     // =====================
-    // Submit
+    // Submit Feedback
     // =====================
     private async Task SubmitFeedback(SocketModal modal)
     {
         var userId = modal.User.Id;
 
-        if (_cooldowns.TryGetValue(userId, out var lastTime))
+        // 🔒 Cooldown check AGAIN (anti bypass)
+        if (_cooldowns.TryGetValue(userId, out var last))
         {
-            var diff = (DateTime.UtcNow - lastTime).TotalSeconds;
+            var diff = (DateTime.UtcNow - last).TotalSeconds;
 
             if (diff < CooldownSeconds)
             {
                 var remaining = (int)(CooldownSeconds - diff);
+                var minutes = (int)Math.Ceiling(remaining / 60.0);
 
                 await modal.RespondAsync(
-                    $"⛔ You must wait **{remaining}s** before submitting another feedback.",
+                    $"⛔ You must wait **{minutes} minute(s)** before submitting again.",
                     ephemeral: true
                 );
                 return;
             }
         }
-        
+
         var category = modal.Data.CustomId.Split(":")[2];
-        var text = modal.Data.Components.First().Value;
+        var text = modal.Data.Components.First().Value.Trim();
 
         ulong roleId = 0;
         string mention = "";
@@ -184,8 +194,9 @@ public class FeedbackCommand : ISlashCommand
             .AddField("Feedback", text)
             .WithCurrentTimestamp();
 
-        var channel = _client.GetGuild(_guildId)
-                             .GetTextChannel(_channelId);
+        var channel = _client
+            .GetGuild(_guildId)
+            .GetTextChannel(_channelId);
 
         var msg = await channel.SendMessageAsync(
             mention,
@@ -200,7 +211,9 @@ public class FeedbackCommand : ISlashCommand
             message: msg
         );
 
-        await modal.RespondAsync("✅ Feedback submitted.", ephemeral: true);
+        // ✅ Apply cooldown AFTER success
         _cooldowns[userId] = DateTime.UtcNow;
+
+        await modal.RespondAsync("✅ Feedback submitted.", ephemeral: true);
     }
 }
