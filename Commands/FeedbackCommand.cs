@@ -8,6 +8,8 @@ public class FeedbackCommand : ISlashCommand
 {
     private readonly ulong _guildId = 1393589436402634874;
     private readonly ulong _channelId = 1492725457190256710;
+    private static readonly Dictionary<ulong, DateTime> _cooldowns = new();
+    private const int CooldownSeconds = 3600; // 5 minutes
 
     private DiscordSocketClient _client;
 
@@ -110,6 +112,24 @@ public class FeedbackCommand : ISlashCommand
     // =====================
     private async Task SubmitFeedback(SocketModal modal)
     {
+        var userId = modal.User.Id;
+
+        if (_cooldowns.TryGetValue(userId, out var lastTime))
+        {
+            var diff = (DateTime.UtcNow - lastTime).TotalSeconds;
+
+            if (diff < CooldownSeconds)
+            {
+                var remaining = (int)(CooldownSeconds - diff);
+
+                await modal.RespondAsync(
+                    $"⛔ You must wait **{remaining}s** before submitting another feedback.",
+                    ephemeral: true
+                );
+                return;
+            }
+        }
+        
         var category = modal.Data.CustomId.Split(":")[2];
         var text = modal.Data.Components.First().Value;
 
@@ -163,5 +183,6 @@ public class FeedbackCommand : ISlashCommand
         );
 
         await modal.RespondAsync("✅ Feedback submitted.", ephemeral: true);
+        _cooldowns[userId] = DateTime.UtcNow;
     }
 }
