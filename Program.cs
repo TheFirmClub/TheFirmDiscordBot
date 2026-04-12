@@ -213,6 +213,12 @@ class Program
                 Console.WriteLine("🗑️ Removed old /suggestions");
             }
         }
+        
+        foreach (var cmd in await guild.GetApplicationCommandsAsync())
+        {
+            if (cmd.Name == "feedback")
+                await cmd.DeleteAsync();
+        }
 
         // ✅ Register Suggestions (fresh)
         await _suggestionsCommand.RegisterAsync(_client);

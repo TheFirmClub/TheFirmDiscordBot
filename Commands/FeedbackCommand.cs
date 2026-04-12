@@ -7,8 +7,6 @@ using System.Threading.Tasks;
 public class FeedbackCommand : ISlashCommand
 {
     private readonly ulong _guildId = 1393589436402634874;
-
-    // ✅ UPDATED CHANNEL
     private readonly ulong _feedbackChannelId = 1492725457190256710;
 
     private DiscordSocketClient _client;
@@ -16,21 +14,22 @@ public class FeedbackCommand : ISlashCommand
     public string Name => "feedback";
     public string Description => "Submit server feedback.";
 
+    // =========================
+    // Register Command
+    // =========================
     public async Task RegisterAsync(DiscordSocketClient client)
     {
         _client = client;
 
+        // Hook interactions
         _client.InteractionCreated -= OnInteractionCreated;
         _client.InteractionCreated += OnInteractionCreated;
 
+        // Register /feedback (NO subcommands)
         await client.Rest.CreateGuildCommand(
             new SlashCommandBuilder()
                 .WithName("feedback")
                 .WithDescription("Submit feedback")
-                .AddOption(new SlashCommandOptionBuilder()
-                    .WithName("new")
-                    .WithDescription("Open feedback panel")
-                    .WithType(ApplicationCommandOptionType.SubCommand))
                 .Build(),
             _guildId
         );
@@ -41,28 +40,23 @@ public class FeedbackCommand : ISlashCommand
     // =========================
     public async Task ExecuteAsync(SocketSlashCommand cmd)
     {
-        var sub = cmd.Data.Options.FirstOrDefault()?.Name;
+        var embed = new EmbedBuilder()
+            .WithTitle("📩 Submit Feedback")
+            .WithColor(Color.Blue)
+            .WithDescription("Select a category below.");
 
-        if (sub == "new")
-        {
-            var embed = new EmbedBuilder()
-                .WithTitle("📩 Submit Feedback")
-                .WithColor(Color.Blue)
-                .WithDescription("Select a category below.");
+        var buttons = new ComponentBuilder()
+            .WithButton("Police", "fb:police", ButtonStyle.Primary)
+            .WithButton("TFHS", "fb:tfhs", ButtonStyle.Primary)
+            .WithButton("Civilians", "fb:civ", ButtonStyle.Primary)
+            .WithButton("General", "fb:general", ButtonStyle.Secondary)
+            .WithButton("Development", "fb:dev", ButtonStyle.Success);
 
-            var buttons = new ComponentBuilder()
-                .WithButton("Police", "fb:police", ButtonStyle.Primary)
-                .WithButton("TFHS", "fb:tfhs", ButtonStyle.Primary)
-                .WithButton("Civilians", "fb:civ", ButtonStyle.Primary)
-                .WithButton("General", "fb:general", ButtonStyle.Secondary)
-                .WithButton("Development", "fb:dev", ButtonStyle.Success);
-
-            await cmd.RespondAsync(
-                embed: embed.Build(),
-                components: buttons.Build(),
-                ephemeral: true
-            );
-        }
+        await cmd.RespondAsync(
+            embed: embed.Build(),
+            components: buttons.Build(),
+            ephemeral: true
+        );
     }
 
     // =========================
@@ -168,14 +162,14 @@ public class FeedbackCommand : ISlashCommand
             .GetGuild(_guildId)
             .GetTextChannel(_feedbackChannelId);
 
-        // ✅ Send message
+        // Send message (compatible with your Discord.NET version)
         var msg = await channel.SendMessageAsync(
             roleMention,
             false,
             embed.Build()
         );
 
-        // ✅ Create thread automatically
+        // Create thread
         await channel.CreateThreadAsync(
             name: $"{category.ToUpper()} Feedback - {modal.User.Username}",
             type: ThreadType.PublicThread,
