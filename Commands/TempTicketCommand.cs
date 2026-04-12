@@ -67,6 +67,9 @@ public class TempTicketCommand : ISlashCommand
             props.PermissionOverwrites = perms;
         });
 
+        var permissionService = new TicketPermissionService();
+        await permissionService.SaveAsync(channel.Id, guildUser.Id, Array.Empty<ulong>());
+        
         // Embed message
         var embed = new EmbedBuilder()
             .WithTitle($"📌 TEMP Ticket from {staffUser.DisplayName}")
