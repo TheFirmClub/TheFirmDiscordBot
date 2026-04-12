@@ -37,6 +37,24 @@ public class FeedbackCommand : ISlashCommand
     // =====================
     public async Task ExecuteAsync(SocketSlashCommand cmd)
     {
+        // 🔴 ADD THIS BLOCK FIRST
+        if (_cooldowns.TryGetValue(cmd.User.Id, out var last))
+        {
+            var diff = (DateTime.UtcNow - last).TotalSeconds;
+
+            if (diff < CooldownSeconds)
+            {
+                var remaining = (int)(CooldownSeconds - diff);
+                var minutes = (int)Math.Ceiling(remaining / 60.0);
+
+                await cmd.RespondAsync(
+                    $"⛔ You're on cooldown for **{minutes} minute(s)**.",
+                    ephemeral: true
+                );
+                return;
+            }
+        }
+        
         var embed = new EmbedBuilder()
             .WithTitle("📩 Submit Feedback")
             .WithDescription("Select a category below.")
