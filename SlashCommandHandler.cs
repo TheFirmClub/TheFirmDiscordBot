@@ -96,6 +96,9 @@ public class SlashCommandHandler
         // --- NEW: police blacklist ---
         var policeBlacklist = new PoliceBlacklistCommand();
         _commands.Add(policeBlacklist.Name, policeBlacklist);
+
+        var tfhsBlacklist = new TFHSBlacklistCommand();
+        _commands.Add(tfhsBlacklist.Name, tfhsBlacklist);
         
         // --- NEW: manual verification ---
         _commands.Add("manualverify", new ManualVerifyCommand());

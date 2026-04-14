@@ -192,6 +192,12 @@ class Program
                 await cmd.DeleteAsync();
                 Console.WriteLine("🗑️ Removed old /policeblacklist");
             }
+            
+            if (cmd.Name == "tfhsblacklist")
+            {
+                await cmd.DeleteAsync();
+                Console.WriteLine("🗑️ Removed old /tfhsblacklist");
+            }
         }
 
         // ✅ Register LOA commands once (handles /staffloa, /loaremove, /staffloalist)
@@ -408,6 +414,53 @@ class Program
         {
             Console.WriteLine($"❌ Failed to register /policeblacklist: {ex}");
         }
+        
+        // -------------------------------
+        // Register /tfhsblacklist (SUBCOMMANDS)
+        // -------------------------------
+        try
+        {
+            var tfhsBlacklistCmd = new SlashCommandBuilder()
+                .WithName("tfhsblacklist")
+                .WithDescription("Manage TFHS blacklist")
+
+                // /tfhsblacklist add <cid> <days|PERM> <grade?>
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("add")
+                    .WithDescription("Add a TFHS blacklist")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    .AddOption("citizenid",
+                        ApplicationCommandOptionType.String,
+                        "Citizen ID (e.g. HEV80184)",
+                        true)
+                    .AddOption("days",
+                        ApplicationCommandOptionType.String,
+                        "Number of days or PERM",
+                        true)
+                    .AddOption("grade",
+                        ApplicationCommandOptionType.Integer,
+                        "Max ambulance grade allowed (omit for full ban)",
+                        false)
+                )
+
+                // /tfhsblacklist remove <cid>
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName("remove")
+                    .WithDescription("Remove a ambulance blacklist")
+                    .WithType(ApplicationCommandOptionType.SubCommand)
+                    .AddOption("citizenid",
+                        ApplicationCommandOptionType.String,
+                        "Citizen ID",
+                        true)
+                );
+
+            await guild.CreateApplicationCommandAsync(tfhsBlacklistCmd.Build());
+            Console.WriteLine("✅ /tfhsblacklist (add/remove) registered");
+        }
+        catch (Discord.Net.HttpException ex)
+        {
+            Console.WriteLine($"❌ Failed to register /tfhsblacklist: {ex}");
+        }
 
 
         // ---------------------------------------------
@@ -449,6 +502,9 @@ class Program
         foreach (var command in _commandHandler!.GetAllCommands())
         {
             if (command.Name.Equals("policeblacklist", StringComparison.OrdinalIgnoreCase))
+                continue;
+            
+            if (command.Name.Equals("tfhsblacklist", StringComparison.OrdinalIgnoreCase))
                 continue;
             
             // ⛔ Skip playtime here because it was registered manually as subcommands
