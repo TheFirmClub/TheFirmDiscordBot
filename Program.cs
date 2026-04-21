@@ -18,6 +18,7 @@ class Program
     private CheckRoleInfoCommand _checkRoleInfoCommand = new CheckRoleInfoCommand();
     private FirmDiscordBot.Services.ManualVerifyOnJoinHandler? _manualVerifyOnJoin;
     private FeedbackCommand _feedbackCommand = new FeedbackCommand();
+    private SpcStashClearCommand _spcStashClear = new SpcStashClearCommand();
 
     private ulong _logChannelId = 1394449608603603085;
 
@@ -198,6 +199,13 @@ class Program
                 await cmd.DeleteAsync();
                 Console.WriteLine("🗑️ Removed old /tfhsblacklist");
             }
+            
+            if (cmd.Name == "spcstashclear")
+            {
+                await cmd.DeleteAsync();
+                Console.WriteLine("🗑️ Removed old /spcstashclear");
+            }
+            
         }
 
         // ✅ Register LOA commands once (handles /staffloa, /loaremove, /staffloalist)
@@ -340,6 +348,20 @@ class Program
         catch (Discord.Net.HttpException ex)
         {
             Console.WriteLine($"❌ Failed to register /gamestats: {ex}");
+        }
+        
+        try
+        {
+            var stashClearCmd = new SlashCommandBuilder()
+                .WithName("spcstashclear")
+                .WithDescription("Clear SPC stash metadata (spc-stash & spc-stash2)");
+
+            await guild.CreateApplicationCommandAsync(stashClearCmd.Build());
+            Console.WriteLine("✅ /spcstashclear registered");
+        }
+        catch (Discord.Net.HttpException ex)
+        {
+            Console.WriteLine($"❌ Failed to register /spcstashclear: {ex}");
         }
 
         // -------------------------------
@@ -676,6 +698,12 @@ class Program
         if (name == "checkroleinfo")
         {
             await _checkRoleInfoCommand.ExecuteAsync(command);
+            return;
+        }
+        
+        if (name == "spcstashclear")
+        {
+            await _spcStashClear.ExecuteAsync(command);
             return;
         }
 

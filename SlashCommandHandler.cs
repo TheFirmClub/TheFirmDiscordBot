@@ -100,6 +100,9 @@ public class SlashCommandHandler
         var tfhsBlacklist = new TFHSBlacklistCommand();
         _commands.Add(tfhsBlacklist.Name, tfhsBlacklist);
         
+        var spcStashClear = new SpcStashClearCommand();
+        _commands.Add(spcStashClear.Name, spcStashClear);
+        
         // --- NEW: manual verification ---
         _commands.Add("manualverify", new ManualVerifyCommand());
         _commands.Add("userverified", new UserVerifiedCommand());
