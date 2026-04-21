@@ -59,7 +59,7 @@ public class SpcStashClearCommand : ISlashCommand
             int affected = await cmd.ExecuteNonQueryAsync();
 
             var embed = new EmbedBuilder()
-                .WithTitle("🧹 Superintendent+ Evidence Locker Cleared")
+                .WithTitle("🧹 Superintendent+ Evidence Locker")
                 .WithColor(new Color(59, 130, 246))
                 .WithTimestamp(DateTimeOffset.UtcNow)
                 .AddField("Affected Rows", affected, true)
