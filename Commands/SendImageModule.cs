@@ -1,26 +1,26 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using System.Collections.Concurrent;
 using System.Linq;
 
 public class SendImageModule : InteractionModuleBase<SocketInteractionContext>
 {
-    private readonly ulong TargetChannelId = 1393622296454893619; // target channel
+    private readonly ulong TargetChannelId = 1393622296454893619;
 
     private readonly ulong[] AllowedRoleIds =
     {
-        1393590761953558600, // SN
-        1399173940622135448, // SLT
-        1463090510406225991, // Operational COMMAND
-        1399174001275965520, // AREA COMMAND
-        
+        1393590761953558600,
+        1399173940622135448,
+        1463090510406225991,
+        1399174001275965520,
     };
+
+    private static readonly ConcurrentDictionary<ulong, (string Url, string FileName)> PendingImages = new();
 
     [MessageCommand("Send Image")]
     public async Task SendImageAsync(IMessage message)
     {
-        await RespondAsync("Command triggered ✅", ephemeral: true);
-        
         var user = Context.User as SocketGuildUser;
 
         if (user == null || !user.Roles.Any(r => AllowedRoleIds.Contains(r.Id)))
@@ -39,19 +39,24 @@ public class SendImageModule : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        // Store image info inside modal custom id
+        PendingImages[message.Id] = (image.Url, image.Filename);
+
         await RespondWithModalAsync<SendImageModal>(
             $"send_image_modal:{message.Id}"
         );
     }
 
-    [ModalInteraction("send_image_modal:*:*:*")]
+    [ModalInteraction("send_image_modal:*")]
     public async Task HandleSendImageModalAsync(
         ulong messageId,
-        string imageUrl,
-        string fileName,
         SendImageModal modal)
     {
+        if (!PendingImages.TryRemove(messageId, out var imageData))
+        {
+            await RespondAsync("Image data expired or was not found.", ephemeral: true);
+            return;
+        }
+
         var channel = Context.Guild.GetTextChannel(TargetChannelId);
 
         if (channel == null)
@@ -65,10 +70,10 @@ public class SendImageModule : InteractionModuleBase<SocketInteractionContext>
             .WithDescription(string.IsNullOrWhiteSpace(modal.Comment)
                 ? "No comment provided."
                 : modal.Comment)
-            .WithImageUrl(imageUrl)
+            .WithImageUrl(imageData.Url)
             .WithColor(Color.Blue)
             .AddField("Sent By", Context.User.Mention, true)
-            .AddField("File Name", fileName, true)
+            .AddField("File Name", imageData.FileName, true)
             .WithFooter($"Original Message ID: {messageId}")
             .WithCurrentTimestamp()
             .Build();
