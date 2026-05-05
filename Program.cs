@@ -82,6 +82,12 @@ class Program
         });
         
         _interactions = new InteractionService(_client);
+        
+        _interactions.Log += async msg =>
+        {
+            Console.WriteLine($"[InteractionService] {msg}");
+            await Task.CompletedTask;
+        };
 
         _services = new ServiceCollection()
             .AddSingleton(_client)
@@ -103,8 +109,15 @@ class Program
         
         _client.InteractionCreated += async interaction =>
         {
-            var ctx = new SocketInteractionContext(_client, interaction);
-            await _interactions!.ExecuteCommandAsync(ctx, _services);
+            try
+            {
+                var ctx = new SocketInteractionContext(_client, interaction);
+                await _interactions!.ExecuteCommandAsync(ctx, _services);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Interaction error: {ex}");
+            }
         };
 
         // new StoreEmbed(_client);

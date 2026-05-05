@@ -19,6 +19,8 @@ public class SendImageModule : InteractionModuleBase<SocketInteractionContext>
     [MessageCommand("Send Image")]
     public async Task SendImageAsync(IMessage message)
     {
+        await RespondAsync("Command triggered ✅", ephemeral: true);
+        
         var user = Context.User as SocketGuildUser;
 
         if (user == null || !user.Roles.Any(r => AllowedRoleIds.Contains(r.Id)))
@@ -39,7 +41,7 @@ public class SendImageModule : InteractionModuleBase<SocketInteractionContext>
 
         // Store image info inside modal custom id
         await RespondWithModalAsync<SendImageModal>(
-            $"send_image_modal:{message.Id}:{image.Url}:{image.Filename}"
+            $"send_image_modal:{message.Id}"
         );
     }
 
