@@ -34,7 +34,7 @@ public class SupportModalHandler
     {
         // 🔥 THIS LINE FIXES YOUR ERROR
         // ❌ Ignore ALL non-support modals
-        if (!modal.Data.CustomId.StartsWith("ticket_reason:") 
+        if (!modal.Data.CustomId.StartsWith("ticket_") 
             && modal.Data.CustomId != "ai_support_modal")
             return;
 
