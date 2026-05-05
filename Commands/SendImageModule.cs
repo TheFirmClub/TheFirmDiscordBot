@@ -66,7 +66,7 @@ public class SendImageModule : InteractionModuleBase<SocketInteractionContext>
         }
 
         var embed = new EmbedBuilder()
-            .WithTitle("Image Submission")
+            .WithTitle("Fun Image Sharing")
             .WithDescription(string.IsNullOrWhiteSpace(modal.Comment)
                 ? "No comment provided."
                 : modal.Comment)
