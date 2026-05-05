@@ -4,10 +4,15 @@ using Microsoft.Extensions.Configuration;
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using Discord.Interactions;
+using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
 
 class Program
 {
     private DiscordSocketClient? _client;
+    private InteractionService? _interactions;
+    private IServiceProvider? _services;
     private SlashCommandHandler? _commandHandler;
     private RoleLogger? _roleLogger;
     private IConfiguration? _config;
@@ -75,6 +80,13 @@ class Program
                              GatewayIntents.GuildMessageReactions,
             LogLevel = LogSeverity.Info
         });
+        
+        _interactions = new InteractionService(_client);
+
+        _services = new ServiceCollection()
+            .AddSingleton(_client)
+            .AddSingleton(_interactions)
+            .BuildServiceProvider();
        
         _manualVerifyOnJoin = new FirmDiscordBot.Services.ManualVerifyOnJoinHandler(_client);
         _manualVerifyOnJoin.Register();
@@ -88,6 +100,12 @@ class Program
 
         _client.Log += Log;
         _client.Ready += async () => await ReadyAsync(guildId);
+        
+        _client.InteractionCreated += async interaction =>
+        {
+            var ctx = new SocketInteractionContext(_client, interaction);
+            await _interactions!.ExecuteCommandAsync(ctx, _services);
+        };
 
         // new StoreEmbed(_client);
         _mee6Forwarder = new Mee6LogForwarder(_client);
@@ -178,6 +196,11 @@ class Program
             Console.WriteLine($"❌ Could not find guild with ID {guildId}");
             return;
         }
+        
+        await _interactions!.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
+        await _interactions.RegisterCommandsToGuildAsync(guildId);
+
+        Console.WriteLine("✅ Registered interaction modules");
         
         var existingCommands = await guild.GetApplicationCommandsAsync();
         foreach (var cmd in existingCommands)
