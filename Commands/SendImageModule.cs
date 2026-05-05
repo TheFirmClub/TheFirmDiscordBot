@@ -10,10 +10,10 @@ public class SendImageModule : InteractionModuleBase<SocketInteractionContext>
 
     private readonly ulong[] AllowedRoleIds =
     {
-        1393590761953558600,
-        1399173940622135448,
-        1463090510406225991,
-        1399174001275965520,
+        1393590761953558608, // SM
+        1399173940622135448, // SLT
+        1463090510406225991, // Operational Comnand
+        1399174001275965520, // Area Command
     };
 
     private static readonly ConcurrentDictionary<ulong, (string Url, string FileName)> PendingImages = new();
