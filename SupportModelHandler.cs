@@ -33,7 +33,9 @@ public class SupportModalHandler
     public async Task HandleModalAsync(SocketModal modal)
     {
         // 🔥 THIS LINE FIXES YOUR ERROR
-        if (modal.Data.CustomId.StartsWith("fb:"))
+        // ❌ Ignore ALL non-support modals
+        if (!modal.Data.CustomId.StartsWith("ticket_reason:") 
+            && modal.Data.CustomId != "ai_support_modal")
             return;
 
         // ✅ AI SUPPORT MODAL
