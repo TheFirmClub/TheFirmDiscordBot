@@ -202,20 +202,21 @@ class Program
         await Task.Delay(-1);
     }
 
-    private async Task CreateCommandIfMissing(SocketGuild guild, string name, SlashCommandBuilder builder)
+    private async Task CreateCommandIfMissing(SocketGuild guild, string name, ApplicationCommandProperties properties)
     {
         var existing = await guild.GetApplicationCommandsAsync();
 
         if (existing.Any(cmd => cmd.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
         {
-            Console.WriteLine($"⏭️ /{name} already exists, skipping create.");
+            Console.WriteLine($"⏭️ /{name} already exists, skipping.");
             return;
         }
 
-        await guild.CreateApplicationCommandAsync(builder.Build());
+        await guild.CreateApplicationCommandAsync(properties);
+
         Console.WriteLine($"✅ /{name} registered");
 
-        await Task.Delay(1500); // slows down command creation to avoid rate limit spam
+        await Task.Delay(1500);
     }
     
     private async Task ReadyAsync(ulong guildId)
@@ -236,8 +237,8 @@ class Program
             return;
         }
         
-        await _interactions!.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
-        await _interactions.RegisterCommandsToGuildAsync(guildId);
+        // await _interactions!.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
+        // await _interactions.RegisterCommandsToGuildAsync(guildId);
 
         Console.WriteLine("✅ Registered interaction modules");
         
@@ -283,17 +284,17 @@ class Program
 
         foreach (var cmd in commands)
         {
-            if (cmd.Name == "suggestions")
+            /*if (cmd.Name == "suggestions")
             {
                 await cmd.DeleteAsync();
                 Console.WriteLine("🗑️ Removed old /suggestions");
-            }
+            }*/
         }
         
         foreach (var cmd in await guild.GetApplicationCommandsAsync())
         {
-            if (cmd.Name == "feedback")
-                await cmd.DeleteAsync();
+            //if (cmd.Name == "feedback")
+                //await cmd.DeleteAsync();
         }
 
         // ✅ Register Suggestions (fresh)
@@ -320,7 +321,7 @@ class Program
                     .WithType(ApplicationCommandOptionType.SubCommand)
                     .AddOption("cid", ApplicationCommandOptionType.String, "Citizen ID", true));
 
-            await CreateCommandIfMissing(guild, "playtime", playtimeCmd);
+            await CreateCommandIfMissing(guild, "playtime", playtimeCmd.Build());
             Console.WriteLine("✅ /playtime registered");
         }
         catch (Discord.Net.HttpException ex)
@@ -345,7 +346,7 @@ class Program
                     .WithType(ApplicationCommandOptionType.SubCommand)
                     .AddOption("cid", ApplicationCommandOptionType.String, "Citizen ID", true));
 
-            await CreateCommandIfMissing(guild, "resetplaytime", resetPlaytimeCmd);
+            await CreateCommandIfMissing(guild, "resetplaytime", resetPlaytimeCmd.Build());
             Console.WriteLine("✅ /resetplaytime registered");
             Console.WriteLine("✅ /resetplaytime registered");
         }
@@ -369,7 +370,7 @@ class Program
                     .WithRequired(true)
                 );
 
-            await CreateCommandIfMissing(guild, "listinv", listInvCmd);
+            await CreateCommandIfMissing(guild, "listinv", listInvCmd.Build());
             Console.WriteLine("✅ /listinv registered");
         }
         catch (Discord.Net.HttpException ex)
@@ -390,7 +391,7 @@ class Program
                     .WithRequired(true)
                     .WithAutocomplete(true));
 
-            await CreateCommandIfMissing(guild, "checkroleinfo", roleInfoCmd);
+            await CreateCommandIfMissing(guild, "checkroleinfo", roleInfoCmd.Build());
             Console.WriteLine("✅ /checkroleinfo registered");
         }
         catch (Exception ex)
@@ -405,7 +406,7 @@ class Program
                 .WithName("gamestats")
                 .WithDescription("Shows server-wide game statistics (Senior Management only)");
 
-            await CreateCommandIfMissing(guild, "gamestats", gamestatsCommand);
+            await CreateCommandIfMissing(guild, "gamestats", gamestatsCommand.Build());
             Console.WriteLine("✅ /gamestats registered");
         }
         catch (Discord.Net.HttpException ex)
@@ -419,7 +420,7 @@ class Program
                 .WithName("spcstashclear")
                 .WithDescription("Clear SPC stash metadata (spc-stash & spc-stash2)");
 
-            await CreateCommandIfMissing(guild, "spcstashclear", stashClearCmd);
+            await CreateCommandIfMissing(guild, "spcstashclear", stashClearCmd.Build());
             Console.WriteLine("✅ /spcstashclear registered");
         }
         catch (Discord.Net.HttpException ex)
@@ -445,7 +446,7 @@ class Program
                     .AddChoice("Month", "month")
                 );
 
-            await CreateCommandIfMissing(guild, "mdtincidents", mdtIncidentsCmd);
+            await CreateCommandIfMissing(guild, "mdtincidents", mdtIncidentsCmd.Build());
             Console.WriteLine("✅ /mdtincidents registered");
         }
         catch (Discord.Net.HttpException ex)
@@ -492,7 +493,7 @@ class Program
                         true)
                 );
 
-            await CreateCommandIfMissing(guild, "policeblacklist", policeBlacklistCmd);
+            await CreateCommandIfMissing(guild, "policeblacklist", policeBlacklistCmd.Build());
             Console.WriteLine("✅ /policeblacklist (add/remove) registered");
         }
         catch (Discord.Net.HttpException ex)
@@ -539,7 +540,7 @@ class Program
                         true)
                 );
 
-            await CreateCommandIfMissing(guild, "tfhsblacklist", tfhsBlacklistCmd);
+            await CreateCommandIfMissing(guild, "tfhsblacklist", tfhsBlacklistCmd.Build());
             Console.WriteLine("✅ /tfhsblacklist (add/remove) registered");
         }
         catch (Discord.Net.HttpException ex)
@@ -559,6 +560,7 @@ class Program
             new SlashCommandBuilder()
                 .WithName("myplaytime")
                 .WithDescription("Show your own playtime")
+                .Build()
         );
 
         // /checkplaytime <discordid>
@@ -569,6 +571,7 @@ class Program
                 .WithName("checkplaytime")
                 .WithDescription("Staff lookup of anyone's playtime")
                 .AddOption("discordid", ApplicationCommandOptionType.String, "Discord ID to look up", true)
+                .Build()
         );
 
         Console.WriteLine("✅ Registered /myplaytime + /checkplaytime");
@@ -578,11 +581,11 @@ class Program
 
         foreach (var cmd in cmds)
         {
-            if (cmd.Name == "sendtfuapp")
+            /*if (cmd.Name == "sendtfuapp")
             {
                 await cmd.DeleteAsync();
                 Console.WriteLine("🗑️ Removed old /sendtfuapp");
-            }
+            }*/
         }
       
         // Register your other existing commands from SlashCommandHandler
@@ -604,9 +607,8 @@ class Program
             // ✅ Special handling for gamemod because it uses subcommands
             if (command is GameModCommands gm)
             {
-                await guild.CreateApplicationCommandAsync(gm.Build());
-                Console.WriteLine("✅ /game registered");
-                continue; // Skip normal registration below
+                await CreateCommandIfMissing(guild, "gamemod", gm.Build());
+                continue;
             }
             
             var builder = new SlashCommandBuilder()
@@ -707,7 +709,7 @@ class Program
                 builder.AddOption("reason", ApplicationCommandOptionType.String, "Reason for the ban", false);
             }
 
-            await CreateCommandIfMissing(guild, command.Name, builder);
+            await CreateCommandIfMissing(guild, command.Name, builder.Build());
         }
 
         await new SupportPanelSender().SendSupportPanelAsync(_client);
