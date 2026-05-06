@@ -51,7 +51,8 @@ class Program
     // ✅ LOA command integration
     private StaffLoaCommand _staffLoa = new StaffLoaCommand();
     private bool _staffLoaRegistered = false;
-    private bool _readyCompleted = false;
+    
+    private const bool RegisterSlashCommands = false;
 
     public static Task Main(string[] args) => new Program().MainAsync();
 
@@ -97,8 +98,6 @@ class Program
        
         _manualVerifyOnJoin = new FirmDiscordBot.Services.ManualVerifyOnJoinHandler(_client);
         _manualVerifyOnJoin.Register();
-        
-        // ⭐ ADD THIS RIGHT HERE
         
         _client.Log += Log;
         _client.Ready += async () => await ReadyAsync(guildId);
@@ -205,20 +204,19 @@ class Program
 
     private async Task ReadyAsync(ulong guildId)
     {
-        if (_readyCompleted)
-        {
-            Console.WriteLine("ℹ️ ReadyAsync already ran, skipping duplicate command registration.");
-            return;
-        }
-
-        _readyCompleted = true;
-
-        try
-        {
-            var guild = _client!.GetGuild(guildId);
+        var guild = _client!.GetGuild(guildId);
         if (guild == null)
         {
             Console.WriteLine($"❌ Could not find guild with ID {guildId}");
+            return;
+        }
+        
+        Console.WriteLine("✅ Bot ready");
+
+        if (!RegisterSlashCommands)
+        {
+            Console.WriteLine("ℹ️ Slash command registration skipped. Existing Discord commands will still work.");
+            await StartFiveMUpdater(guildId);
             return;
         }
         
@@ -697,11 +695,6 @@ class Program
         Console.WriteLine("✅ Commands registered and support panel sent");
 
         await StartFiveMUpdater(guildId);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ ReadyAsync failed: {ex}");
-        }
     }
 
     private async Task StartFiveMUpdater(ulong guildId)
