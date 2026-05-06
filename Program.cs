@@ -30,6 +30,7 @@ class Program
 
     private ulong _logChannelId = 1394449608603603085;
 
+    
     // 🔹 FiveM integration
     private FiveMChannelUpdater? _fivemUpdater;
 
