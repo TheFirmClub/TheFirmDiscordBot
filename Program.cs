@@ -255,12 +255,15 @@ class Program
         }
 
         // ✅ Register LOA commands once (handles /staffloa, /loaremove, /staffloalist)
-        if (!_staffLoaRegistered)
-        {
-            await _staffLoa.RegisterAsync(_client);
-            _staffLoaRegistered = true;
-            Console.WriteLine("✅ Registered LOA commands (/staffloa, /loaremove, /staffloalist)");
-        }
+        // if (!_staffLoaRegistered)
+        // {
+        //     await _staffLoa.RegisterAsync(_client);
+        //     _staffLoaRegistered = true;
+        //     Console.WriteLine("✅ Registered LOA commands (/staffloa, /loaremove, /staffloalist)");
+        // }
+        
+        // TEMP: skip LOA registration, already registered
+        Console.WriteLine("⏭️ Skipping LOA registration");
         
         // 🔥 DELETE OLD /suggestions COMMAND FIRST
         var commands = await guild.GetApplicationCommandsAsync();
