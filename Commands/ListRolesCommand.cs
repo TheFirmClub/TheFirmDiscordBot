@@ -99,9 +99,14 @@ public class ListRolesCommand : ISlashCommand
             sb.AppendLine($"{role.Name} -> {role.Id}");
         }
 
+        var text = sb.ToString();
+
+        if (text.Length > 3900)
+            text = text.Substring(0, 3900) + "\n...";
+
         return new EmbedBuilder()
             .WithTitle($"📜 Roles in {guild.Name}")
-            .WithDescription($"```{sb}```")
+            .WithDescription($"```{text}```")
             .WithColor(Color.Blue)
             .WithFooter($"Page {page + 1}/{totalPages} • Total Roles: {roles.Count}")
             .WithCurrentTimestamp()
