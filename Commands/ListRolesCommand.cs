@@ -63,7 +63,7 @@ public class ListRolesCommand : ISlashCommand
             await component.RespondAsync("❌ Invalid page button.", ephemeral: true);
             return;
         }
-        
+
         var totalPages = GetTotalPages(roles.Count);
 
         if (component.Data.CustomId.StartsWith("listroles_prev_"))
@@ -96,17 +96,14 @@ public class ListRolesCommand : ISlashCommand
 
         foreach (var role in pageRoles)
         {
-            sb.AppendLine($"{role.Name} -> {role.Id}");
+            sb.AppendLine($"**{role.Name}**");
+            sb.AppendLine($"`{role.Id}`");
+            sb.AppendLine();
         }
-
-        var text = sb.ToString();
-
-        if (text.Length > 3900)
-            text = text.Substring(0, 3900) + "\n...";
 
         return new EmbedBuilder()
             .WithTitle($"📜 Roles in {guild.Name}")
-            .WithDescription($"```{text}```")
+            .WithDescription(sb.ToString())
             .WithColor(Color.Blue)
             .WithFooter($"Page {page + 1}/{totalPages} • Total Roles: {roles.Count}")
             .WithCurrentTimestamp()
