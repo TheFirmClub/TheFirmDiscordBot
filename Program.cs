@@ -203,26 +203,20 @@ class Program
         await Task.Delay(-1);
     }
 
-    private async Task CreateCommandIfMissing(
-        SocketGuild guild,
-        List<SocketApplicationCommand> existingCommands,
+    private void AddBulkCommand(
+        List<ApplicationCommandProperties> commands,
+        HashSet<string> commandNames,
         string name,
         ApplicationCommandProperties properties)
     {
-        if (existingCommands.Any(cmd => cmd.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+        if (!commandNames.Add(name.ToLowerInvariant()))
         {
-            Console.WriteLine($"⏭️ /{name} already exists, skipping.");
+            Console.WriteLine($"⏭️ /{name} already queued, skipping duplicate.");
             return;
         }
 
-        await guild.CreateApplicationCommandAsync(properties);
-        Console.WriteLine($"✅ /{name} registered");
-
-        var updated = await guild.GetApplicationCommandsAsync();
-        existingCommands.Clear();
-        existingCommands.AddRange(updated);
-
-        await Task.Delay(2500);
+        commands.Add(properties);
+        Console.WriteLine($"📦 Queued /{name}");
     }
     
     private async Task ReadyAsync(ulong guildId)
@@ -246,75 +240,76 @@ class Program
         // await _interactions!.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
         // await _interactions.RegisterCommandsToGuildAsync(guildId);
 
-        Console.WriteLine("✅ Registered interaction modules");
+        Console.WriteLine("📦 Building slash command bulk registration payload...");
+
+        var bulkCommands = new List<ApplicationCommandProperties>();
+        var queuedCommandNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // -------------------------------
+        // LOA commands
+        // -------------------------------
+        AddBulkCommand(
+            bulkCommands,
+            queuedCommandNames,
+            "staffloa",
+            new SlashCommandBuilder()
+                .WithName("staffloa")
+                .WithDescription("Submit a staff LOA request")
+                .AddOption("reason", ApplicationCommandOptionType.String, "Reason for LOA", true)
+                .AddOption("duration", ApplicationCommandOptionType.String, "Duration of LOA", true)
+                .Build()
+        );
+
+        AddBulkCommand(
+            bulkCommands,
+            queuedCommandNames,
+            "loaremove",
+            new SlashCommandBuilder()
+                .WithName("loaremove")
+                .WithDescription("Remove a staff LOA")
+                .AddOption("user", ApplicationCommandOptionType.User, "Staff member to remove LOA from", true)
+                .Build()
+        );
+
+        AddBulkCommand(
+            bulkCommands,
+            queuedCommandNames,
+            "staffloalist",
+            new SlashCommandBuilder()
+                .WithName("staffloalist")
+                .WithDescription("List active staff LOAs")
+                .Build()
+        );
+
+        // -------------------------------
+        // Standalone custom commands
+        // -------------------------------
+        AddBulkCommand(
+            bulkCommands,
+            queuedCommandNames,
+            "suggestions",
+            new SlashCommandBuilder()
+                .WithName("suggestions")
+                .WithDescription("Submit a suggestion")
+                .Build()
+        );
+
+        AddBulkCommand(
+            bulkCommands,
+            queuedCommandNames,
+            "feedback",
+            new SlashCommandBuilder()
+                .WithName("feedback")
+                .WithDescription("Submit feedback")
+                .Build()
+        );
         
-        var existingCommands = (await guild.GetApplicationCommandsAsync()).ToList();
-        
-        // ✅ Register LOA commands once (handles /staffloa, /loaremove, /staffloalist)
-        if (!existingCommands.Any(x => x.Name == "staffloa") ||
-            !existingCommands.Any(x => x.Name == "loaremove") ||
-            !existingCommands.Any(x => x.Name == "staffloalist"))
-        {
-            await _staffLoa.RegisterAsync(_client);
-
-            var updated = await guild.GetApplicationCommandsAsync();
-            existingCommands.Clear();
-            existingCommands.AddRange(updated);
-
-            Console.WriteLine("✅ Registered LOA commands (/staffloa, /loaremove, /staffloalist)");
-
-            await Task.Delay(2500);
-        }
-        else
-        {
-            Console.WriteLine("⏭️ LOA commands already exist, skipping.");
-        }
-        
-        if (!existingCommands.Any(x => x.Name == "suggestions"))
-        {
-            await _suggestionsCommand.RegisterAsync(_client);
-
-            var updated = await guild.GetApplicationCommandsAsync();
-            existingCommands.Clear();
-            existingCommands.AddRange(updated);
-
-            Console.WriteLine("✅ Registered /suggestions");
-
-            await Task.Delay(2500);
-        }
-        else
-        {
-            Console.WriteLine("⏭️ /suggestions already exists, skipping.");
-        }
-
-        if (!existingCommands.Any(x => x.Name == "feedback"))
-        {
-            await _feedbackCommand.RegisterAsync(_client);
-
-            var updated = await guild.GetApplicationCommandsAsync();
-            existingCommands.Clear();
-            existingCommands.AddRange(updated);
-
-            Console.WriteLine("✅ Registered /feedback");
-
-            await Task.Delay(2500);
-        }
-        else
-        {
-            Console.WriteLine("⏭️ /feedback already exists, skipping.");
-        }
-        
-        // ✅ Register Suggestions (fresh)
-        //await _suggestionsCommand.RegisterAsync(_client);
-        //Console.WriteLine("✅ Registered /suggestions");
-        
-        //await _feedbackCommand.RegisterAsync(_client);
-        //Console.WriteLine("✅ Registered /feedback");
-        
-        // ✅ Register /playtime (with subcommands) BEFORE the foreach
-        try
-        {
-            var playtimeCmd = new SlashCommandBuilder()
+        // ✅ Register /playtime (with subcommands)
+        AddBulkCommand(
+            bulkCommands,
+            queuedCommandNames,
+            "playtime",
+            new SlashCommandBuilder()
                 .WithName("playtime")
                 .WithDescription("Check police or ambulance playtime")
                 .AddOption(new SlashCommandOptionBuilder()
@@ -326,20 +321,16 @@ class Program
                     .WithName("ambulance")
                     .WithDescription("Check ambulance playtime for a CID")
                     .WithType(ApplicationCommandOptionType.SubCommand)
-                    .AddOption("cid", ApplicationCommandOptionType.String, "Citizen ID", true));
-
-            await CreateCommandIfMissing(guild, existingCommands, "playtime", playtimeCmd.Build());
-            
-        }
-        catch (Discord.Net.HttpException ex)
-        {
-            Console.WriteLine($"❌ Failed to register /playtime: {ex}");
-        }
+                    .AddOption("cid", ApplicationCommandOptionType.String, "Citizen ID", true))
+                .Build()
+        );
 
         // ✅ Register /resetplaytime (with subcommands)
-        try
-        {
-            var resetPlaytimeCmd = new SlashCommandBuilder()
+        AddBulkCommand(
+            bulkCommands,
+            queuedCommandNames,
+            "resetplaytime",
+            new SlashCommandBuilder()
                 .WithName("resetplaytime")
                 .WithDescription("Reset police or ambulance playtime by CID")
                 .AddOption(new SlashCommandOptionBuilder()
@@ -351,43 +342,34 @@ class Program
                     .WithName("ambulance")
                     .WithDescription("Reset ambulance playtime for a CID")
                     .WithType(ApplicationCommandOptionType.SubCommand)
-                    .AddOption("cid", ApplicationCommandOptionType.String, "Citizen ID", true));
-
-            await CreateCommandIfMissing(guild, existingCommands, "resetplaytime", resetPlaytimeCmd.Build());
-            
-        }
-        catch (Discord.Net.HttpException ex)
-        {
-            Console.WriteLine($"❌ Failed to register /resetplaytime: {ex}");
-        }
+                    .AddOption("cid", ApplicationCommandOptionType.String, "Citizen ID", true))
+                .Build()
+        );
 
         // -------------------------------
         // Register /listinv (Inventory Lookup)
         // -------------------------------
-        try
-        {
-            var listInvCmd = new SlashCommandBuilder()
+        AddBulkCommand(
+            bulkCommands,
+            queuedCommandNames,
+            "listinv",
+            new SlashCommandBuilder()
                 .WithName("listinv")
                 .WithDescription("List all players who have a specific inventory item")
                 .AddOption(new SlashCommandOptionBuilder()
                     .WithName("item")
                     .WithDescription("Item name (e.g. weapon_pistol, radio, ammo-9)")
                     .WithType(ApplicationCommandOptionType.String)
-                    .WithRequired(true)
-                );
-
-            await CreateCommandIfMissing(guild, existingCommands, "listinv", listInvCmd.Build());
-            
-        }
-        catch (Discord.Net.HttpException ex)
-        {
-            Console.WriteLine($"❌ Failed to register /listinv: {ex}");
-        }
+                    .WithRequired(true))
+                .Build()
+        );
 
         // ✅ Register /checkroleinfo (with autocomplete)
-        try
-        {
-            var roleInfoCmd = new SlashCommandBuilder()
+        AddBulkCommand(
+            bulkCommands,
+            queuedCommandNames,
+            "checkroleinfo",
+            new SlashCommandBuilder()
                 .WithName("checkroleinfo")
                 .WithDescription("View members of a specific role")
                 .AddOption(new SlashCommandOptionBuilder()
@@ -395,51 +377,38 @@ class Program
                     .WithDescription("Role name or ID to view")
                     .WithType(ApplicationCommandOptionType.String)
                     .WithRequired(true)
-                    .WithAutocomplete(true));
+                    .WithAutocomplete(true))
+                .Build()
+        );
 
-            await CreateCommandIfMissing(guild, existingCommands, "checkroleinfo", roleInfoCmd.Build());
-            
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Failed to register /checkroleinfo: {ex}");
-        }
-
-        // Register /gamestats
-        try
-        {
-            var gamestatsCommand = new SlashCommandBuilder()
+        AddBulkCommand(
+            bulkCommands,
+            queuedCommandNames,
+            "gamestats",
+            new SlashCommandBuilder()
                 .WithName("gamestats")
-                .WithDescription("Shows server-wide game statistics (Senior Management only)");
-
-            await CreateCommandIfMissing(guild, existingCommands, "gamestats", gamestatsCommand.Build());
-            
-        }
-        catch (Discord.Net.HttpException ex)
-        {
-            Console.WriteLine($"❌ Failed to register /gamestats: {ex}");
-        }
+                .WithDescription("Shows server-wide game statistics (Senior Management only)")
+                .Build()
+        );
         
-        try
-        {
-            var stashClearCmd = new SlashCommandBuilder()
+        AddBulkCommand(
+            bulkCommands,
+            queuedCommandNames,
+            "spcstashclear",
+            new SlashCommandBuilder()
                 .WithName("spcstashclear")
-                .WithDescription("Clear SPC stash metadata (spc-stash & spc-stash2)");
-
-            await CreateCommandIfMissing(guild, existingCommands, "spcstashclear", stashClearCmd.Build());
-            
-        }
-        catch (Discord.Net.HttpException ex)
-        {
-            Console.WriteLine($"❌ Failed to register /spcstashclear: {ex}");
-        }
+                .WithDescription("Clear SPC stash metadata (spc-stash & spc-stash2)")
+                .Build()
+        );
 
         // -------------------------------
         // Register /mdtincidents (Police Command only)
         // -------------------------------
-        try
-        {
-            var mdtIncidentsCmd = new SlashCommandBuilder()
+        AddBulkCommand(
+            bulkCommands,
+            queuedCommandNames,
+            "mdtincidents",
+            new SlashCommandBuilder()
                 .WithName("mdtincidents")
                 .WithDescription("View MDT incidents by time range (Police Command only)")
                 .AddOption(new SlashCommandOptionBuilder()
@@ -449,119 +418,66 @@ class Program
                     .WithRequired(true)
                     .AddChoice("Day", "day")
                     .AddChoice("Week", "week")
-                    .AddChoice("Month", "month")
-                );
-
-            await CreateCommandIfMissing(guild, existingCommands, "mdtincidents", mdtIncidentsCmd.Build());
-            
-        }
-        catch (Discord.Net.HttpException ex)
-        {
-            Console.WriteLine($"❌ Failed to register /mdtincidents: {ex}");
-        }
+                    .AddChoice("Month", "month"))
+                .Build()
+        );
         
         // -------------------------------
         // Register /policeblacklist (SUBCOMMANDS)
         // -------------------------------
-        try
-        {
-            var policeBlacklistCmd = new SlashCommandBuilder()
+        AddBulkCommand(
+            bulkCommands,
+            queuedCommandNames,
+            "policeblacklist",
+            new SlashCommandBuilder()
                 .WithName("policeblacklist")
                 .WithDescription("Manage police blacklist")
-
-                // /policeblacklist add <cid> <days|PERM> <grade?>
                 .AddOption(new SlashCommandOptionBuilder()
                     .WithName("add")
                     .WithDescription("Add a police blacklist")
                     .WithType(ApplicationCommandOptionType.SubCommand)
-                    .AddOption("citizenid",
-                        ApplicationCommandOptionType.String,
-                        "Citizen ID (e.g. HEV80184)",
-                        true)
-                    .AddOption("days",
-                        ApplicationCommandOptionType.String,
-                        "Number of days or PERM",
-                        true)
-                    .AddOption("grade",
-                        ApplicationCommandOptionType.Integer,
-                        "Max police grade allowed (omit for full ban)",
-                        false)
-                )
-
-                // /policeblacklist remove <cid>
+                    .AddOption("citizenid", ApplicationCommandOptionType.String, "Citizen ID (e.g. HEV80184)", true)
+                    .AddOption("days", ApplicationCommandOptionType.String, "Number of days or PERM", true)
+                    .AddOption("grade", ApplicationCommandOptionType.Integer, "Max police grade allowed (omit for full ban)", false))
                 .AddOption(new SlashCommandOptionBuilder()
                     .WithName("remove")
                     .WithDescription("Remove a police blacklist")
                     .WithType(ApplicationCommandOptionType.SubCommand)
-                    .AddOption("citizenid",
-                        ApplicationCommandOptionType.String,
-                        "Citizen ID",
-                        true)
-                );
-
-            await CreateCommandIfMissing(guild, existingCommands, "policeblacklist", policeBlacklistCmd.Build());
-            
-        }
-        catch (Discord.Net.HttpException ex)
-        {
-            Console.WriteLine($"❌ Failed to register /policeblacklist: {ex}");
-        }
+                    .AddOption("citizenid", ApplicationCommandOptionType.String, "Citizen ID", true))
+                .Build()
+        );
         
         // -------------------------------
         // Register /tfhsblacklist (SUBCOMMANDS)
         // -------------------------------
-        try
-        {
-            var tfhsBlacklistCmd = new SlashCommandBuilder()
+        AddBulkCommand(
+            bulkCommands,
+            queuedCommandNames,
+            "tfhsblacklist",
+            new SlashCommandBuilder()
                 .WithName("tfhsblacklist")
                 .WithDescription("Manage TFHS blacklist")
-
-                // /tfhsblacklist add <cid> <days|PERM> <grade?>
                 .AddOption(new SlashCommandOptionBuilder()
                     .WithName("add")
                     .WithDescription("Add a TFHS blacklist")
                     .WithType(ApplicationCommandOptionType.SubCommand)
-                    .AddOption("citizenid",
-                        ApplicationCommandOptionType.String,
-                        "Citizen ID (e.g. HEV80184)",
-                        true)
-                    .AddOption("days",
-                        ApplicationCommandOptionType.String,
-                        "Number of days or PERM",
-                        true)
-                    .AddOption("grade",
-                        ApplicationCommandOptionType.Integer,
-                        "Max ambulance grade allowed (omit for full ban)",
-                        false)
-                )
-
-                // /tfhsblacklist remove <cid>
+                    .AddOption("citizenid", ApplicationCommandOptionType.String, "Citizen ID (e.g. HEV80184)", true)
+                    .AddOption("days", ApplicationCommandOptionType.String, "Number of days or PERM", true)
+                    .AddOption("grade", ApplicationCommandOptionType.Integer, "Max ambulance grade allowed (omit for full ban)", false))
                 .AddOption(new SlashCommandOptionBuilder()
                     .WithName("remove")
                     .WithDescription("Remove a ambulance blacklist")
                     .WithType(ApplicationCommandOptionType.SubCommand)
-                    .AddOption("citizenid",
-                        ApplicationCommandOptionType.String,
-                        "Citizen ID",
-                        true)
-                );
-
-            await CreateCommandIfMissing(guild, existingCommands, "tfhsblacklist", tfhsBlacklistCmd.Build());
-            
-        }
-        catch (Discord.Net.HttpException ex)
-        {
-            Console.WriteLine($"❌ Failed to register /tfhsblacklist: {ex}");
-        }
-
+                    .AddOption("citizenid", ApplicationCommandOptionType.String, "Citizen ID", true))
+                .Build()
+        );
 
         // ---------------------------------------------
         // REGISTER STAFF + PUBLIC PLAYTIME COMMANDS
         // ---------------------------------------------
-
-        // /myplaytime
-        await CreateCommandIfMissing(
-            guild, existingCommands,
+        AddBulkCommand(
+            bulkCommands,
+            queuedCommandNames,
             "myplaytime",
             new SlashCommandBuilder()
                 .WithName("myplaytime")
@@ -569,9 +485,9 @@ class Program
                 .Build()
         );
 
-        // /checkplaytime <discordid>
-        await CreateCommandIfMissing(
-            guild, existingCommands,
+        AddBulkCommand(
+            bulkCommands,
+            queuedCommandNames,
             "checkplaytime",
             new SlashCommandBuilder()
                 .WithName("checkplaytime")
@@ -589,17 +505,24 @@ class Program
             if (command.Name.Equals("tfhsblacklist", StringComparison.OrdinalIgnoreCase))
                 continue;
             
-            // ⛔ Skip playtime here because it was registered manually as subcommands
+            // ⛔ Skip commands already registered manually above
             if (command.Name.Equals("playtime", StringComparison.OrdinalIgnoreCase) ||
                 command.Name.Equals("mdtincidents", StringComparison.OrdinalIgnoreCase) ||
                 command.Name.Equals("resetplaytime", StringComparison.OrdinalIgnoreCase) ||
-                command.Name.Equals("listinv", StringComparison.OrdinalIgnoreCase))
+                command.Name.Equals("listinv", StringComparison.OrdinalIgnoreCase) ||
+                command.Name.Equals("gamestats", StringComparison.OrdinalIgnoreCase) ||
+                command.Name.Equals("spcstashclear", StringComparison.OrdinalIgnoreCase) ||
+                command.Name.Equals("suggestions", StringComparison.OrdinalIgnoreCase) ||
+                command.Name.Equals("feedback", StringComparison.OrdinalIgnoreCase) ||
+                command.Name.Equals("staffloa", StringComparison.OrdinalIgnoreCase) ||
+                command.Name.Equals("loaremove", StringComparison.OrdinalIgnoreCase) ||
+                command.Name.Equals("staffloalist", StringComparison.OrdinalIgnoreCase))
                 continue;
             
             // ✅ Special handling for gamemod because it uses subcommands
             if (command is GameModCommands gm)
             {
-                await CreateCommandIfMissing(guild, existingCommands, "game", gm.Build());
+                AddBulkCommand(bulkCommands, queuedCommandNames, "game", gm.Build());
                 continue;
             }
             
@@ -701,7 +624,17 @@ class Program
                 builder.AddOption("reason", ApplicationCommandOptionType.String, "Reason for the ban", false);
             }
 
-            await CreateCommandIfMissing(guild, existingCommands, command.Name, builder.Build());
+            AddBulkCommand(bulkCommands, queuedCommandNames, command.Name, builder.Build());
+        }
+
+        try
+        {
+            await guild.BulkOverwriteApplicationCommandAsync(bulkCommands.ToArray());
+            Console.WriteLine($"✅ Bulk registered {bulkCommands.Count} slash commands in one Discord API request");
+        }
+        catch (Discord.Net.HttpException ex)
+        {
+            Console.WriteLine($"❌ Bulk slash command registration failed: {ex}");
         }
 
         await new SupportPanelSender().SendSupportPanelAsync(_client);
