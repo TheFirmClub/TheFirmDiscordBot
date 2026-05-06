@@ -172,6 +172,12 @@ class Program
                 await _checkRoleInfoCommand.HandleButton(component);
                 return;
             }
+            // Listroles Button
+            if (component.Data.CustomId.StartsWith("listroles_"))
+            {
+                await ListRolesCommand.HandleButton(component);
+                return;
+            }
 
             // existing handlers
             await _ticketButtonHandler.HandleAsync(component);
@@ -613,6 +619,10 @@ class Program
             }
             else if (command.Name == "checkrole")
                 builder.AddOption("user", ApplicationCommandOptionType.User, "User to check", true);
+            else if (command.Name == "listroles")
+            {
+                // no options needed
+            }
             else if (command.Name == "8ball")
                 builder.AddOption("question", ApplicationCommandOptionType.String, "Your question for the magic 8-ball", true);
             else if (command.Name == "tictactoe")
