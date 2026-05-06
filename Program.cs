@@ -587,6 +587,7 @@ class Program
                 Console.WriteLine("🗑️ Removed old /sendtfuapp");
             }*/
         }
+        
       
         // Register your other existing commands from SlashCommandHandler
         foreach (var command in _commandHandler!.GetAllCommands())
