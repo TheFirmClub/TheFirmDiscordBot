@@ -101,7 +101,11 @@ class Program
         _manualVerifyOnJoin.Register();
         
         _client.Log += Log;
-        _client.Ready += async () => await ReadyAsync(guildId);
+        _client.Ready += () =>
+        {
+            _ = Task.Run(async () => await ReadyAsync(guildId));
+            return Task.CompletedTask;
+        };
         
         _client.InteractionCreated += async interaction =>
         {
