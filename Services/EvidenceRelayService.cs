@@ -29,7 +29,22 @@ public class EvidenceRelayService
     {
         _client = client;
         _client.MessageReceived += OnMessageReceived;
-        _client.Ready += OnReady;
+        _client.Ready += () =>
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await OnReady();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ EvidenceRelayService OnReady error: {ex}");
+                }
+            });
+
+            return Task.CompletedTask;
+        };
     }
 
     private Task OnReady()

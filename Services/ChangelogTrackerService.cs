@@ -52,7 +52,22 @@ public class ChangelogTrackerService
     public ChangelogTrackerService(DiscordSocketClient client)
     {
         _client = client;
-        _client.Ready += OnReady;
+        _client.Ready += () =>
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await OnReady();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ ChangelogTrackerService OnReady error: {ex}");
+                }
+            });
+
+            return Task.CompletedTask;
+        };
         _client.MessageReceived += OnMessageReceived;
         _client.MessageUpdated += OnMessageUpdated;
         _client.MessageDeleted += OnMessageDeleted;

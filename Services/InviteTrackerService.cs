@@ -27,12 +27,27 @@ public class InviteTrackerService
     public InviteTrackerService(DiscordSocketClient client)
     {
         _client = client;
-        _client.Ready += OnReady;
-        _client.UserJoined += OnUserJoined;
 
-        // Your build expects these signatures:
-        _client.InviteCreated += OnInviteCreated;                 // Task OnInviteCreated(SocketInvite)
-        _client.InviteDeleted += OnInviteDeleted;                 // Task OnInviteDeleted(SocketGuildChannel, string)
+        _client.Ready += () =>
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await OnReady();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ InviteTrackerService OnReady error: {ex}");
+                }
+            });
+
+            return Task.CompletedTask;
+        };
+
+        _client.UserJoined += OnUserJoined;
+        _client.InviteCreated += OnInviteCreated;
+        _client.InviteDeleted += OnInviteDeleted;
     }
 
     public async Task InitializeAsync()

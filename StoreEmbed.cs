@@ -18,7 +18,22 @@ public class StoreEmbed
     public StoreEmbed(DiscordSocketClient client)
     {
         _client = client;
-        _client.Ready += OnBotReady;
+        _client.Ready += () =>
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await OnBotReady();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ StoreEmbed OnBotReady error: {ex}");
+                }
+            });
+
+            return Task.CompletedTask;
+        };
     }
 
     private async Task OnBotReady()
