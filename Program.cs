@@ -9,6 +9,7 @@ using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using System.Linq;
 using System.Collections.Generic;
+using System.Threading;
 
 class Program
 {
@@ -53,6 +54,9 @@ class Program
     // ✅ LOA command integration
     private StaffLoaCommand _staffLoa = new StaffLoaCommand();
     
+    private readonly SemaphoreSlim _readyLock = new(1, 1);
+    private bool _readyCompleted = false;
+    
     private const bool RegisterSlashCommands = true;
 
     public static Task Main(string[] args) => new Program().MainAsync();
@@ -80,7 +84,8 @@ class Program
                              GatewayIntents.MessageContent |
                              GatewayIntents.GuildMembers |
                              GatewayIntents.GuildPresences |
-                             GatewayIntents.GuildMessageReactions,
+                             GatewayIntents.GuildMessageReactions |
+                             GatewayIntents.GuildInvites,
             LogLevel = LogSeverity.Info
         });
         
@@ -232,7 +237,19 @@ class Program
     
     private async Task ReadyAsync(ulong guildId)
     {
-        var guild = _client!.GetGuild(guildId);
+        await _readyLock.WaitAsync();
+
+        try
+        {
+            if (_readyCompleted)
+            {
+                Console.WriteLine("⏭️ ReadyAsync already completed, skipping.");
+                return;
+            }
+
+            _readyCompleted = true;
+
+            var guild = _client!.GetGuild(guildId);
         if (guild == null)
         {
             Console.WriteLine($"❌ Could not find guild with ID {guildId}");
@@ -713,6 +730,11 @@ class Program
         Console.WriteLine("✅ Commands registered and support panel sent");
 
         await StartFiveMUpdater(guildId);
+        }
+        finally
+        {
+            _readyLock.Release();
+        }
     }
 
     private async Task StartFiveMUpdater(ulong guildId)
