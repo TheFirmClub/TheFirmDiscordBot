@@ -107,6 +107,7 @@ class Program
             return Task.CompletedTask;
         };
         
+        
         _client.InteractionCreated += async interaction =>
         {
             try
