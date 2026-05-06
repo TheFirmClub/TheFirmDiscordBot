@@ -58,7 +58,7 @@ class Program
     private readonly SemaphoreSlim _readyLock = new(1, 1);
     private bool _readyCompleted = false;
     
-    private const bool RegisterSlashCommands = true;
+    private const bool RegisterSlashCommands = false;
 
     public static Task Main(string[] args) => new Program().MainAsync();
 
@@ -606,17 +606,15 @@ class Program
         // Register your other existing commands from SlashCommandHandler
         foreach (var command in _commandHandler!.GetAllCommands())
         {
-            if (command.Name.Equals("policeblacklist", StringComparison.OrdinalIgnoreCase))
-                continue;
-            
-            if (command.Name.Equals("tfhsblacklist", StringComparison.OrdinalIgnoreCase))
-                continue;
-            
-            // ⛔ Skip playtime here because it was registered manually as subcommands
-            if (command.Name.Equals("playtime", StringComparison.OrdinalIgnoreCase) ||
+            if (command.Name.Equals("policeblacklist", StringComparison.OrdinalIgnoreCase) ||
+                command.Name.Equals("tfhsblacklist", StringComparison.OrdinalIgnoreCase) ||
+                command.Name.Equals("playtime", StringComparison.OrdinalIgnoreCase) ||
                 command.Name.Equals("mdtincidents", StringComparison.OrdinalIgnoreCase) ||
                 command.Name.Equals("resetplaytime", StringComparison.OrdinalIgnoreCase) ||
-                command.Name.Equals("listinv", StringComparison.OrdinalIgnoreCase))
+                command.Name.Equals("listinv", StringComparison.OrdinalIgnoreCase) ||
+                command.Name.Equals("spcstashclear", StringComparison.OrdinalIgnoreCase) ||
+                command.Name.Equals("feedback", StringComparison.OrdinalIgnoreCase) ||
+                command.Name.Equals("checkplaytimecommands", StringComparison.OrdinalIgnoreCase))
                 continue;
             
             // ✅ Special handling for gamemod because it uses subcommands
