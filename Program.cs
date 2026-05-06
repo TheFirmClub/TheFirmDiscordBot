@@ -51,6 +51,7 @@ class Program
     // ✅ LOA command integration
     private StaffLoaCommand _staffLoa = new StaffLoaCommand();
     private bool _staffLoaRegistered = false;
+    private bool _readyCompleted = false;
 
     public static Task Main(string[] args) => new Program().MainAsync();
 
@@ -98,12 +99,7 @@ class Program
         _manualVerifyOnJoin.Register();
         
         // ⭐ ADD THIS RIGHT HERE
-        _client.MessageReceived += (msg) =>
-        {
-            Console.WriteLine($"GLOBAL MESSAGE EVENT → Channel:{msg.Channel.Id} Author:{msg.Author}");
-            return Task.CompletedTask;
-        };
-
+        
         _client.Log += Log;
         _client.Ready += async () => await ReadyAsync(guildId);
         
@@ -209,7 +205,17 @@ class Program
 
     private async Task ReadyAsync(ulong guildId)
     {
-        var guild = _client!.GetGuild(guildId);
+        if (_readyCompleted)
+        {
+            Console.WriteLine("ℹ️ ReadyAsync already ran, skipping duplicate command registration.");
+            return;
+        }
+
+        _readyCompleted = true;
+
+        try
+        {
+            var guild = _client!.GetGuild(guildId);
         if (guild == null)
         {
             Console.WriteLine($"❌ Could not find guild with ID {guildId}");
@@ -691,6 +697,11 @@ class Program
         Console.WriteLine("✅ Commands registered and support panel sent");
 
         await StartFiveMUpdater(guildId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ ReadyAsync failed: {ex}");
+        }
     }
 
     private async Task StartFiveMUpdater(ulong guildId)
