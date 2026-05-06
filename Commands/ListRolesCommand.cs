@@ -96,14 +96,12 @@ public class ListRolesCommand : ISlashCommand
 
         foreach (var role in pageRoles)
         {
-            sb.AppendLine($"**{role.Name}**");
-            sb.AppendLine($"`{role.Id}`");
-            sb.AppendLine();
+            sb.AppendLine($"{role.Name} -> {role.Id}");
         }
 
         return new EmbedBuilder()
             .WithTitle($"📜 Roles in {guild.Name}")
-            .WithDescription(sb.ToString())
+            .WithDescription($"```{sb}```")
             .WithColor(Color.Blue)
             .WithFooter($"Page {page + 1}/{totalPages} • Total Roles: {roles.Count}")
             .WithCurrentTimestamp()
