@@ -57,8 +57,13 @@ public class ListRolesCommand : ISlashCommand
             .ToList();
 
         var parts = component.Data.CustomId.Split("_");
-        var page = int.Parse(parts[1]);
 
+        if (parts.Length < 3 || !int.TryParse(parts[2], out var page))
+        {
+            await component.RespondAsync("❌ Invalid page button.", ephemeral: true);
+            return;
+        }
+        
         var totalPages = GetTotalPages(roles.Count);
 
         if (component.Data.CustomId.StartsWith("listroles_prev_"))
