@@ -33,15 +33,20 @@ public class SuggestionsCommand : ISlashCommand
 
     public string Name => "suggestions";
     public string Description => "Submit a server suggestion.";
-
-    public async Task RegisterAsync(DiscordSocketClient client)
+    
+    public async Task InitializeAsync(DiscordSocketClient client)
     {
         _client = client;
 
         _client.InteractionCreated -= OnInteractionCreated;
         _client.InteractionCreated += OnInteractionCreated;
-        
+
         await LoadSuggestionState();
+    }
+
+    public async Task RegisterAsync(DiscordSocketClient client)
+    {
+        await InitializeAsync(client);
 
         await client.Rest.CreateGuildCommand(
             new SlashCommandBuilder()

@@ -133,6 +133,7 @@ class Program
         // after _client is created
         _inviteTracker = new InviteTrackerService(_client);
         await _inviteTracker.InitializeAsync();
+        await _suggestionsCommand.InitializeAsync(_client);
 
         // Changelog tracker (listens in changelog channel and posts stats)
         _changelogTracker = new ChangelogTrackerService(_client!);
