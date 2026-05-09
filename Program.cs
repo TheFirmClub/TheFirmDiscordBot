@@ -113,6 +113,8 @@ class Program
             return Task.CompletedTask;
         };
         
+        // ✅ Attach LOA interaction handlers even when slash registration is disabled
+        _staffLoa.AttachHandlers(_client);
         
         _client.InteractionCreated += async interaction =>
         {

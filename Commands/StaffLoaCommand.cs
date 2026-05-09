@@ -66,6 +66,14 @@ public class StaffLoaCommand : ISlashCommand
     private static readonly Dictionary<ulong, (string DivKey, DateTime StoredAtUtc)> _pendingDivisionByUser = new();
 
     private DiscordSocketClient _client;
+    
+    public void AttachHandlers(DiscordSocketClient client)
+    {
+        _client = client;
+
+        _client.InteractionCreated -= OnInteractionCreated;
+        _client.InteractionCreated += OnInteractionCreated;
+    }
 
     // ========= ISlashCommand contract =========
     public string Name => "staffloa"; // main command used by Program.cs
