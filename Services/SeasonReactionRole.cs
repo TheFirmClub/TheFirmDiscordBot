@@ -7,12 +7,13 @@ using System.Threading.Tasks;
 
 public class SeasonReactionRole
 {
-    // === CONFIG ===
     private const ulong ChannelId = 1501232157060890784;
     private const ulong VeteranRoleId = 1503220242430558288;
 
     private const string RequiredEmoji = "🥇";
     private const int RequiredMinutes = 150 * 60;
+
+    private const string EmbedTitle = "🥇 Season #1 Veteran Claim";
 
     private const string ConnectionString =
         "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore;Uid=thefirmprod;Pwd=edr6BYZqmq7eud0mwm;CharSet=utf8mb4;SslMode=Preferred;";
@@ -45,53 +46,46 @@ public class SeasonReactionRole
 
     private async Task OnBotReady()
     {
-        try
+        var channel = _client.GetChannel(ChannelId) as IMessageChannel;
+
+        if (channel == null)
         {
-            var channel = _client.GetChannel(ChannelId) as IMessageChannel;
-
-            if (channel == null)
-            {
-                Console.WriteLine("[SeasonReactionRole] Channel not found.");
-                return;
-            }
-
-            // Skip if already posted
-            var messages = await channel.GetMessagesAsync(10).FlattenAsync();
-
-            bool alreadyExists = messages.Any(m =>
-                m.Author.Id == _client.CurrentUser.Id &&
-                m.Embeds.Any(e =>
-                    e.Title == "🥇 Season 1 Veteran Claim"));
-
-            if (alreadyExists)
-            {
-                Console.WriteLine("[SeasonReactionRole] Embed already exists.");
-                return;
-            }
-
-            var embed = new EmbedBuilder()
-                .WithTitle("🥇 Season 1 Veteran Claim")
-                .WithDescription(
-                    "React with 🥇 to verify your playtime.\n\n" +
-                    "Requirement: **150+ hours** on The Firm.\n\n" +
-                    $"Eligible players will automatically receive the <@&{VeteranRoleId}> role."
-                )
-                .WithColor(Color.Gold)
-                .WithFooter("The Firm")
-                .WithCurrentTimestamp()
-                .Build();
-
-            var message = await channel.SendMessageAsync(embed: embed);
-
-            await message.AddReactionAsync(new Emoji(RequiredEmoji));
-
-            Console.WriteLine($"[SeasonReactionRole] Embed posted.");
-            Console.WriteLine($"[SeasonReactionRole] Message ID: {message.Id}");
+            Console.WriteLine("[SeasonReactionRole] Channel not found.");
+            return;
         }
-        catch (Exception ex)
+
+        var messages = await channel.GetMessagesAsync(10).FlattenAsync();
+
+        bool alreadyExists = messages.Any(m =>
+            m.Author.Id == _client.CurrentUser.Id &&
+            m.Embeds.Any(e => e.Title == EmbedTitle));
+
+        if (alreadyExists)
         {
-            Console.WriteLine($"[SeasonReactionRole] Ready Error: {ex}");
+            Console.WriteLine("[SeasonReactionRole] Embed already exists. Skipping.");
+            return;
         }
+
+        var embed = new EmbedBuilder()
+            .WithTitle(EmbedTitle)
+            .WithDescription(
+                "React with 🥇 to verify your playtime.\n\n" +
+                "Requirement: **150+ hours** on The Firm.\n\n" +
+                $"Eligible players will automatically receive the <@&{VeteranRoleId}> role."
+            )
+            .WithColor(Color.Gold)
+            .WithFooter("The Firm")
+            .WithCurrentTimestamp()
+            .Build();
+
+        var message = await channel.SendMessageAsync(
+            embed: embed,
+            allowedMentions: AllowedMentions.All
+        );
+
+        await message.AddReactionAsync(new Emoji(RequiredEmoji));
+
+        Console.WriteLine("[SeasonReactionRole] Embed posted.");
     }
 
     private async Task OnReactionAddedAsync(
@@ -101,12 +95,15 @@ public class SeasonReactionRole
     {
         try
         {
+            // Ignore bot reactions
             if (reaction.UserId == _client.CurrentUser.Id)
                 return;
 
+            // Wrong channel
             if (reaction.Channel.Id != ChannelId)
                 return;
 
+            // Wrong emoji
             if (reaction.Emote.Name != RequiredEmoji)
                 return;
 
@@ -115,12 +112,13 @@ public class SeasonReactionRole
             if (reactedMessage == null)
                 return;
 
-            if (!reactedMessage.Embeds.Any(e =>
-                    e.Title != null &&
-                    e.Title.Contains("Season 1 Veteran Claim")))
-            {
+            // Make sure reaction is on correct embed
+            bool isCorrectEmbed = reactedMessage.Embeds.Any(e =>
+                e.Title != null &&
+                e.Title == EmbedTitle);
+
+            if (!isCorrectEmbed)
                 return;
-            }
 
             var guildChannel = reaction.Channel as SocketGuildChannel;
 
@@ -128,56 +126,40 @@ public class SeasonReactionRole
                 return;
 
             var guild = guildChannel.Guild;
-
             var user = guild.GetUser(reaction.UserId);
 
             if (user == null)
                 return;
 
-            string discordId = reaction.UserId.ToString();
-
-            Console.WriteLine($"[SeasonReactionRole] Checking {user.Username}");
-
-            var data = await FetchAsync(discordId);
-
-            var message = await cachedMessage.GetOrDownloadAsync();
-
-            // Failed requirement
-            if (data == null || data.PlayTimeMinutes < RequiredMinutes)
+            // Already has role → remove reaction immediately
+            if (user.Roles.Any(r => r.Id == VeteranRoleId))
             {
-                await message.RemoveReactionAsync(new Emoji(RequiredEmoji), user);
+                await reactedMessage.RemoveReactionAsync(
+                    new Emoji(RequiredEmoji),
+                    user
+                );
 
-                Console.WriteLine($"[SeasonReactionRole] Removed reaction from {user.Username}");
-
-                try
-                {
-                    double hours = data?.PlayTimeMinutes / 60.0 ?? 0;
-
-                    var failEmbed = new EmbedBuilder()
-                        .WithTitle("Season 1 Veteran")
-                        .WithDescription(
-                            $"You do not currently meet the requirement.\n\n" +
-                            $"Required: **150 hours**\n" +
-                            $"Current: **{hours:0.#} hours**"
-                        )
-                        .WithColor(Color.Red)
-                        .WithCurrentTimestamp()
-                        .Build();
-
-                    await user.SendMessageAsync(embed: failEmbed);
-                }
-                catch
-                {
-                    // DMs closed
-                }
+                Console.WriteLine($"[SeasonReactionRole] {user.Username} already has role.");
 
                 return;
             }
 
-            // Already has role
-            if (user.Roles.Any(r => r.Id == VeteranRoleId))
+            string discordId = reaction.UserId.ToString();
+
+            Console.WriteLine($"[SeasonReactionRole] Checking {user.Username} ({discordId})");
+
+            var data = await FetchAsync(discordId);
+
+            // Failed requirement
+            if (data == null || data.PlayTimeMinutes < RequiredMinutes)
             {
-                Console.WriteLine($"[SeasonReactionRole] User already has role.");
+                await reactedMessage.RemoveReactionAsync(
+                    new Emoji(RequiredEmoji),
+                    user
+                );
+
+                Console.WriteLine($"[SeasonReactionRole] Removed reaction from {user.Username}");
+
                 return;
             }
 
@@ -186,24 +168,31 @@ public class SeasonReactionRole
 
             Console.WriteLine($"[SeasonReactionRole] Granted role to {user.Username}");
 
+            // Remove reaction after successful verification
+            await reactedMessage.RemoveReactionAsync(
+                new Emoji(RequiredEmoji),
+                user
+            );
+
             // DM user
             try
             {
-                var successEmbed = new EmbedBuilder()
+                var dmEmbed = new EmbedBuilder()
                     .WithTitle("🥇 Congratulations!")
                     .WithDescription(
-                        "You are now **The Firm's Season 1 Veteran**.\n\n" +
+                        "You are now **The Firm's Season #1 Veteran**.\n\n" +
                         "Upon Season 2 launch, you may claim your perks at the **TownHall Clerk**."
                     )
                     .WithColor(Color.Gold)
+                    .WithFooter("The Firm")
                     .WithCurrentTimestamp()
                     .Build();
 
-                await user.SendMessageAsync(embed: successEmbed);
+                await user.SendMessageAsync(embed: dmEmbed);
             }
             catch
             {
-                // DMs closed
+                Console.WriteLine($"[SeasonReactionRole] Could not DM {user.Username}");
             }
         }
         catch (Exception ex)
