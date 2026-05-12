@@ -168,12 +168,6 @@ public class SeasonReactionRole
 
             Console.WriteLine($"[SeasonReactionRole] Granted role to {user.Username}");
 
-            // Remove reaction after successful verification
-            await reactedMessage.RemoveReactionAsync(
-                new Emoji(RequiredEmoji),
-                user
-            );
-
             // DM user
             try
             {
