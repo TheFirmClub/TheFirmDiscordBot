@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 public class SeasonReactionRole
 {
-    private const ulong ChannelId = 1501232157060890784;
+    private const ulong ChannelId = 1393664353882079306;
     private const ulong VeteranRoleId = 1503220242430558288;
 
     private const string RequiredEmoji = "🥇";
