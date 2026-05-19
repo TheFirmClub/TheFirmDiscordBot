@@ -13,7 +13,7 @@ public class ListInventoryCommand : ISlashCommand
     public string Description => "List all players who have a specific inventory item";
 
     private const string ConnectionString =
-        "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore;Uid=thefirmprod;Pwd=edr6BYZqmq7eud0mwm;CharSet=utf8mb4;SslMode=Preferred;";
+        "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore2;Uid=thefirmprod;Pwd=edr6BYZqmq7eud0mwm;CharSet=utf8mb4;SslMode=Preferred;";
 
     // 🔒 Allowed roles
     private static readonly HashSet<ulong> AllowedRoleIds = new()

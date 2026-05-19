@@ -12,7 +12,7 @@ public class TFHSBlacklistCommand : ISlashCommand
     public string Description => "Manage TFHS blacklist";
 
     private const string ConnectionString =
-        "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore;Uid=thefirmprod;Pwd=edr6BYZqmq7eud0mwm;CharSet=utf8mb4;SslMode=Preferred;";
+        "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore2;Uid=thefirmprod;Pwd=edr6BYZqmq7eud0mwm;CharSet=utf8mb4;SslMode=Preferred;";
 
     private const ulong SeniorManagementRoleId = 1393590761953558608;
     private const ulong SeniorModeratorRoleId  = 1393638449709584434;

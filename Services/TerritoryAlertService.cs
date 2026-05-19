@@ -13,7 +13,7 @@ public class TerritoryAlertService
     private const ulong DrugChannelId = 1468993727946166313UL;
 
     private const string ConnectionString =
-        "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore;Uid=thefirmprod;Pwd=edr6BYZqmq7eud0mwm;CharSet=utf8mb4;SslMode=Preferred;";
+        "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore2;Uid=thefirmprod;Pwd=edr6BYZqmq7eud0mwm;CharSet=utf8mb4;SslMode=Preferred;";
 
     private readonly ConcurrentDictionary<string, DateTime> _cooldowns = new();
 

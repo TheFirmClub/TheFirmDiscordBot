@@ -32,7 +32,7 @@ public class GameModCommands : ISlashCommand
     private const string MYSQL_CONN =
         "Server=nw26472-001.eu.clouddb.ovh.net;" +
         "Port=35666;" +
-        "Database=thefirm_qbcore;" +
+        "Database=thefirm_qbcore2;" +
         "User ID=thefirmprod;" +
         "Password=edr6BYZqmq7eud0mwm;" +
         "Character Set=utf8mb4;" +

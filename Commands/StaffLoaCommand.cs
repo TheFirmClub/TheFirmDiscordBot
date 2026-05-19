@@ -22,7 +22,7 @@ public class StaffLoaCommand : ISlashCommand
 
     // OVH MySQL (converted from your URL)
     private readonly string _mysql =
-        "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore;User ID=thefirmprod;Password=edr6BYZqmq7eud0mwm;SslMode=Required;AllowPublicKeyRetrieval=True;Character Set=utf8mb4;";
+        "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore2;User ID=thefirmprod;Password=edr6BYZqmq7eud0mwm;SslMode=Required;AllowPublicKeyRetrieval=True;Character Set=utf8mb4;";
 
     // ✅ Allowed initiator roles (can run /staffloa, /loaremove)
     private static readonly HashSet<ulong> AllowedInitiatorRoleIds = new()

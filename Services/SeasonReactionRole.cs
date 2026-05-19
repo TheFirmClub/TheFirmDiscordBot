@@ -16,7 +16,7 @@ public class SeasonReactionRole
     private const string EmbedTitle = "🥇 Season #1 Veteran Claim";
 
     private const string ConnectionString =
-        "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore;Uid=thefirmprod;Pwd=edr6BYZqmq7eud0mwm;CharSet=utf8mb4;SslMode=Preferred;";
+        "Server=nw26472-001.eu.clouddb.ovh.net;Port=35666;Database=thefirm_qbcore2;Uid=thefirmprod;Pwd=edr6BYZqmq7eud0mwm;CharSet=utf8mb4;SslMode=Preferred;";
 
     private readonly DiscordSocketClient _client;
 
