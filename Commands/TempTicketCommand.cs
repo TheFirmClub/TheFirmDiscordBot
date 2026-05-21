@@ -11,12 +11,9 @@ public class TempTicketCommand : ISlashCommand
 
     private readonly ulong _categoryId = 1393627644326838292;
 
-    private readonly ulong[] _seniorModRoleIds = new ulong[]
-    {
-        1393638449709584434,    // S.Mod
-        1393590761953558608,    // SM
-        1421177514189127840     // SD
-    };
+    private readonly ulong SENIOR_MOD = 1393638449709584434;
+    private readonly ulong SENIOR_MGMT = 1393590761953558608;
+    private readonly ulong SENIOR_DEV = 1421177514189127840;
 
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
@@ -56,10 +53,28 @@ public class TempTicketCommand : ISlashCommand
 
         var perms = overwrites.ToList();
 
-        foreach (var roleId in _seniorModRoleIds)
+        // Decide which role gets access based on who created the ticket
+        var accessRoles = new List<ulong>();
+
+        if (staffUser.Roles.Any(r => r.Id == SENIOR_DEV))
+        {
+            // SD creates ticket -> SD role gets access
+            accessRoles.Add(SENIOR_DEV);
+        }
+        else
+        {
+            // S.Mod or SM creates ticket -> S.Mod role gets access
+            accessRoles.Add(SENIOR_MOD);
+        }
+
+        // Apply role permissions
+        foreach (var roleId in accessRoles.Distinct())
         {
             perms.Add(new Overwrite(roleId, PermissionTarget.Role,
-                new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)));
+                new OverwritePermissions(
+                    viewChannel: PermValue.Allow,
+                    sendMessages: PermValue.Allow
+                )));
         }
 
         var channel = await guild.CreateTextChannelAsync(channelName, props =>
