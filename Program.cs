@@ -23,7 +23,7 @@ class Program
     private SupportMenuHandler _supportMenuHandler = new();
     private TicketButtonHandler _ticketButtonHandler;
     private InviteTrackerService? _inviteTracker;
-    private SuggestionsCommand _suggestionsCommand = new SuggestionsCommand();
+    // private SuggestionsCommand _suggestionsCommand = new SuggestionsCommand();
     private CheckRoleInfoCommand _checkRoleInfoCommand = new CheckRoleInfoCommand();
     private FirmDiscordBot.Services.ManualVerifyOnJoinHandler? _manualVerifyOnJoin;
     private FeedbackCommand _feedbackCommand = new FeedbackCommand();
@@ -139,7 +139,7 @@ class Program
         // after _client is created
         _inviteTracker = new InviteTrackerService(_client);
         await _inviteTracker.InitializeAsync();
-        await _suggestionsCommand.InitializeAsync(_client);
+        // await _suggestionsCommand.InitializeAsync(_client);
 
         // Changelog tracker (listens in changelog channel and posts stats)
         _changelogTracker = new ChangelogTrackerService(_client!);
@@ -153,8 +153,8 @@ class Program
         
         _commandHandler = new SlashCommandHandler(
             _config,
-            _inviteTracker,
-            _suggestionsCommand
+            _inviteTracker
+            // _suggestionsCommand
         );
         
         _evidenceRelay = new EvidenceRelayService(_client);
@@ -300,22 +300,22 @@ class Program
             Console.WriteLine("⏭️ LOA commands already exist, skipping.");
         }
         
-        if (!existingCommands.Any(x => x.Name == "suggestions"))
-        {
-            await _suggestionsCommand.RegisterAsync(_client);
-
-            var updated = await guild.GetApplicationCommandsAsync();
-            existingCommands.Clear();
-            existingCommands.AddRange(updated);
-
-            Console.WriteLine("✅ Registered /suggestions");
-
-            await Task.Delay(2500);
-        }
-        else
-        {
-            Console.WriteLine("⏭️ /suggestions already exists, skipping.");
-        }
+        // if (!existingCommands.Any(x => x.Name == "suggestions"))
+        // {
+        //     await _suggestionsCommand.RegisterAsync(_client);
+        //
+        //     var updated = await guild.GetApplicationCommandsAsync();
+        //     existingCommands.Clear();
+        //     existingCommands.AddRange(updated);
+        //
+        //     Console.WriteLine("✅ Registered /suggestions");
+        //
+        //     await Task.Delay(2500);
+        // }
+        // else
+        // {
+        //     Console.WriteLine("⏭️ /suggestions already exists, skipping.");
+        // }
 
         if (!existingCommands.Any(x => x.Name == "feedback"))
         {
@@ -771,11 +771,11 @@ class Program
         var name = command.Data.Name?.ToLowerInvariant();
 
         // 🔥 FIX: handle suggestions FIRST
-        if (name == "suggestions")
-        {
-            await _suggestionsCommand.ExecuteAsync(command);
-            return;
-        }
+        // if (name == "suggestions")
+        // {
+        //     await _suggestionsCommand.ExecuteAsync(command);
+        //     return;
+        // }
         
         if (name == "feedback")
         {
