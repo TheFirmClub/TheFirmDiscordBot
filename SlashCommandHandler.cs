@@ -11,8 +11,7 @@ public class SlashCommandHandler
 
     public SlashCommandHandler(
         IConfiguration config,
-        InviteTrackerService inviteTracker,
-        SuggestionsCommand suggestionsCommand)
+        InviteTrackerService inviteTracker)
 
     {
         _config = config;
