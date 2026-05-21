@@ -59,7 +59,7 @@ class Program
     private readonly SemaphoreSlim _readyLock = new(1, 1);
     private bool _readyCompleted = false;
     
-    private const bool RegisterSlashCommands = false;
+    private const bool RegisterSlashCommands = true;
 
     public static Task Main(string[] args) => new Program().MainAsync();
 
