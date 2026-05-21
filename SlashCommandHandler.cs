@@ -14,6 +14,7 @@ public class SlashCommandHandler
         InviteTrackerService inviteTracker,
         SuggestionsCommand suggestionsCommand)
 
+    
     {
         _config = config;
         
