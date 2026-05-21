@@ -13,8 +13,9 @@ public class TempTicketCommand : ISlashCommand
 
     private readonly ulong[] _seniorModRoleIds = new ulong[]
     {
-        1393638449709584434,
-        1393590761953558608
+        1393638449709584434,    // S.Mod
+        1393590761953558608,    // SM
+        1421177514189127840     // SD
     };
 
     public async Task ExecuteAsync(SocketSlashCommand command)
