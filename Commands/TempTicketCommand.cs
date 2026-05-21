@@ -18,7 +18,15 @@ public class TempTicketCommand : ISlashCommand
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
         var staffUser = command.User as SocketGuildUser;
-        if (!TicketAddRoleCommand.PermissionHelper.IsSeniorModerator(staffUser))
+
+        var allowedRoles = new ulong[]
+        {
+            SENIOR_MOD,
+            SENIOR_MGMT,
+            SENIOR_DEV
+        };
+
+        if (!staffUser.Roles.Any(r => allowedRoles.Contains(r.Id)))
         {
             await command.RespondAsync("❌ You do not have permission to use this command.", ephemeral: true);
             return;
