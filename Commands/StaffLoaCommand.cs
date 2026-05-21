@@ -57,7 +57,7 @@ public class StaffLoaCommand : ISlashCommand
             ["police_senior_command"] = (1475222924301439148, 1394458024503935006, "Police Senior Command"),
             ["tfhs_staff"]            = (1404782091199053847, 1398308435795251302, "TFHS Staff"),
             ["civilian_affairs"]      = (1406298760866172958, 1406295299311272006, "Civilian Affairs Staff"),
-            ["creative_media_staff"]  = (1398309451697750106, 1394651533253017671, "Creative Media Staff"),
+            ["creative_media_staff"]  = (1507161977921867866, 1394651533253017671, "Creative Media Staff"),
             ["media_team"]            = (1398309451697750106, 1394651533253017671, "Media Team"),
             ["moderation"]            = (1393630781263315144, 1393638449709584434, "Moderation"),
         };
