@@ -59,7 +59,7 @@ public class StaffLoaCommand : ISlashCommand
             ["civilian_affairs"]      = (1406298760866172958, 1406295299311272006, "Civilian Affairs Staff"),
             ["creative_media_staff"]  = (1398309451697750106, 1394651533253017671, "Creative Media Staff"),
             ["media_team"]            = (1398309451697750106, 1394651533253017671, "Media Team"),
-            ["moderation"]            = (1496169956700721413, 1393638449709584434, "Moderation"),
+            ["moderation"]            = (1393630781263315144, 1393638449709584434, "Moderation"),
         };
 
     // Pending division (per-user) — include timestamp to expire stale selections
