@@ -58,7 +58,7 @@ class Program
     private readonly SemaphoreSlim _readyLock = new(1, 1);
     private bool _readyCompleted = false;
     
-    private const bool RegisterSlashCommands = false;
+    private const bool RegisterSlashCommands = true;
 
     public static Task Main(string[] args) => new Program().MainAsync();
 
@@ -278,6 +278,16 @@ class Program
         Console.WriteLine("✅ Registered interaction modules");
         
         var existingCommands = (await guild.GetApplicationCommandsAsync()).ToList();
+
+// DELETE OLD COMMANDS
+        foreach (var cmd in existingCommands)
+        {
+            if (cmd.Name == "feedback" || cmd.Name == "suggestions")
+            {
+                await cmd.DeleteAsync();
+                Console.WriteLine($"🗑️ Deleted /{cmd.Name}");
+            }
+        }
         
         // ✅ Register LOA commands once (handles /staffloa, /loaremove, /staffloalist)
         if (!existingCommands.Any(x => x.Name == "staffloa") ||
