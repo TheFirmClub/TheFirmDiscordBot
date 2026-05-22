@@ -26,7 +26,6 @@ class Program
     private SuggestionsCommand _suggestionsCommand = new SuggestionsCommand();
     private CheckRoleInfoCommand _checkRoleInfoCommand = new CheckRoleInfoCommand();
     private FirmDiscordBot.Services.ManualVerifyOnJoinHandler? _manualVerifyOnJoin;
-    private FeedbackCommand _feedbackCommand = new FeedbackCommand();
     private SpcStashClearCommand _spcStashClear = new SpcStashClearCommand();
 
     private ulong _logChannelId = 1394449608603603085;
@@ -317,23 +316,6 @@ class Program
             Console.WriteLine("⏭️ /suggestions already exists, skipping.");
         }
 
-        if (!existingCommands.Any(x => x.Name == "feedback"))
-        {
-            await _feedbackCommand.RegisterAsync(_client);
-
-            var updated = await guild.GetApplicationCommandsAsync();
-            existingCommands.Clear();
-            existingCommands.AddRange(updated);
-
-            Console.WriteLine("✅ Registered /feedback");
-
-            await Task.Delay(2500);
-        }
-        else
-        {
-            Console.WriteLine("⏭️ /feedback already exists, skipping.");
-        }
-        
         // ✅ Register Suggestions (fresh)
         //await _suggestionsCommand.RegisterAsync(_client);
         //Console.WriteLine("✅ Registered /suggestions");
@@ -769,19 +751,6 @@ class Program
     private async Task SlashCommandExecuted(SocketSlashCommand command)
     {
         var name = command.Data.Name?.ToLowerInvariant();
-
-        // 🔥 FIX: handle suggestions FIRST
-        if (name == "suggestions")
-        {
-            await _suggestionsCommand.ExecuteAsync(command);
-            return;
-        }
-        
-        if (name == "feedback")
-        {
-            await _feedbackCommand.ExecuteAsync(command);
-            return;
-        }
 
         // ✅ Route LOA commands
         if (name == "staffloa" || name == "loaremove" || name == "staffloalist")
