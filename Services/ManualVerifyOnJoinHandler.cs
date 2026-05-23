@@ -188,7 +188,7 @@ public sealed class ManualVerifyOnJoinHandler
                 $"🔗 **Step 2 – Login to our Player Dashboard**\n" +
                 $"https://dashboard.thefirm.club\n\n" +
                 $"You must complete Step 1 in order for Step 2 to work.\n\n" +
-                $"Your **Verified** role will be automatically assigned once you have logged into the dashboard.\n" +
+                $"Your **Verified** role will be automatically assigned once you have logged into the dashboard.\n\n" +
                 $"Thank you for your patience."
             )
             .AddField("Account Created (UTC)", $"{user.CreatedAt:yyyy-MM-dd HH:mm}", true)
