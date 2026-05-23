@@ -138,7 +138,7 @@ public sealed class ManualVerifyOnJoinHandler
         var guild = user.Guild;
 
         var rand = Random.Shared.Next(1000, 9999);
-        var channelName = $"manual-verify-{rand}";
+        var channelName = $"new-verify-{rand}";
 
         var overwrites = new List<Overwrite>
         {
@@ -166,7 +166,7 @@ public sealed class ManualVerifyOnJoinHandler
         {
             props.CategoryId = OpenManualVerifyCategoryId;
             props.PermissionOverwrites = overwrites;
-            props.Topic = $"owner:{user.Id}; type:manual_verify; created:{DateTimeOffset.UtcNow:O}; acct_created:{user.CreatedAt:O}";
+            props.Topic = $"owner:{user.Id}; type:new_verify; created:{DateTimeOffset.UtcNow:O}; acct_created:{user.CreatedAt:O}";
         });
 
         // Ping ONLY Game Moderator + Discord Moderator + user
@@ -204,7 +204,7 @@ public sealed class ManualVerifyOnJoinHandler
         await channel.SendMessageAsync(embed: instructionsEmbed);
 
         var newTopic =
-            $"owner:{user.Id}; type:manual_verify; created:{DateTimeOffset.UtcNow:O}; acct_created:{user.CreatedAt:O}";
+            $"owner:{user.Id}; type:new_verify; created:{DateTimeOffset.UtcNow:O}; acct_created:{user.CreatedAt:O}";
         await channel.ModifyAsync(props => props.Topic = newTopic);
 
         await channel.SendMessageAsync($"👋 {user.Mention} Please complete the FiveM and dashboard steps above.");
