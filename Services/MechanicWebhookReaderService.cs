@@ -1,6 +1,5 @@
 using Discord;
 using Discord.WebSocket;
-using System.Text.RegularExpressions;
 
 public class MechanicWebhookReaderService
 {
@@ -35,19 +34,19 @@ public class MechanicWebhookReaderService
 
             if (text.Contains("Money Withdraw", StringComparison.OrdinalIgnoreCase))
             {
-                await HandleMoneyWithdraw(embed, text);
+                await HandleMoneyWithdraw(embed);
             }
             else if (text.Contains("Item Purchased", StringComparison.OrdinalIgnoreCase))
             {
-                await HandleItemPurchased(embed, text);
+                await HandleItemPurchased(embed);
             }
         }
     }
 
-    private async Task HandleMoneyWithdraw(IEmbed embed, string text)
+    private async Task HandleMoneyWithdraw(IEmbed embed)
     {
-        var mechanic = ExtractValue(text, "Mechanic");
-        var amount = ExtractValue(text, "Amount");
+        var mechanic = GetFieldValue(embed, "Mechanic");
+        var amount = GetFieldValue(embed, "Amount");
 
         var channel = _client.GetChannel(AlertChannelId) as IMessageChannel;
         if (channel == null) return;
@@ -63,13 +62,13 @@ public class MechanicWebhookReaderService
         await channel.SendMessageAsync(embed: alert);
     }
 
-    private async Task HandleItemPurchased(IEmbed embed, string text)
+    private async Task HandleItemPurchased(IEmbed embed)
     {
-        var player = ExtractValue(text, "Player");
-        var mechanic = ExtractValue(text, "Mechanic");
-        var item = ExtractValue(text, "Item");
-        var quantity = ExtractValue(text, "Quantity");
-        var totalCost = ExtractValue(text, "Total Cost");
+        var player = GetFieldValue(embed, "Player");
+        var mechanic = GetFieldValue(embed, "Mechanic");
+        var item = GetFieldValue(embed, "Item");
+        var quantity = GetFieldValue(embed, "Quantity");
+        var totalCost = GetFieldValue(embed, "Total Cost");
 
         var channel = _client.GetChannel(AlertChannelId) as IMessageChannel;
         if (channel == null) return;
@@ -77,20 +76,26 @@ public class MechanicWebhookReaderService
         var alert = new EmbedBuilder()
             .WithTitle("🛒 Mechanic Item Purchased")
             .WithColor(Color.Green)
-
             .AddField("Player", player ?? "Unknown", true)
             .AddField("Mechanic", mechanic ?? "Unknown", true)
-
-            // ✅ ITEM NOW SHOWN
             .AddField("Item", item ?? "Unknown", true)
-
             .AddField("Quantity", quantity ?? "Unknown", true)
             .AddField("Total Cost", totalCost ?? "Unknown", true)
-
             .WithTimestamp(DateTimeOffset.Now)
             .Build();
 
         await channel.SendMessageAsync(embed: alert);
+    }
+
+    private string? GetFieldValue(IEmbed embed, string fieldName)
+    {
+        var field = embed.Fields.FirstOrDefault(f =>
+            string.Equals(f.Name, fieldName, StringComparison.OrdinalIgnoreCase));
+
+        if (field.Equals(default(EmbedField)))
+            return null;
+
+        return field.Value.ToString().Trim();
     }
 
     private string BuildEmbedText(IEmbed embed)
@@ -117,16 +122,5 @@ public class MechanicWebhookReaderService
                    .Replace("__", "")
                    .Replace("*", "")
                    .Replace("`", "");
-    }
-
-    private string? ExtractValue(string text, string fieldName)
-    {
-        var pattern = $@"{Regex.Escape(fieldName)}\s*:?\s*(.+)";
-        var match = Regex.Match(text, pattern, RegexOptions.IgnoreCase);
-
-        if (!match.Success)
-            return null;
-
-        return match.Groups[1].Value.Trim();
     }
 }
