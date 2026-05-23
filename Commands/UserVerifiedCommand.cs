@@ -54,9 +54,9 @@ public sealed class UserVerifiedCommand : ISlashCommand
         }
 
         var topic = channel.Topic ?? "";
-        if (!topic.Contains("type:manual_verify", StringComparison.OrdinalIgnoreCase))
+        if (!topic.Contains("type:new_verify", StringComparison.OrdinalIgnoreCase))
         {
-            await command.FollowupAsync("❌ This channel is not a manual verification ticket (`type:manual_verify` missing in topic).", ephemeral: true);
+            await command.FollowupAsync("❌ This channel is not a manual verification ticket (`type:new_verify` missing in topic).", ephemeral: true);
             return;
         }
 

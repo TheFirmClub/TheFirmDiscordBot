@@ -43,14 +43,14 @@ public sealed class UserVerifyTimeoutCommand : ISlashCommand
 
         if (command.Channel is not SocketTextChannel channel)
         {
-            await command.FollowupAsync("❌ This must be run inside a manual verification ticket channel.", ephemeral: true);
+            await command.FollowupAsync("❌ This must be run inside a verification ticket channel.", ephemeral: true);
             return;
         }
 
         var topic = channel.Topic ?? "";
-        if (!topic.Contains("type:manual_verify", StringComparison.OrdinalIgnoreCase))
+        if (!topic.Contains("type:new_verify", StringComparison.OrdinalIgnoreCase))
         {
-            await command.FollowupAsync("❌ This channel is not a manual verification ticket (`type:manual_verify` missing in topic).", ephemeral: true);
+            await command.FollowupAsync("❌ This channel is not a verification ticket (`type:new_verify` missing in topic).", ephemeral: true);
             return;
         }
 
@@ -79,10 +79,10 @@ public sealed class UserVerifyTimeoutCommand : ISlashCommand
                     .WithTitle("⏰ Verification Timeout")
                     .WithColor(Color.Orange)
                     .WithDescription(
-                        "You were removed from **The Firm** Discord because we did not receive a response to your manual verification in time (24 hours).\n\n" +
+                        "You were removed from **The Firm** Discord because we did not receive a response to your verification in time (24 hours).\n\n" +
                         "You can re-join when you are ready and complete verification again.\n\n" +
-                        "Forum:\nhttps://forum.thefirm.club\n" +
-                        "Link Discord:\nhttps://forum.thefirm.club/index.php?account/connected-accounts/"
+                        "Web:\nhttps://thefirm.club\n" +
+                        "Discord:\nhttps://discord.thefirm.club"
                     )
                     .WithTimestamp(DateTimeOffset.UtcNow)
                     .Build();
@@ -97,7 +97,7 @@ public sealed class UserVerifyTimeoutCommand : ISlashCommand
 
             try
             {
-                await target.KickAsync($"Manual verification timeout (24h no response). Actioned by {invoker.Username} ({invoker.Id}).");
+                await target.KickAsync($"Verification timeout (24h no response). Actioned by {invoker.Username} ({invoker.Id}).");
                 kickSucceeded = true;
             }
             catch (Exception ex)
@@ -144,9 +144,9 @@ public sealed class UserVerifyTimeoutCommand : ISlashCommand
                     $"Kick: {(kickSucceeded ? "Yes ✅" : "No ❌")}";
 
                 var logEmbed = new EmbedBuilder()
-                    .WithTitle("⏰ Manual Verification Timed Out")
+                    .WithTitle("⏰ The Firm Verification Timed Out")
                     .WithColor(Color.Orange)
-                    .WithDescription("A manual verification ticket was closed due to no response (24h).")
+                    .WithDescription("A verification ticket was closed due to no response (24h).")
                     .AddField("User", target != null ? $"{target.Mention} (`{target.Id}`)" : $"`{ownerId}` (not cached)", true)
                     .AddField("Actioned By", $"{invoker.Mention} (`{invoker.Id}`)", true)
                     .AddField("Ticket", $"{channel.Name} (`{channel.Id}`)", false)

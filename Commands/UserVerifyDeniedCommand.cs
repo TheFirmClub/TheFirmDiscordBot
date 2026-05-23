@@ -41,14 +41,14 @@ public sealed class UserVerifyDeniedCommand : ISlashCommand
 
         if (command.Channel is not SocketTextChannel channel)
         {
-            await command.FollowupAsync("❌ This must be run inside a manual verification ticket channel.", ephemeral: true);
+            await command.FollowupAsync("❌ This must be run inside a verification ticket channel.", ephemeral: true);
             return;
         }
 
         var topic = channel.Topic ?? "";
-        if (!topic.Contains("type:manual_verify", StringComparison.OrdinalIgnoreCase))
+        if (!topic.Contains("type:new_verify", StringComparison.OrdinalIgnoreCase))
         {
-            await command.FollowupAsync("❌ This channel is not a manual verification ticket (`type:manual_verify` missing in topic).", ephemeral: true);
+            await command.FollowupAsync("❌ This channel is not a verification ticket (`type:new_verify` missing in topic).", ephemeral: true);
             return;
         }
 
@@ -79,8 +79,8 @@ public sealed class UserVerifyDeniedCommand : ISlashCommand
                     .WithDescription(
                         "Your request to join **The Firm** Discord has been denied after review.\n\n" +
                         "If you believe this was a mistake, you may re-join at a later date and contact staff.\n\n" +
-                        "Forum:\nhttps://forum.thefirm.club\n" +
-                        "Link Discord:\nhttps://forum.thefirm.club/index.php?account/connected-accounts/"
+                        "Web:\nhttps://thefirm.club\n" +
+                        "Discord:\nhttps://discord.thefirm.club"
                     )
                     .WithTimestamp(DateTimeOffset.UtcNow)
                     .Build();
@@ -96,7 +96,7 @@ public sealed class UserVerifyDeniedCommand : ISlashCommand
             // Kick
             try
             {
-                await target.KickAsync($"Manual verification denied. Actioned by {invoker.Username} ({invoker.Id}).");
+                await target.KickAsync($"Verification denied. Actioned by {invoker.Username} ({invoker.Id}).");
                 kickSucceeded = true;
             }
             catch (Exception ex)
@@ -143,9 +143,9 @@ public sealed class UserVerifyDeniedCommand : ISlashCommand
                     $"Kick: {(kickSucceeded ? "Yes ✅" : "No ❌")}";
 
                 var logEmbed = new EmbedBuilder()
-                    .WithTitle("❌ Manual Verification Denied")
+                    .WithTitle("❌ The Firm Verification Denied")
                     .WithColor(Color.Red)
-                    .WithDescription("A manual verification ticket was denied by Senior Moderation and closed.")
+                    .WithDescription("A verification ticket was denied by Senior Moderation and closed.")
                     .AddField("User", target != null ? $"{target.Mention} (`{target.Id}`)" : $"`{ownerId}` (not cached)", true)
                     .AddField("Actioned By", $"{invoker.Mention} (`{invoker.Id}`)", true)
                     .AddField("Ticket", $"{channel.Name} (`{channel.Id}`)", false)
