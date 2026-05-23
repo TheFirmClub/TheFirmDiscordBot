@@ -182,12 +182,13 @@ public sealed class ManualVerifyOnJoinHandler
             .WithColor(Color.Orange)
             .WithDescription(
                 $"Hello {user.Mention},\n\n" +
-                $"Thank you for joining **The Firm**. Our system has detected that your Discord account was recently created. As a security precaution, this has automatically triggered a verification check to help us protect the community. You have 24 hours to verify your account, if not verified you will be kicked from Discord.\n\n" +
-                $"🔗 **Step 1 – Create a Forum Account**\n" +
-                $"https://forum.thefirm.club\n\n" +
-                $"🔗 **Step 2 – Link Your Discord Account**\n" +
-                $"https://forum.thefirm.club/index.php?account/connected-accounts/\n\n" +
-                $"Our Moderators will run through the checks and let you know the outcome here.\n\n" +
+                $"Thank you for joining **The Firm**. Our system has detected that your Discord account was recently created. As a security precaution, this has automatically triggered a verification check to help us protect the community.\n\n" +
+                $"🔗 **Step 1 – Connect to our FiveM server and create a character**\n" +
+                $"https://cfx.re/join/kb6qpv\n\n" +
+                $"🔗 **Step 2 – Login to our Player Dashboard**\n" +
+                $"https://dashboard.thefirm.club\n\n" +
+                $"You must complete Step 1 in order for Step 2 to work.\n\n" +
+                $"Your **Verified** role will be automatically assigned once you have logged into the dashboard.\n" +
                 $"Thank you for your patience."
             )
             .AddField("Account Created (UTC)", $"{user.CreatedAt:yyyy-MM-dd HH:mm}", true)
@@ -202,27 +203,11 @@ public sealed class ManualVerifyOnJoinHandler
 
         await channel.SendMessageAsync(embed: instructionsEmbed);
 
-        // Status embed (will be updated by /userverified)
-        var pendingEmbed = new EmbedBuilder()
-            .WithTitle("⏳ Verification Status: Pending")
-            .WithColor(Color.Orange)
-            .WithDescription(
-                "A Moderator will review your account shortly.\n\n" +
-                "Once verified, this message will be updated automatically."
-            )
-            .AddField("Status", "Pending ⏳", true)
-            .AddField("Next Step", "Complete forum linking above", true)
-            .WithTimestamp(DateTimeOffset.UtcNow)
-            .Build();
-
-        var pendingMsg = await channel.SendMessageAsync(embed: pendingEmbed);
-
-        // Store status message ID in topic for /userverified
         var newTopic =
-            $"owner:{user.Id}; type:manual_verify; statusmsg:{pendingMsg.Id}; created:{DateTimeOffset.UtcNow:O}; acct_created:{user.CreatedAt:O}";
+            $"owner:{user.Id}; type:manual_verify; created:{DateTimeOffset.UtcNow:O}; acct_created:{user.CreatedAt:O}";
         await channel.ModifyAsync(props => props.Topic = newTopic);
 
-        await channel.SendMessageAsync($"👋 {user.Mention} Please complete the forum linking steps above. A Moderator will reply here once checks are complete.");
+        await channel.SendMessageAsync($"👋 {user.Mention} Please complete the FiveM and dashboard steps above.");
 
         // ✅ Announcement embed to game-moderators channel
         await SendStaffAnnouncementAsync(guild, user, channel, accountAge);
@@ -241,12 +226,12 @@ public sealed class ManualVerifyOnJoinHandler
                 .WithTitle("🛡️ Manual Verify Ticket Created")
                 .WithColor(Color.Orange)
                 .WithDescription(
-                    $"A manual verification ticket has been created.\n\n" +
+                    $"A new user verification ticket has been created.\n\n" +
                     $"**User:** {user.Mention} (`{user.Id}`)\n" +
                     $"**Account Created:** {user.CreatedAt:yyyy-MM-dd HH:mm} UTC\n" +
                     $"**Account Age:** {(int)accountAge.TotalDays} days\n\n" +
                     $"**Ticket:** <#{ticketChannel.Id}>\n\n" +
-                    $"✅ After checks are complete, run **/userverified** inside the ticket.\n" +
+                    $"✅ If auto verify is unsuccessful, check if user has created a character for verification.\n" +
                     $"(Fallback: **/manualverify {user.Id}**)"
                 )
                 .WithTimestamp(DateTimeOffset.UtcNow);
