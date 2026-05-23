@@ -77,11 +77,16 @@ public class MechanicWebhookReaderService
         var alert = new EmbedBuilder()
             .WithTitle("🛒 Mechanic Item Purchased")
             .WithColor(Color.Green)
+
             .AddField("Player", player ?? "Unknown", true)
             .AddField("Mechanic", mechanic ?? "Unknown", true)
+
+            // ✅ ITEM NOW SHOWN
             .AddField("Item", item ?? "Unknown", true)
+
             .AddField("Quantity", quantity ?? "Unknown", true)
             .AddField("Total Cost", totalCost ?? "Unknown", true)
+
             .WithTimestamp(DateTimeOffset.Now)
             .Build();
 
