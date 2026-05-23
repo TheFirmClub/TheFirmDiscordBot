@@ -39,6 +39,8 @@ class Program
     private ChangelogTrackerService? _changelogTracker;
     
     private TerritoryAlertService? _territoryAlert;
+
+    private MechanicWebhookReaderService? _mechanicWebhookReader;
     
     private BodycamVideoForwardService? _bodycamVideoForward;
     
@@ -145,6 +147,8 @@ class Program
         
         // ✅ Turf invasion detection
         _territoryAlert = new TerritoryAlertService(_client!);
+        
+        _mechanicWebhookReader = new MechanicWebhookReaderService(_client!);
         
         _bodycamVideoForward = new BodycamVideoForwardService(_client!);
         
