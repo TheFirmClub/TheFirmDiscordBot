@@ -178,7 +178,7 @@ public sealed class ManualVerifyOnJoinHandler
 
         // User-facing instructions embed
         var instructionsEmbed = new EmbedBuilder()
-            .WithTitle("🛡️ Manual Verification Check")
+            .WithTitle("🛡️ New Discord Verification Check")
             .WithColor(Color.Orange)
             .WithDescription(
                 $"Hello {user.Mention},\n\n" +
@@ -223,7 +223,7 @@ public sealed class ManualVerifyOnJoinHandler
                 return;
 
             var eb = new EmbedBuilder()
-                .WithTitle("🛡️ Manual Verify Ticket Created")
+                .WithTitle("🛡️ New Discord Verify Ticket Created")
                 .WithColor(Color.Orange)
                 .WithDescription(
                     $"A new user verification ticket has been created.\n\n" +
