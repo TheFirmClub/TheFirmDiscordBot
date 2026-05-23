@@ -20,6 +20,8 @@ public class TerritoryAlertService
     private readonly Dictionary<int, ulong> _gangChannels = new()
     {
         {16, 1499490571310465065}, // Wearside Firm
+        {17, 1493955964255338577}, // Silk Noir
+        {18, 1507738189702631454}  // Blackwater Saints
         
     };
 
