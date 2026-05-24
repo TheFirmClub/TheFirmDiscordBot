@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 
 public class TicketButtonHandler
 {
+    private const ulong FIRM_ROBOT_ROLE_ID = 1398764987685539962UL; // Firm Robot / bot role
     private readonly IConfiguration _config;
     private readonly AiSupportService _aiSupport;
 
@@ -316,6 +317,9 @@ public class TicketButtonHandler
                             if (overwrite.TargetId == channel.Guild.EveryoneRole.Id)
                                 continue;
 
+                            if (overwrite.TargetId == FIRM_ROBOT_ROLE_ID)
+                                continue;
+
                             var role = channel.Guild.GetRole(overwrite.TargetId);
                             if (role != null)
                                 await channel.RemovePermissionOverwriteAsync(role);
@@ -340,6 +344,23 @@ public class TicketButtonHandler
                                     sendMessages: PermValue.Allow
                                 ));
                         }
+                    }
+
+                    // ✅ Re-apply Firm Robot permissions after the resolved-ticket reset
+                    var firmRobotRole = channel.Guild.GetRole(FIRM_ROBOT_ROLE_ID);
+                    if (firmRobotRole != null)
+                    {
+                        await channel.AddPermissionOverwriteAsync(firmRobotRole,
+                            new OverwritePermissions(
+                                viewChannel: PermValue.Allow,
+                                sendMessages: PermValue.Allow,
+                                readMessageHistory: PermValue.Allow,
+                                embedLinks: PermValue.Allow,
+                                attachFiles: PermValue.Allow,
+                                manageMessages: PermValue.Allow,
+                                manageChannel: PermValue.Allow,
+                                useApplicationCommands: PermValue.Allow
+                            ));
                     }
 
                     // =========================

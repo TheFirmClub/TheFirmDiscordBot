@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 
 public class SupportModalHandler
 {
+    private const ulong FIRM_ROBOT_ROLE_ID = 1398764987685539962UL; // Firm Robot / bot role
     private readonly IConfiguration _config;
     private readonly AiSupportService _aiSupport;
 
@@ -88,7 +89,20 @@ public class SupportModalHandler
             new Overwrite(guild.EveryoneRole.Id, PermissionTarget.Role,
                 new OverwritePermissions(viewChannel: PermValue.Deny)),
             new Overwrite(user.Id, PermissionTarget.User,
-                new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow))
+                new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
+
+            // ✅ Keep the bot in the ticket after Administrator is removed
+            new Overwrite(FIRM_ROBOT_ROLE_ID, PermissionTarget.Role,
+                new OverwritePermissions(
+                    viewChannel: PermValue.Allow,
+                    sendMessages: PermValue.Allow,
+                    readMessageHistory: PermValue.Allow,
+                    embedLinks: PermValue.Allow,
+                    attachFiles: PermValue.Allow,
+                    manageMessages: PermValue.Allow,
+                    manageChannel: PermValue.Allow,
+                    useApplicationCommands: PermValue.Allow
+                ))
         };
 
         if (ticketType == "reportstaff")
@@ -134,6 +148,7 @@ public class SupportModalHandler
         var allowedRoles = overwrites
             .Where(o => o.TargetType == PermissionTarget.Role)
             .Where(o => o.TargetId != guild.EveryoneRole.Id)
+            .Where(o => o.TargetId != FIRM_ROBOT_ROLE_ID)
             .Select(o => o.TargetId)
             .ToArray();
 

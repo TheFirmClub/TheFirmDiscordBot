@@ -6,27 +6,22 @@ using System.Threading.Tasks;
 
 public class TempTicketCommand : ISlashCommand
 {
+    private const ulong FIRM_ROBOT_ROLE_ID = 1398764987685539962UL; // Firm Robot / bot role
     public string Name => "tempticket";
     public string Description => "Create a temporary level 2 ticket for a user";
 
     private readonly ulong _categoryId = 1393627644326838292;
 
-    private readonly ulong SENIOR_MOD = 1393638449709584434;
-    private readonly ulong SENIOR_MGMT = 1393590761953558608;
-    private readonly ulong SENIOR_DEV = 1421177514189127840;
+    private readonly ulong[] _seniorModRoleIds = new ulong[]
+    {
+        1393638449709584434,
+        1393590761953558608
+    };
 
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
         var staffUser = command.User as SocketGuildUser;
-
-        var allowedRoles = new ulong[]
-        {
-            SENIOR_MOD,
-            SENIOR_MGMT,
-            SENIOR_DEV
-        };
-
-        if (!staffUser.Roles.Any(r => allowedRoles.Contains(r.Id)))
+        if (!TicketAddRoleCommand.PermissionHelper.IsSeniorModerator(staffUser))
         {
             await command.RespondAsync("❌ You do not have permission to use this command.", ephemeral: true);
             return;
@@ -56,33 +51,28 @@ public class TempTicketCommand : ISlashCommand
                 new OverwritePermissions(viewChannel: PermValue.Deny)),
 
             new Overwrite(guildUser.Id, PermissionTarget.User,
-                new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow))
+                new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
+
+            // ✅ Keep the bot in the ticket after Administrator is removed
+            new Overwrite(FIRM_ROBOT_ROLE_ID, PermissionTarget.Role,
+                new OverwritePermissions(
+                    viewChannel: PermValue.Allow,
+                    sendMessages: PermValue.Allow,
+                    readMessageHistory: PermValue.Allow,
+                    embedLinks: PermValue.Allow,
+                    attachFiles: PermValue.Allow,
+                    manageMessages: PermValue.Allow,
+                    manageChannel: PermValue.Allow,
+                    useApplicationCommands: PermValue.Allow
+                ))
         };
 
         var perms = overwrites.ToList();
 
-        // Decide which role gets access based on who created the ticket
-        var accessRoles = new List<ulong>();
-
-        if (staffUser.Roles.Any(r => r.Id == SENIOR_DEV))
-        {
-            // SD creates ticket -> SD role gets access
-            accessRoles.Add(SENIOR_DEV);
-        }
-        else
-        {
-            // S.Mod or SM creates ticket -> S.Mod role gets access
-            accessRoles.Add(SENIOR_MOD);
-        }
-
-        // Apply role permissions
-        foreach (var roleId in accessRoles.Distinct())
+        foreach (var roleId in _seniorModRoleIds)
         {
             perms.Add(new Overwrite(roleId, PermissionTarget.Role,
-                new OverwritePermissions(
-                    viewChannel: PermValue.Allow,
-                    sendMessages: PermValue.Allow
-                )));
+                new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)));
         }
 
         var channel = await guild.CreateTextChannelAsync(channelName, props =>

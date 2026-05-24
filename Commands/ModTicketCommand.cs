@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 public class ModTicketCommand : ISlashCommand
 {
+    private const ulong FIRM_ROBOT_ROLE_ID = 1398764987685539962UL; // Firm Robot / bot role
     public string Name => "modticket";
     public string Description => "Create a moderation ticket for a user";
 
@@ -52,6 +53,19 @@ public class ModTicketCommand : ISlashCommand
 
             new Overwrite(guildUser.Id, PermissionTarget.User,
                 new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)),
+
+            // ✅ Keep the bot in the ticket after Administrator is removed
+            new Overwrite(FIRM_ROBOT_ROLE_ID, PermissionTarget.Role,
+                new OverwritePermissions(
+                    viewChannel: PermValue.Allow,
+                    sendMessages: PermValue.Allow,
+                    readMessageHistory: PermValue.Allow,
+                    embedLinks: PermValue.Allow,
+                    attachFiles: PermValue.Allow,
+                    manageMessages: PermValue.Allow,
+                    manageChannel: PermValue.Allow,
+                    useApplicationCommands: PermValue.Allow
+                )),
 
             // ✅ Senior Moderator gets access
             new Overwrite(_seniorModeratorRoleId, PermissionTarget.Role,

@@ -7,6 +7,7 @@ using System.Collections.Generic;
 
 public class TicketRestrictCommand : ISlashCommand
 {
+    private const ulong FIRM_ROBOT_ROLE_ID = 1398764987685539962UL; // Firm Robot / bot role
     public string Name => "ticketrestrict";
     public string Description => "Restrict this ticket to a specific role";
 
@@ -19,7 +20,6 @@ public class TicketRestrictCommand : ISlashCommand
     private static readonly ulong SENIOR_MOD  = 1393638449709584434;
     private static readonly ulong HEAD_MOD    = 1393728468608487594;
     private static readonly ulong ASST_HEAD   = 1405330877440983130;
-    private static readonly ulong FULFILLMENT_TEAM = 1459193299180195891;
 
     private readonly ulong _restrictedCategoryId = 1393627644326838292;
 
@@ -72,6 +72,9 @@ public class TicketRestrictCommand : ISlashCommand
             {
                 // Skip @everyone (already handled)
                 if (overwrite.TargetId == channel.Guild.EveryoneRole.Id)
+                    continue;
+
+                if (overwrite.TargetId == FIRM_ROBOT_ROLE_ID)
                     continue;
 
                 var role = channel.Guild.GetRole(overwrite.TargetId);
@@ -161,17 +164,6 @@ public class TicketRestrictCommand : ISlashCommand
                 HEAD_MOD
             };
         }
-        
-        // 🔹 Fulfillment Team → Fulfillment + AHM + HM
-        else if (targetRole.Id == FULFILLMENT_TEAM)
-        {
-            allowedRoles = new List<ulong>
-            {
-                FULFILLMENT_TEAM,
-                ASST_HEAD,
-                HEAD_MOD
-            };
-        }
 
         // 🔹 ABOVE AHM (e.g. CI)
         else if (targetRole.Position > asstHeadRole.Position)
@@ -210,6 +202,23 @@ public class TicketRestrictCommand : ISlashCommand
             }
         }
         
+        // ✅ Re-apply Firm Robot permissions after the restriction reset
+        var firmRobotRole = channel.Guild.GetRole(FIRM_ROBOT_ROLE_ID);
+        if (firmRobotRole != null)
+        {
+            await channel.AddPermissionOverwriteAsync(firmRobotRole,
+                new OverwritePermissions(
+                    viewChannel: PermValue.Allow,
+                    sendMessages: PermValue.Allow,
+                    readMessageHistory: PermValue.Allow,
+                    embedLinks: PermValue.Allow,
+                    attachFiles: PermValue.Allow,
+                    manageMessages: PermValue.Allow,
+                    manageChannel: PermValue.Allow,
+                    useApplicationCommands: PermValue.Allow
+                ));
+        }
+
         if (ticketOwnerId.HasValue)
         {
             var ticketOwner = channel.Guild.GetUser(ticketOwnerId.Value);
