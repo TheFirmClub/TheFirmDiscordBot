@@ -19,6 +19,8 @@ public sealed class UserVerifiedCommand : ISlashCommand
 
     // ✅ NEW: Manual Verification log channel
     private const ulong ManualVerifyLogChannelId = 1474538794953867337UL;
+    private const ulong FirmRobotRoleId = 1398764987685539962UL;
+    private const ulong TheFirmRoleId = 1508057487863971843UL;
 
     private static readonly ulong[] StaffRoleIds =
     {
@@ -182,6 +184,8 @@ public sealed class UserVerifiedCommand : ISlashCommand
             // Logging failure should not stop ticket closure
         }
 
+        await EnsureManualVerifyAccessAsync(channel);
+
         // Close ticket: rename + move category
         var newName = channel.Name.StartsWith("closed-", StringComparison.OrdinalIgnoreCase)
             ? channel.Name
@@ -212,6 +216,45 @@ public sealed class UserVerifiedCommand : ISlashCommand
             await command.FollowupAsync(
                 "✅ Updated status and closed the ticket. (Ticket owner not found in cache; roles may not have been applied.)",
                 ephemeral: true);
+        }
+    }
+
+
+    private static async Task EnsureManualVerifyAccessAsync(SocketTextChannel channel)
+    {
+        var firmRobotRole = channel.Guild.GetRole(FirmRobotRoleId);
+        if (firmRobotRole != null)
+        {
+            await channel.AddPermissionOverwriteAsync(firmRobotRole,
+                new OverwritePermissions(
+                    viewChannel: PermValue.Allow,
+                    sendMessages: PermValue.Allow,
+                    readMessageHistory: PermValue.Allow,
+                    embedLinks: PermValue.Allow,
+                    attachFiles: PermValue.Allow,
+                    manageMessages: PermValue.Allow,
+                    manageChannel: PermValue.Allow,
+                    useApplicationCommands: PermValue.Allow));
+        }
+        else
+        {
+            Console.WriteLine("⚠️ Firm Robot role not found while closing manual verification ticket.");
+        }
+
+        var theFirmRole = channel.Guild.GetRole(TheFirmRoleId);
+        if (theFirmRole != null)
+        {
+            await channel.AddPermissionOverwriteAsync(theFirmRole,
+                new OverwritePermissions(
+                    viewChannel: PermValue.Allow,
+                    sendMessages: PermValue.Allow,
+                    readMessageHistory: PermValue.Allow,
+                    embedLinks: PermValue.Allow,
+                    attachFiles: PermValue.Allow));
+        }
+        else
+        {
+            Console.WriteLine("⚠️ The Firm role not found while closing manual verification ticket.");
         }
     }
 

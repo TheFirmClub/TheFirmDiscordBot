@@ -18,6 +18,8 @@ public sealed class ManualVerifyOnJoinHandler
     private const ulong ManualVerifyRoleId = 1474419863798812752;
     private const ulong NonVerifiedRoleId = 1393664929042530425;
     private const ulong ForumLinkedRoleId = 1467211008610406411;
+    private const ulong FirmRobotRoleId = 1398764987685539962;
+    private const ulong TheFirmRoleId = 1508057487863971843;
 
     // ✅ Ping ONLY these roles in the ticket
     //private const ulong GameModeratorRoleId = 1393729574537396355;
@@ -149,7 +151,26 @@ public sealed class ManualVerifyOnJoinHandler
                 new OverwritePermissions(
                     viewChannel: PermValue.Allow,
                     sendMessages: PermValue.Allow,
-                    readMessageHistory: PermValue.Allow))
+                    readMessageHistory: PermValue.Allow)),
+
+            new(FirmRobotRoleId, PermissionTarget.Role,
+                new OverwritePermissions(
+                    viewChannel: PermValue.Allow,
+                    sendMessages: PermValue.Allow,
+                    readMessageHistory: PermValue.Allow,
+                    embedLinks: PermValue.Allow,
+                    attachFiles: PermValue.Allow,
+                    manageMessages: PermValue.Allow,
+                    manageChannel: PermValue.Allow,
+                    useApplicationCommands: PermValue.Allow)),
+
+            new(TheFirmRoleId, PermissionTarget.Role,
+                new OverwritePermissions(
+                    viewChannel: PermValue.Allow,
+                    sendMessages: PermValue.Allow,
+                    readMessageHistory: PermValue.Allow,
+                    embedLinks: PermValue.Allow,
+                    attachFiles: PermValue.Allow))
         };
 
         foreach (var roleId in StaffViewRoleIds)
@@ -158,7 +179,9 @@ public sealed class ManualVerifyOnJoinHandler
                 new OverwritePermissions(
                     viewChannel: PermValue.Allow,
                     sendMessages: PermValue.Allow,
-                    readMessageHistory: PermValue.Allow)));
+                    readMessageHistory: PermValue.Allow,
+                    embedLinks: PermValue.Allow,
+                    attachFiles: PermValue.Allow)));
         }
 
         // Create channel (REST channel returned in your version)

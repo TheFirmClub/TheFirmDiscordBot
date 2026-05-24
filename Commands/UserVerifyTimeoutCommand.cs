@@ -13,6 +13,8 @@ public sealed class UserVerifyTimeoutCommand : ISlashCommand
 
     private const ulong ClosedManualVerifyCategoryId = 1474419760237379846UL;
     private const ulong ManualVerifyLogChannelId = 1474538794953867337UL;
+    private const ulong FirmRobotRoleId = 1398764987685539962UL;
+    private const ulong TheFirmRoleId = 1508057487863971843UL;
 
     // Roles allowed to run this (Discord Mods + higher)
     private const ulong DiscordModeratorRoleId = 1393623589122736238UL;
@@ -165,6 +167,8 @@ public sealed class UserVerifyTimeoutCommand : ISlashCommand
         }
         catch { /* ignore */ }
 
+        await EnsureManualVerifyAccessAsync(channel);
+
         // Close ticket (move + rename)
         var newName = channel.Name.StartsWith("closed-", StringComparison.OrdinalIgnoreCase)
             ? channel.Name
@@ -183,6 +187,45 @@ public sealed class UserVerifyTimeoutCommand : ISlashCommand
                 ? $"✅ Timed out {target.Mention}. DM: {(dmSent ? "sent ✅" : "failed ❌")} | Kick: {(kickSucceeded ? "success ✅" : "failed ❌")} | Ticket closed."
                 : "✅ Timed out user and closed ticket. (Owner not found in cache; DM/Kick not performed.)",
             ephemeral: true);
+    }
+
+
+    private static async Task EnsureManualVerifyAccessAsync(SocketTextChannel channel)
+    {
+        var firmRobotRole = channel.Guild.GetRole(FirmRobotRoleId);
+        if (firmRobotRole != null)
+        {
+            await channel.AddPermissionOverwriteAsync(firmRobotRole,
+                new OverwritePermissions(
+                    viewChannel: PermValue.Allow,
+                    sendMessages: PermValue.Allow,
+                    readMessageHistory: PermValue.Allow,
+                    embedLinks: PermValue.Allow,
+                    attachFiles: PermValue.Allow,
+                    manageMessages: PermValue.Allow,
+                    manageChannel: PermValue.Allow,
+                    useApplicationCommands: PermValue.Allow));
+        }
+        else
+        {
+            Console.WriteLine("⚠️ Firm Robot role not found while closing manual verification ticket.");
+        }
+
+        var theFirmRole = channel.Guild.GetRole(TheFirmRoleId);
+        if (theFirmRole != null)
+        {
+            await channel.AddPermissionOverwriteAsync(theFirmRole,
+                new OverwritePermissions(
+                    viewChannel: PermValue.Allow,
+                    sendMessages: PermValue.Allow,
+                    readMessageHistory: PermValue.Allow,
+                    embedLinks: PermValue.Allow,
+                    attachFiles: PermValue.Allow));
+        }
+        else
+        {
+            Console.WriteLine("⚠️ The Firm role not found while closing manual verification ticket.");
+        }
     }
 
     private static bool TryParseUlongToken(string topic, string key, out ulong value)
