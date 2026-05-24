@@ -20,6 +20,7 @@ public class TicketRestrictCommand : ISlashCommand
     private static readonly ulong SENIOR_MOD  = 1393638449709584434;
     private static readonly ulong HEAD_MOD    = 1393728468608487594;
     private static readonly ulong ASST_HEAD   = 1405330877440983130;
+    private static readonly ulong FULFILLMENT_TEAM = 1459193299180195891;
 
     private readonly ulong _restrictedCategoryId = 1393627644326838292;
 
@@ -160,6 +161,17 @@ public class TicketRestrictCommand : ISlashCommand
             allowedRoles = new List<ulong>
             {
                 SENIOR_MOD,
+                ASST_HEAD,
+                HEAD_MOD
+            };
+        }
+        
+        // 🔹 Fulfillment Team → Fulfillment + AHM + HM
+        else if (targetRole.Id == FULFILLMENT_TEAM)
+        {
+            allowedRoles = new List<ulong>
+            {
+                FULFILLMENT_TEAM,
                 ASST_HEAD,
                 HEAD_MOD
             };
