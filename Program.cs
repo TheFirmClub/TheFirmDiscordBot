@@ -60,7 +60,7 @@ class Program
     private readonly SemaphoreSlim _readyLock = new(1, 1);
     private bool _readyCompleted = false;
     
-    private const bool RegisterSlashCommands = false;
+    private const bool RegisterSlashCommands = true;
 
     public static Task Main(string[] args) => new Program().MainAsync();
 
@@ -723,6 +723,11 @@ class Program
                 builder.WithDefaultMemberPermissions(GuildPermission.BanMembers);
                 builder.AddOption("userid", ApplicationCommandOptionType.String, "Discord user ID to pre-ban", true);
                 builder.AddOption("reason", ApplicationCommandOptionType.String, "Reason for the ban", false);
+            }
+            
+            else if (command.Name == "unbanrecent")
+            {
+                builder.WithDefaultMemberPermissions(GuildPermission.BanMembers);
             }
 
             await CreateCommandIfMissing(guild, existingCommands, command.Name, builder.Build());
