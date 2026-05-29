@@ -88,8 +88,8 @@ public class SlashCommandHandler
         var preban = new PrebanCommand();
         _commands.Add(preban.Name, preban);
         
-        var unbanRecent = new UnbanRecentCommand();
-        _commands.Add(unbanRecent.Name, unbanRecent);
+        var emergencyUnban = new EmergencyUnbanAllCommand();
+        _commands.Add(emergencyUnban.Name, emergencyUnban);
         
         var playtimeCommands = new CheckPlaytimeCommands();
         _commands.Add("myplaytime", playtimeCommands);

@@ -725,7 +725,7 @@ class Program
                 builder.AddOption("reason", ApplicationCommandOptionType.String, "Reason for the ban", false);
             }
             
-            else if (command.Name == "unbanrecent")
+            else if (command.Name == "emergencyunbanall")
             {
                 builder.WithDefaultMemberPermissions(GuildPermission.BanMembers);
             }
