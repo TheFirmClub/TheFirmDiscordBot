@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 public class TempTicketCommand : ISlashCommand
 {
     private const ulong FIRM_ROBOT_ROLE_ID = 1398764987685539962UL; // Firm Robot / bot role
+    private const ulong SENIOR_DEV_ROLE_ID = 1421177514189127840UL;
     public string Name => "tempticket";
     public string Description => "Create a temporary level 2 ticket for a user";
 
@@ -21,7 +22,11 @@ public class TempTicketCommand : ISlashCommand
     public async Task ExecuteAsync(SocketSlashCommand command)
     {
         var staffUser = command.User as SocketGuildUser;
-        if (!TicketAddRoleCommand.PermissionHelper.IsSeniorModerator(staffUser))
+
+        bool isSeniorMod = TicketAddRoleCommand.PermissionHelper.IsSeniorModerator(staffUser);
+        bool isSeniorDev = staffUser.Roles.Any(r => r.Id == SENIOR_DEV_ROLE_ID);
+
+        if (!isSeniorMod && !isSeniorDev)
         {
             await command.RespondAsync("❌ You do not have permission to use this command.", ephemeral: true);
             return;
@@ -73,6 +78,17 @@ public class TempTicketCommand : ISlashCommand
         {
             perms.Add(new Overwrite(roleId, PermissionTarget.Role,
                 new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Allow)));
+        }
+        
+        // Only add Senior Dev role if the creator is a Senior Dev
+        if (isSeniorDev)
+        {
+            perms.Add(new Overwrite(SENIOR_DEV_ROLE_ID, PermissionTarget.Role,
+                new OverwritePermissions(
+                    viewChannel: PermValue.Allow,
+                    sendMessages: PermValue.Allow,
+                    readMessageHistory: PermValue.Allow
+                )));
         }
 
         var channel = await guild.CreateTextChannelAsync(channelName, props =>
