@@ -61,5 +61,6 @@ public class SupportPanelSender
         );
 
         Console.WriteLine("✅ Support panel sent with dropdown menu.");
+        
     }
 }
