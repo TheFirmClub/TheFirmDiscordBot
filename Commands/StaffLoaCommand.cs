@@ -29,10 +29,14 @@ public class StaffLoaCommand : ISlashCommand
     {
         1420512528395665569, // MET Command
         1420512797191704616, // NHS Command
+        1516603245315883009, // LFB Command
         1420513009729802260, // Civil Command
         1403466391499313263, // PR Team
         1398306711311224862, // Media Team
+        1463090510406225991, //Strategic Command
+        1516999544448225430, // Operational Command
         1399174001275965520, // Area Command
+        1399173940622135448, // SLT
         1393623589122736238, // Discord Mod
         1393729574537396355, // Game Mod
         1393638449709584434, // Senior Mod
@@ -51,15 +55,15 @@ public class StaffLoaCommand : ISlashCommand
     private static readonly Dictionary<string, (ulong ChannelId, ulong ApproverRoleId, string Label)> DivisionRoutes =
         new()
         {
-            ["police_response_staff"] = (1475222924301439148, 1394649657644290078, "Police Response Staff"),
-            ["police_roads_staff"]    = (1475222924301439148, 1394649657644290078, "Police Roads Staff"),
-            ["police_firearms_staff"] = (1475222924301439148, 1394649657644290078, "Police Firearms Staff"),
-            ["police_senior_command"] = (1475222924301439148, 1394458024503935006, "Police Senior Command"),
+            ["police_response_staff"] = (1504452589650182325, 1394649657644290078, "Police Response Staff"),
+            ["police_roads_staff"]    = (1394653192213495929, 1394649657644290078, "Police Roads Staff"),
+            ["police_firearms_staff"] = (1394655076890443876, 1394649657644290078, "Police Firearms Staff"),
+            ["police_senior_command"] = (1440488262836813874, 1394458024503935006, "Police Senior Command"),
             ["tfhs_staff"]            = (1404782091199053847, 1398308435795251302, "TFHS Staff"),
-            ["civilian_affairs"]      = (1406298760866172958, 1406295299311272006, "Civilian Affairs Staff"),
+            ["civilian_affairs"]      = (1470527970790736059, 1406295299311272006, "Civilian Affairs Staff"),
             ["creative_media_staff"]  = (1507161977921867866, 1394651533253017671, "Creative Media Staff"),
             ["media_team"]            = (1398309451697750106, 1394651533253017671, "Media Team"),
-            ["moderation"]            = (1393630781263315144, 1393638449709584434, "Moderation"),
+            ["moderation"]            = (1496169956700721413, 1393638449709584434, "Moderation"),
         };
 
     // Pending division (per-user) — include timestamp to expire stale selections
