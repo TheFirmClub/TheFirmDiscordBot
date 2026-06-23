@@ -205,13 +205,21 @@ public sealed class ManualVerifyOnJoinHandler
             .WithColor(Color.Orange)
             .WithDescription(
                 $"Hello {user.Mention},\n\n" +
-                $"Thank you for joining **The Firm**. Our system has detected that your Discord account was recently created. As a security precaution, this has automatically triggered a verification check to help us protect the community.\n\n" +
-                $"🔗 **Step 1 – Connect to our FiveM server and create a character**\n" +
-                $"https://cfx.re/join/kb6qpv\n\n" +
-                $"🔗 **Step 2 – Login to our Player Dashboard**\n" +
-                $"https://dashboard.thefirm.club\n\n" +
-                $"You must complete Step 1 in order for Step 2 to work.\n\n" +
-                $"Your **Verified** role will be automatically assigned once you have logged into the dashboard.\n\n" +
+
+                $"Thank you for joining **PoliceX**. Our system has detected that your Discord account was recently created. " +
+                $"As a security precaution, this has automatically triggered a manual verification check to help us protect the community.\n\n" +
+
+                $"🔒 **Step 1 – Manual Discord Verification**\n" +
+                $"Please wait for our moderation team to manually verify your access to our Discord.\n\n" +
+
+                $"Once you have passed manual verification, you will be provided with the **Non-Verified** role.\n\n" +
+
+                $"🔗 **Step 2 – Verify via the PoliceX Dashboard**\n" +
+                $"After receiving the **Non-Verified** role, please access our Player Dashboard to complete verification:\n" +
+                $"https://dashboard.policex.co.uk\n\n" +
+
+                $"Once verified, you will gain access to our Discord channels and be able to join the **PoliceX** FiveM server.\n\n" +
+
                 $"Thank you for your patience."
             )
             .AddField("Account Created (UTC)", $"{user.CreatedAt:yyyy-MM-dd HH:mm}", true)
