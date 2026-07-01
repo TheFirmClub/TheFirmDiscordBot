@@ -113,7 +113,12 @@ public class TempTicketCommand : ISlashCommand
             .WithTimestamp(DateTimeOffset.UtcNow)
             .Build();
 
-        await channel.SendMessageAsync(embed: embed, allowedMentions: AllowedMentions.All);
+        await channel.SendMessageAsync(
+            text: $"{guildUser.Mention} you have been requested in a temporary ticket.",
+            embed: embed,
+            allowedMentions: AllowedMentions.All
+        );
+        
         await command.RespondAsync($"✅ Temporary ticket created: {channel.Mention}", ephemeral: true);
     }
 }
