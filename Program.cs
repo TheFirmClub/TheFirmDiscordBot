@@ -19,7 +19,6 @@ class Program
     private SlashCommandHandler? _commandHandler;
     private RoleLogger? _roleLogger;
     private IConfiguration? _config;
-    private SeasonReactionRole? _seasonReactionRole;
     private SupportMenuHandler _supportMenuHandler = new();
     private TicketButtonHandler _ticketButtonHandler;
     private InviteTrackerService? _inviteTracker;
@@ -135,7 +134,7 @@ class Program
         _mee6Forwarder = new Mee6LogForwarder(_client);
         
         // Season 2 Veteran Reaction
-        _seasonReactionRole = new SeasonReactionRole(_client);
+        // _seasonReactionRole = new SeasonReactionRole(_client);
 
         // after _client is created
         _inviteTracker = new InviteTrackerService(_client);
