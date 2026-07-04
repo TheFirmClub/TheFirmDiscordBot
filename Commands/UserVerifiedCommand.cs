@@ -13,7 +13,7 @@ public sealed class UserVerifiedCommand : ISlashCommand
 
     private const ulong ClosedManualVerifyCategoryId = 1474419760237379846UL;
 
-    private const ulong VerifiedRoleId = 1393625125257089135UL;
+    private const ulong VerifiedRoleId = 1393664929042530425UL;
     private const ulong ManualVerifyRoleId = 1474419863798812752UL;
     private const ulong NonVerifiedRoleId = 1393664929042530425UL;
 
