@@ -26,6 +26,7 @@ class Program
     private CheckRoleInfoCommand _checkRoleInfoCommand = new CheckRoleInfoCommand();
     private FirmDiscordBot.Services.ManualVerifyOnJoinHandler? _manualVerifyOnJoin;
     private SpcStashClearCommand _spcStashClear = new SpcStashClearCommand();
+    private RolePermissionAlertService? _rolePermissionAlert;
 
     private ulong _logChannelId = 1394449608603603085;
 
@@ -206,6 +207,9 @@ class Program
 
         ulong roleLogChannelId = 1393726185804005497;
         _roleLogger = new RoleLogger(_client, roleLogChannelId);
+        
+        _rolePermissionAlert = new RolePermissionAlertService(_client);
+        _rolePermissionAlert.Register();
 
         ulong modNotesChannelId = 1394451583709745273; // your mod notes channel
         _voiceLogger = new VoiceModLogger(_client, modNotesChannelId);
