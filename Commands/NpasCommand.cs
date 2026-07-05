@@ -9,6 +9,7 @@ public abstract class BaseNpasCommand : ISlashCommand
     protected const ulong PilotRole = 1407310163467174028;
     protected const ulong TfoRole = 1521018719059443743;
     protected const ulong CommandChannel = 1521602870187659304;
+    protected const ulong SeniorManagementRole = 1393590761953558608;
 
     public abstract string Name { get; }
     public abstract string Description { get; }
@@ -42,7 +43,9 @@ public abstract class BaseNpasCommand : ISlashCommand
             return;
         }
 
-        if (!user.Roles.Any(r => r.Id == AllowedRole))
+        if (!user.Roles.Any(r =>
+                r.Id == AllowedRole ||
+                r.Id == SeniorManagementRole))
         {
             await command.RespondAsync("❌ You don't have permission to use this command.", ephemeral: true);
             return;
