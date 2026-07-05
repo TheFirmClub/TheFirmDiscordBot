@@ -9,7 +9,7 @@ public class RolePermissionAlertService
 {
     private readonly DiscordSocketClient _client;
 
-    private const ulong AlertChannelId = 1429277775830716589UL;
+    private const ulong AlertChannelId = 1393597248495030272UL;
     private const ulong SeniorManagementRoleId = 1393590761953558608UL;
 
     // Roles you specifically want to monitor, even if permissions change later
