@@ -8,6 +8,7 @@ public abstract class BaseNpasCommand : ISlashCommand
 {
     protected const ulong PilotRole = 1407310163467174028;
     protected const ulong TfoRole = 1521018719059443743;
+    protected const ulong CommandChannel = 1521602870187659304;
 
     public abstract string Name { get; }
     public abstract string Description { get; }
@@ -30,6 +31,14 @@ public abstract class BaseNpasCommand : ISlashCommand
         if (command.User is not SocketGuildUser user)
         {
             await command.RespondAsync("❌ You must use this command in a server.", ephemeral: true);
+            return;
+        }
+        
+        if (command.Channel.Id != CommandChannel)
+        {
+            await command.RespondAsync(
+                $"❌ This command can only be used in <#{CommandChannel}>.",
+                ephemeral: true);
             return;
         }
 
