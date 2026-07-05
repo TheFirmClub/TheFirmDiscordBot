@@ -77,6 +77,8 @@ public class SlashCommandHandler
         _commands.Add("listinv", new ListInventoryCommand());
         _commands.Add("sendtfuapp", new SendTFUAppCommand());
         
+        _commands.Add("pilot", new PilotCommand());
+        _commands.Add("tfo", new TfoCommand());
         
         // --- NEW: invite tracker commands ---
         _commands.Add("myinvites",  new MyInvitesCommand(inviteTracker));
