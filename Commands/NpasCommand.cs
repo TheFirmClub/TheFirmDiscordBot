@@ -9,6 +9,7 @@ public abstract class BaseNpasCommand : ISlashCommand
     protected const ulong PilotRole = 1407310163467174028;
     protected const ulong TfoRole = 1521018719059443743;
     protected const ulong HelimedRole = 1470560254772383895;
+    protected const ulong HelimedRequestRole = 1394460780602196079;
     protected const ulong CommandChannel = 1521602870187659304;
     protected const ulong SeniorManagementRole = 1393590761953558608;
 
@@ -99,7 +100,7 @@ public class HelimedCommand : BaseNpasCommand
     public override string Name => "helimed";
     public override string Description => "Request Helimed to deploy.";
 
-    protected override ulong AllowedRole => HelimedRole;
+    protected override ulong AllowedRole => HelimedRequestRole;
     protected override ulong PingRole => HelimedRole;
     protected override string EmbedTitle => "🚁 Helimed Request";
 
