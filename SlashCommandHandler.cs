@@ -79,6 +79,7 @@ public class SlashCommandHandler
         
         _commands.Add("pilot", new PilotCommand());
         _commands.Add("tfo", new TfoCommand());
+        _commands.Add("helimed", new HelimedCommand());
         
         // --- NEW: invite tracker commands ---
         _commands.Add("myinvites",  new MyInvitesCommand(inviteTracker));
