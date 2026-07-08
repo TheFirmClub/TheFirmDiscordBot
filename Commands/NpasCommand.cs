@@ -8,6 +8,7 @@ public abstract class BaseNpasCommand : ISlashCommand
 {
     protected const ulong PilotRole = 1407310163467174028;
     protected const ulong TfoRole = 1521018719059443743;
+    protected const ulong HelimedRole = 1470560254772383895;
     protected const ulong CommandChannel = 1521602870187659304;
     protected const ulong SeniorManagementRole = 1393590761953558608;
 
@@ -17,7 +18,7 @@ public abstract class BaseNpasCommand : ISlashCommand
     protected abstract ulong AllowedRole { get; }
     protected abstract ulong PingRole { get; }
     protected abstract string EmbedTitle { get; }
-    protected abstract string RequestedRoleName { get; }
+    protected abstract string RequestMessage { get; }
 
     public SlashCommandProperties Build()
     {
@@ -34,7 +35,7 @@ public abstract class BaseNpasCommand : ISlashCommand
             await command.RespondAsync("❌ You must use this command in a server.", ephemeral: true);
             return;
         }
-        
+
         if (command.Channel.Id != CommandChannel)
         {
             await command.RespondAsync(
@@ -53,7 +54,7 @@ public abstract class BaseNpasCommand : ISlashCommand
 
         var embed = new EmbedBuilder()
             .WithTitle(EmbedTitle)
-            .WithDescription($"{user.Mention} is requesting a {RequestedRoleName} to deploy NPAS, please confirm if you are available?")
+            .WithDescription($"{user.Mention} {RequestMessage}")
             .WithColor(Color.Blue)
             .Build();
 
@@ -75,7 +76,9 @@ public class PilotCommand : BaseNpasCommand
     protected override ulong AllowedRole => TfoRole;
     protected override ulong PingRole => PilotRole;
     protected override string EmbedTitle => "🚁 NPAS Pilot Request";
-    protected override string RequestedRoleName => "pilot";
+
+    protected override string RequestMessage =>
+        "is requesting a NPAS pilot to deploy, please confirm if you are available?";
 }
 
 public class TfoCommand : BaseNpasCommand
@@ -86,5 +89,20 @@ public class TfoCommand : BaseNpasCommand
     protected override ulong AllowedRole => PilotRole;
     protected override ulong PingRole => TfoRole;
     protected override string EmbedTitle => "👮 NPAS TFO Request";
-    protected override string RequestedRoleName => "TFO";
+
+    protected override string RequestMessage =>
+        "is requesting a TFO to deploy NPAS, please confirm if you are available?";
+}
+
+public class HelimedCommand : BaseNpasCommand
+{
+    public override string Name => "helimed";
+    public override string Description => "Request Helimed to deploy.";
+
+    protected override ulong AllowedRole => HelimedRole;
+    protected override ulong PingRole => HelimedRole;
+    protected override string EmbedTitle => "🚁 Helimed Request";
+
+    protected override string RequestMessage =>
+        "is requesting a Helimed pilot to deploy, please confirm if you are available?";
 }
